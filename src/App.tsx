@@ -41,7 +41,8 @@ function App() {
         setLoginError(data.message || 'Login failed')
       }
     } catch (err) {
-      setLoginError('Could not connect to server')
+      console.error('Login connection error:', err);
+      setLoginError('Could not connect to server');
     }
   }
 
