@@ -26,10 +26,18 @@ export interface User {
     mindset_index?: number;
     current_streak?: number;
     is_premium?: boolean;
+    membership_tier?: 'Free' | 'Silver' | 'Gold';
     status?: string;
     created_at?: string;
-    diagnosis_scores?: any;
+    diagnosis_scores?: {
+        branding: number;
+        lead_gen: number;
+        sales: number;
+        mindset: number;
+    };
     onboarding_step?: number;
+    license_number?: string;
+    agency_name?: string;
 }
 
 export const apiClient = {
@@ -63,7 +71,7 @@ export const apiClient = {
             throw error;
         }
     },
-    toggleUserStatus: async (userId: number): Promise<any> => {
+    toggleUserStatus: async (userId: number): Promise<{ status: string; message: string }> => {
         try {
             const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/toggle-status`, {
                 method: 'POST'
@@ -75,7 +83,7 @@ export const apiClient = {
             throw error;
         }
     },
-    deleteUser: async (userId: number): Promise<any> => {
+    deleteUser: async (userId: number): Promise<{ success: boolean; message: string }> => {
         try {
             const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
                 method: 'DELETE'
