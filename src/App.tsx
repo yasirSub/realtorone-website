@@ -95,9 +95,17 @@ function App() {
   return (
     !isLoggedIn ? (
       <div className="login-container">
+        {/* Decorative Background Elements */}
+        <div className="bg-shape shape-1"></div>
+        <div className="bg-shape shape-2"></div>
+        <div className="bg-shape shape-3"></div>
+
         <div className="glass-card login-card">
-          <h1 className="logo">Realtor<span>One</span></h1>
-          <p className="subtitle">Admin Portal Login</p>
+          <div className="login-header">
+            <h1 className="logo large">Realtor<span>One</span></h1>
+            <div className="divider"></div>
+            <p className="subtitle">Enterprise Admin Portal</p>
+          </div>
 
           <form className="login-form" onSubmit={handleLogin}>
             {loginError && <div className="error-message">{loginError}</div>}

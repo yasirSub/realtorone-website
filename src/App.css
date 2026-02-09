@@ -293,41 +293,146 @@ body {
   border: 1px solid var(--glass-border);
 }
 
-/* Login Page: Clean */
+/* Login Page: Premium Re-design */
 .login-container {
   height: 100vh;
   width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--bg-deep);
+  background: radial-gradient(circle at top left, #050811, #02040a 60%);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Animated Decorative Shapes */
+.bg-shape {
+  position: absolute;
+  filter: blur(120px);
+  border-radius: 50%;
+  z-index: 0;
+  opacity: 0.4;
+  animation: float 20s infinite alternate ease-in-out;
+}
+
+.shape-1 {
+  width: 600px;
+  height: 600px;
+  background: var(--primary);
+  top: -200px;
+  left: -100px;
+  animation-delay: -5s;
+}
+
+.shape-2 {
+  width: 500px;
+  height: 500px;
+  background: var(--accent);
+  bottom: -150px;
+  right: -50px;
+  animation-delay: -2s;
+}
+
+.shape-3 {
+  width: 300px;
+  height: 300px;
+  background: #3b82f6;
+  top: 40%;
+  left: 30%;
+  opacity: 0.2;
+}
+
+@keyframes float {
+  0% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  100% {
+    transform: translate(40px, 60px) scale(1.1);
+  }
 }
 
 .login-card {
-  background: var(--bg-surface);
-  padding: 3rem;
-  border-radius: 24px;
-  border: 1px solid var(--glass-border);
+  background: rgba(10, 13, 20, 0.4);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  padding: 3.5rem;
+  border-radius: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   width: 100%;
-  max-width: 420px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 440px;
+  z-index: 10;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    inset 0 0 80px rgba(255, 255, 255, 0.02);
+  animation: cardAppear 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.logo.large {
+  font-size: 2.5rem;
+  letter-spacing: -1.5px;
+  margin-bottom: 0.5rem;
+}
+
+.divider {
+  width: 40px;
+  height: 3px;
+  background: linear-gradient(to right, var(--primary), var(--accent));
+  margin: 1.5rem auto;
+  border-radius: 10px;
+}
+
+.login-card .subtitle {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  opacity: 0.8;
+}
+
+.form-group label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  display: block;
+  padding-left: 0.5rem;
 }
 
 .form-group input {
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid var(--glass-border);
-  padding: 1.25rem 1.5rem;
-  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 1.1rem 1.4rem;
+  border-radius: 18px;
   color: white;
   width: 100%;
-  font-size: 1.1rem;
-  transition: all 0.3s;
+  font-size: 1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .form-group input:focus {
   background: rgba(255, 255, 255, 0.06);
   border-color: var(--primary);
-  box-shadow: 0 0 20px var(--primary-glow);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15);
+  transform: translateY(-1px);
 }
 
 .password-wrapper {
@@ -338,20 +443,21 @@ body {
 
 .password-toggle {
   position: absolute;
-  right: 1.5rem;
+  right: 1.25rem;
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 1.2rem;
-  opacity: 0.6;
-  transition: opacity 0.2s;
-  padding: 0;
+  font-size: 1.1rem;
+  opacity: 0.4;
+  transition: all 0.2s;
+  padding: 0.5rem;
   display: flex;
   align-items: center;
 }
 
 .password-toggle:hover {
   opacity: 1;
+  transform: scale(1.1);
 }
 
 .btn-login {
