@@ -113,14 +113,14 @@ function App() {
       <div className="login-container">
         <div className="login-card fade-in">
           <div className="login-header" style={{ marginBottom: '2.5rem', textAlign: 'center' }}>
-            <h1 className="logo" style={{ fontSize: '2.4rem' }}>On<span>Render</span></h1>
+            <h1 className="logo" style={{ fontSize: '2.4rem' }}>Realtor<span>One</span></h1>
             <p>Administrative Vault Login</p>
           </div>
           <form className="login-form" onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {loginError && <div style={{ color: 'var(--error)', fontSize: '0.85rem', fontWeight: 800, textAlign: 'center', background: 'rgba(255,100,100,0.1)', padding: '10px', borderRadius: '10px' }}>{loginError}</div>}
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)' }}>EMAIL ADDRESS</label>
-              <input type="email" placeholder="admin@onrender.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="form-input" />
+              <input type="email" placeholder="admin@realtorone.com" value={email} onChange={(e) => setEmail(e.target.value)} required className="form-input" />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)' }}>PASSCODE</label>
@@ -134,7 +134,7 @@ function App() {
             </div>
             <button type="submit" className="btn-primary" style={{ marginTop: '1rem' }}>Enter Control Plane</button>
           </form>
-          <button className="debug-fab" onClick={() => { setEmail('admin@onrender.com'); setPassword('password123'); }}
+          <button className="debug-fab" onClick={() => { setEmail('admin@realtorone.com'); setPassword('password123'); }}
             style={{ position: 'fixed', bottom: '2rem', right: '2rem', background: 'var(--primary)', color: '#fff', width: '50px', height: '50px', borderRadius: '50%', border: 'none', cursor: 'pointer', boxShadow: '0 10px 20px var(--primary-glow)', fontSize: '1.2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>⚡</button>
         </div>
       </div>
@@ -146,7 +146,7 @@ function App() {
       {/* Floating Kora Sidebar */}
       <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
         <div className="sidebar-brand">
-          {!isSidebarCollapsed && <h1 className="logo">On<span>Render</span></h1>}
+          {!isSidebarCollapsed && <h1 className="logo">Realtor<span>One</span></h1>}
           <button
             className="collapse-btn"
             onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -342,7 +342,7 @@ function App() {
           {activeTab === 'users' && (
             <div className="view-container fade-in">
               <div className="view-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-                <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>OnRender Registry</h2>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: 800, margin: 0 }}>Professional Registry</h2>
                 <div className="filter-group">
                   {(['All', 'Free', 'Silver', 'Gold'] as const).map(t => (
                     <button key={t} className={`filter-btn ${activeTier === t ? 'active' : ''}`} onClick={() => setActiveTier(t)}>{t}</button>
