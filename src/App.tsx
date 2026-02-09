@@ -23,7 +23,8 @@ function App() {
     setLoginError('')
 
     try {
-      const response = await fetch(`http://${window.location.hostname}:8000/api/admin/login`, {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || `http://${window.location.hostname}:8000/api`;
+      const response = await fetch(`${baseUrl}/admin/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
