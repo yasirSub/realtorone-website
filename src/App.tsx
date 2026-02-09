@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { apiClient } from './api/client'
 import type { HealthStatus, User } from './api/client'
+import logo from './assets/logo.png'
 
 type Tab = 'dashboard' | 'users' | 'settings'
 
@@ -18,6 +19,14 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState<Tab>('dashboard')
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark')
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -105,10 +114,20 @@ function App() {
 
         <div className="glass-card login-card">
           <div className="login-header">
+            <img src={logo} alt="RealtorOne Logo" className="logo-img" />
             <h1 className="logo large">Realtor<span>One</span></h1>
             <div className="divider"></div>
             <p className="subtitle">Enterprise Admin Portal</p>
           </div>
+
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            style={{ position: 'absolute', top: '1rem', right: '1rem' }}
+          >
+            {theme === 'light' ? "🌙" : "☀️"}
+          </button>
 
           <form className="login-form" onSubmit={handleLogin}>
             {loginError && <div className="error-message">{loginError}</div>}
@@ -163,6 +182,7 @@ function App() {
       <div className="app-layout">
         <aside className="sidebar">
           <div className="sidebar-brand">
+            <img src={logo} alt="Logo" className="logo-img" style={{ height: '40px', marginBottom: '0.5rem', marginLeft: '0' }} />
             <h1 className="logo">Realtor<span>One</span></h1>
             <p className="subtitle">Admin Management</p>
           </div>
@@ -201,6 +221,14 @@ function App() {
               />
             </div>
             <div className="header-actions">
+              <button
+                type="button"
+                className="theme-toggle"
+                onClick={toggleTheme}
+                style={{ marginRight: '1rem' }}
+              >
+                {theme === 'light' ? "🌙" : "☀️"}
+              </button>
               <button className="btn-icon">🔔</button>
               <div className="profile-badge">Admin</div>
             </div>
@@ -332,7 +360,7 @@ function App() {
                 <div className="settings-form">
                   <div className="form-group">
                     <label>API Endpoint</label>
-                    <input type="text" value="http://localhost:8000/api" readOnly />
+                    <input type="text" value={import.meta.env.VITE_API_BASE_URL || 'Auto-detected'} readOnly />
                   </div>
                   <div className="form-group">
                     <label>Diagnostic Threshold</label>
