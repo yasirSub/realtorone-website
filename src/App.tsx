@@ -21,6 +21,7 @@ function App() {
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
   const [activeTier, setActiveTier] = useState<'All' | 'Free' | 'Silver' | 'Gold'>('All')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true')
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const filteredUsers = users.filter(u => {
     const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -143,8 +144,40 @@ function App() {
 
   return (
     <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      {/* Mobile Backdrop */}
+      <div
+        className={`sidebar-backdrop ${mobileMenuOpen ? 'active' : ''}`}
+        onClick={() => setMobileMenuOpen(false)}
+      ></div>
+
+      {/* Mobile Toggle Button */}
+      <button
+        className="mobile-toggle"
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        style={{
+          display: 'none',
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          zIndex: 1001,
+          background: 'var(--primary)',
+          color: 'white',
+          border: 'none',
+          width: '50px',
+          height: '50px',
+          borderRadius: '15px',
+          boxShadow: '0 10px 20px var(--primary-glow)',
+          fontSize: '1.5rem',
+          alignItems: 'center',
+          justifyContent: 'center',
+          cursor: 'pointer'
+        }}
+      >
+        {mobileMenuOpen ? '✕' : '☰'}
+      </button>
+
       {/* Floating Kora Sidebar */}
-      <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
+      <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-active' : ''}`}>
         <div className="sidebar-brand">
           {!isSidebarCollapsed && <h1 className="logo">Realtor<span>One</span></h1>}
           <button
@@ -156,14 +189,14 @@ function App() {
         </div>
         <nav className="sidebar-nav">
           <div className="nav-label">Management</div>
-          <button className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+          <button className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveTab('dashboard'); setMobileMenuOpen(false); }}>
             <span className="icon">🏠</span> <span>Dashboard</span>
           </button>
-          <button className={`nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+          <button className={`nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => { setActiveTab('users'); setMobileMenuOpen(false); }}>
             <span className="icon">👥</span> <span>Management</span>
           </button>
           <div className="nav-label">Platform</div>
-          <button className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+          <button className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => { setActiveTab('settings'); setMobileMenuOpen(false); }}>
             <span className="icon">⚙️</span> <span>Settings</span>
           </button>
         </nav>
@@ -434,6 +467,26 @@ function App() {
           )}
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="mobile-bottom-nav">
+        <button className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+          <span className="icon">🏠</span>
+          <span>Home</span>
+        </button>
+        <button className={`nav-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => setActiveTab('users')}>
+          <span className="icon">👥</span>
+          <span>Users</span>
+        </button>
+        <button className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+          <span className="icon">⚙️</span>
+          <span>Settings</span>
+        </button>
+        <button className="nav-item" onClick={() => setMobileMenuOpen(true)}>
+          <span className="icon">☰</span>
+          <span>More</span>
+        </button>
+      </nav>
 
       {/* Pro Detail Modal (Fixed & Compact Kora Style) */}
       {selectedUser && (
