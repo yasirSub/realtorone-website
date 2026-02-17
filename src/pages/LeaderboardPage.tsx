@@ -154,8 +154,8 @@ const LeaderboardPage: React.FC = () => {
                                             </div>
                                         </td>
                                         <td>
-                                            <span className={`tier-pill ${(entry.user.membership_tier || 'Free').toLowerCase()}`}>
-                                                {entry.user.membership_tier || 'Free'}
+                                            <span className={`tier-pill ${(entry.user.membership_tier || 'Consultant').toLowerCase().replace(/\s+/g, '-')}`}>
+                                                {entry.user.membership_tier || 'Consultant'}
                                             </span>
                                         </td>
                                         <td>

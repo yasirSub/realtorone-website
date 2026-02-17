@@ -11,7 +11,8 @@ interface UserProfilePageProps {
 const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
     const [performance, setPerformance] = useState<any[]>([]);
     const [activities, setActivities] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
+    // Track loading state during profile data fetches
+    const [, setLoading] = useState(false);
     const [viewRange, setViewRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
     const [expandedDays, setExpandedDays] = useState<string[]>([]);
 
@@ -36,7 +37,15 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                 setLoading(false);
             }
         };
+        
+        // Initial fetch
         fetchData();
+        
+        // Auto-refresh every 3 seconds to sync with mobile app updates
+        const intervalId = setInterval(fetchData, 3000);
+        
+        // Cleanup interval on unmount
+        return () => clearInterval(intervalId);
     }, [user.id]);
 
     const toggleDay = (date: string) => {
@@ -98,8 +107,18 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
 
     const getTierColor = (tier?: string) => {
         switch (tier?.toLowerCase()) {
+            case 'titan':
+            case 'titan - gold':
+            case 'titan-gold':
+                return '#F59E0B'; // Gold color
+            case 'rainmaker':
+                return '#94a3b8'; // Silver/Gray color
+            case 'consultant':
+                return '#64748B'; // Default gray
+            // Legacy support
             case 'diamond': return '#7C3AED';
             case 'platinum': return '#D946EF';
+            case 'gold': return '#F59E0B';
             case 'silver': return '#94a3b8';
             default: return 'var(--text-muted)';
         }
@@ -145,20 +164,76 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
             <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '35px', alignItems: 'flex-start' }}>
                 {/* Left Tactical Column */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
-                    <div className="glass-panel" style={{ padding: '40px 30px', textAlign: 'center', position: 'relative' }}>
-                        <div style={{ position: 'absolute', inset: 0, opacity: 0.03, pointerEvents: 'none', background: `radial-gradient(circle at top right, ${getTierColor(user.membership_tier)}, transparent)` }}></div>
+                    <div className="glass-panel" style={{ 
+                        padding: '40px 30px', 
+                        textAlign: 'center', 
+                        position: 'relative',
+                        background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}08, transparent)`,
+                        border: `1px solid ${getTierColor(user.membership_tier)}30`
+                    }}>
+                        <div style={{ 
+                            position: 'absolute', 
+                            inset: 0, 
+                            opacity: 0.05, 
+                            pointerEvents: 'none', 
+                            background: `radial-gradient(circle at top right, ${getTierColor(user.membership_tier)}, transparent)` 
+                        }}></div>
 
-                        <div style={{ width: '130px', height: '130px', margin: '0 auto 25px auto', borderRadius: '30%', background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}40, transparent)`, padding: '3px', border: `1px solid ${getTierColor(user.membership_tier)}40` }}>
-                            <div className="avatar-chip" style={{ width: '100%', height: '100%', borderRadius: 'inherit', fontSize: '3.5rem', fontWeight: 900, boxShadow: 'none' }}>
+                        <div style={{ 
+                            width: '140px', 
+                            height: '140px', 
+                            margin: '0 auto 25px auto', 
+                            borderRadius: '30%', 
+                            background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}30, ${getTierColor(user.membership_tier)}10)`, 
+                            padding: '4px', 
+                            border: `2px solid ${getTierColor(user.membership_tier)}50`,
+                            boxShadow: `0 8px 30px ${getTierColor(user.membership_tier)}30`,
+                            position: 'relative'
+                        }}>
+                            <div className="avatar-chip" style={{ 
+                                width: '100%', 
+                                height: '100%', 
+                                borderRadius: 'inherit', 
+                                fontSize: '3.8rem', 
+                                fontWeight: 950, 
+                                boxShadow: 'none',
+                                background: 'var(--bg-card)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: getTierColor(user.membership_tier)
+                            }}>
                                 {(user.name || 'U').substring(0, 1)}
                             </div>
                         </div>
 
-                        <h2 style={{ fontSize: '1.8rem', fontWeight: 950, margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>{user.name}</h2>
-                        <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '25px' }}>{user.email}</span>
+                        <h2 style={{ 
+                            fontSize: '1.9rem', 
+                            fontWeight: 950, 
+                            margin: '0 0 8px 0', 
+                            letterSpacing: '-0.5px',
+                            background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}, var(--text-main))`,
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text'
+                        }}>{user.name}</h2>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 700, display: 'block', marginBottom: '25px' }}>{user.email}</span>
 
-                        <div style={{ display: 'inline-flex', padding: '8px 20px', borderRadius: '30px', background: `${getTierColor(user.membership_tier)}15`, border: `1px solid ${getTierColor(user.membership_tier)}40`, color: getTierColor(user.membership_tier), fontSize: '0.65rem', fontWeight: 950, letterSpacing: '1.5px', marginBottom: '40px' }}>
-                            {user.membership_tier?.toUpperCase() || 'FREE'} OPERATOR
+                        <div style={{ 
+                            display: 'inline-flex', 
+                            padding: '10px 24px', 
+                            borderRadius: '30px', 
+                            background: `${getTierColor(user.membership_tier)}20`, 
+                            border: `2px solid ${getTierColor(user.membership_tier)}50`, 
+                            color: getTierColor(user.membership_tier), 
+                            fontSize: '0.7rem', 
+                            fontWeight: 950, 
+                            letterSpacing: '1.5px', 
+                            marginBottom: '40px',
+                            boxShadow: `0 4px 15px ${getTierColor(user.membership_tier)}30`,
+                            textTransform: 'uppercase'
+                        }}>
+                            {user.membership_tier?.replace(' - ', '-').toUpperCase() || 'CONSULTANT'} OPERATOR
                         </div>
 
                         <div style={{ textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '20px', padding: '30px 0', borderTop: '1px solid var(--glass-border)' }}>
@@ -178,9 +253,29 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                         </div>
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '35px' }}>
-                        <h4 style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.7rem', fontWeight: 950, marginBottom: '30px', textTransform: 'uppercase', letterSpacing: '2px', color: 'var(--primary)' }}>
-                            <div style={{ width: '4px', height: '12px', background: 'var(--primary)', borderRadius: '10px' }}></div>
+                    <div className="glass-panel" style={{ 
+                        padding: '35px',
+                        background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}05, transparent)`,
+                        border: `1px solid ${getTierColor(user.membership_tier)}20`
+                    }}>
+                        <h4 style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: '10px', 
+                            fontSize: '0.7rem', 
+                            fontWeight: 950, 
+                            marginBottom: '30px', 
+                            textTransform: 'uppercase', 
+                            letterSpacing: '2px', 
+                            color: getTierColor(user.membership_tier)
+                        }}>
+                            <div style={{ 
+                                width: '4px', 
+                                height: '12px', 
+                                background: getTierColor(user.membership_tier), 
+                                borderRadius: '10px',
+                                boxShadow: `0 0 8px ${getTierColor(user.membership_tier)}50`
+                            }}></div>
                             System Diagnostics
                         </h4>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
@@ -211,17 +306,52 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '25px' }}>
                         {[
-                            { label: 'AGGREGATE GROWTH', value: `${user.growth_score || 0}%`, icon: '📈' },
-                            { label: 'EXECUTION RATE', value: `${user.execution_rate || 0}%`, icon: '⚡' },
-                            { label: 'MINDSET INDEX', value: user.mindset_index || 0, icon: '🧠' },
-                            { label: 'CURRENT STREAK', value: `${user.current_streak || 0}D`, icon: '🔥' },
+                            { label: 'AGGREGATE GROWTH', value: `${user.growth_score || 0}%`, icon: '📈', color: 'var(--primary)' },
+                            { label: 'EXECUTION RATE', value: `${user.execution_rate || 0}%`, icon: '⚡', color: 'var(--success)' },
+                            { label: 'MINDSET INDEX', value: user.mindset_index || 0, icon: '🧠', color: '#f59e0b' },
+                            { label: 'CURRENT STREAK', value: `${user.current_streak || 0}D`, icon: '🔥', color: '#ef4444' },
                         ].map((stat, i) => (
-                            <div key={i} className="glass-panel" style={{ padding: '25px', border: '1px solid var(--glass-border)', background: 'linear-gradient(135deg, var(--bg-card), transparent)' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                            <div key={i} className="glass-panel" style={{ 
+                                padding: '25px', 
+                                border: `1px solid ${stat.color}30`, 
+                                background: `linear-gradient(135deg, ${stat.color}08, transparent)`,
+                                position: 'relative',
+                                overflow: 'hidden',
+                                transition: 'all 0.3s ease',
+                                cursor: 'pointer'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-4px)';
+                                e.currentTarget.style.boxShadow = `0 8px 25px ${stat.color}30`;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = 'none';
+                            }}>
+                                <div style={{ 
+                                    position: 'absolute', 
+                                    top: -20, 
+                                    right: -20, 
+                                    width: '80px', 
+                                    height: '80px', 
+                                    borderRadius: '50%', 
+                                    background: `radial-gradient(circle, ${stat.color}10, transparent)`,
+                                    opacity: 0.5
+                                }}></div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', position: 'relative' }}>
                                     <span style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '1px' }}>{stat.label}</span>
-                                    <span style={{ fontSize: '1.2rem' }}>{stat.icon}</span>
+                                    <span style={{ fontSize: '1.4rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>{stat.icon}</span>
                                 </div>
-                                <div style={{ fontSize: '2.2rem', fontWeight: 950, letterSpacing: '-1px' }}>{stat.value}</div>
+                                <div style={{ 
+                                    fontSize: '2.4rem', 
+                                    fontWeight: 950, 
+                                    letterSpacing: '-1px',
+                                    background: `linear-gradient(135deg, ${stat.color}, ${stat.color}80)`,
+                                    WebkitBackgroundClip: 'text',
+                                    WebkitTextFillColor: 'transparent',
+                                    backgroundClip: 'text',
+                                    position: 'relative'
+                                }}>{stat.value}</div>
                             </div>
                         ))}
                     </div>
@@ -301,45 +431,179 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '35px' }}>
-                        <div className="glass-panel" style={{ padding: '35px' }}>
-                            <h3 style={{ fontSize: '1rem', fontWeight: 950, marginBottom: '40px', letterSpacing: '0.5px' }}>Global Ranking Status</h3>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
+                        <div className="glass-panel" style={{ 
+                            padding: '35px', 
+                            background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}08, transparent)`,
+                            border: `1px solid ${getTierColor(user.membership_tier)}30`,
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}>
+                            <div style={{ 
+                                position: 'absolute', 
+                                top: -50, 
+                                right: -50, 
+                                width: '200px', 
+                                height: '200px', 
+                                borderRadius: '50%', 
+                                background: `radial-gradient(circle, ${getTierColor(user.membership_tier)}15, transparent)`,
+                                opacity: 0.5
+                            }}></div>
+                            <h3 style={{ fontSize: '1rem', fontWeight: 950, marginBottom: '40px', letterSpacing: '0.5px', position: 'relative' }}>Global Ranking Status</h3>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '40px', position: 'relative' }}>
                                 <div style={{
-                                    width: '100px',
-                                    height: '100px',
-                                    borderRadius: '35%',
-                                    background: 'var(--bg-app)',
-                                    border: '1px solid var(--glass-border)',
+                                    width: '120px',
+                                    height: '120px',
+                                    borderRadius: '30%',
+                                    background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}20, ${getTierColor(user.membership_tier)}05)`,
+                                    border: `2px solid ${getTierColor(user.membership_tier)}40`,
                                     display: 'flex',
                                     flexDirection: 'column',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    boxShadow: 'inset 0 0 20px rgba(0,0,0,0.2)'
+                                    boxShadow: `0 8px 30px ${getTierColor(user.membership_tier)}30`,
+                                    position: 'relative'
                                 }}>
-                                    <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)' }}>RANK</span>
-                                    <div style={{ fontSize: '2.2rem', fontWeight: 950, color: 'var(--primary)', lineHeight: 1 }}>#{user.rank || '??'}</div>
+                                    <span style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: '4px' }}>TIER</span>
+                                    <div style={{ 
+                                        fontSize: '1.8rem', 
+                                        fontWeight: 950, 
+                                        color: getTierColor(user.membership_tier), 
+                                        lineHeight: 1,
+                                        textAlign: 'center',
+                                        letterSpacing: '-0.5px'
+                                    }}>
+                                        {user.membership_tier ? user.membership_tier.split(' ').map((w: string) => w.charAt(0)).join('') : 'CN'}
+                                    </div>
+                                    <div style={{ 
+                                        fontSize: '0.5rem', 
+                                        fontWeight: 900, 
+                                        color: getTierColor(user.membership_tier),
+                                        marginTop: '4px',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                        {user.membership_tier?.toUpperCase().replace(' - ', '-') || 'CONSULTANT'}
+                                    </div>
                                 </div>
                                 <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '2rem', fontWeight: 950, letterSpacing: '-1px' }}>Top {Math.max(1, 100 - (user.growth_score || 0))}%</div>
-                                    <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600, marginTop: '8px' }}>Positioned in the tactical {user.membership_tier?.toLowerCase()} quadrant</div>
-                                    <div style={{ height: '4px', width: '100%', background: 'var(--glass-border)', borderRadius: '10px', marginTop: '20px' }}>
-                                        <div style={{ height: '100%', width: `${user.growth_score}%`, background: 'var(--primary)', borderRadius: 'inherit' }}></div>
+                                    <div style={{ 
+                                        fontSize: '2.5rem', 
+                                        fontWeight: 950, 
+                                        letterSpacing: '-1px',
+                                        background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}, ${getTierColor(user.membership_tier)}80)`,
+                                        WebkitBackgroundClip: 'text',
+                                        WebkitTextFillColor: 'transparent',
+                                        backgroundClip: 'text'
+                                    }}>
+                                        Top {Math.min(100, Math.max(1, Math.round(100 - ((user.growth_score || 0) / 100) * 100)))}%
                                     </div>
+                                    <div style={{ 
+                                        fontSize: '0.85rem', 
+                                        color: 'var(--text-muted)', 
+                                        fontWeight: 600, 
+                                        marginTop: '12px',
+                                        lineHeight: '1.5'
+                                    }}>
+                                        Positioned in the <span style={{ 
+                                            color: getTierColor(user.membership_tier), 
+                                            fontWeight: 900,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px'
+                                        }}>{user.membership_tier || 'Consultant'}</span> quadrant
+                                    </div>
+                                    <div style={{ 
+                                        height: '6px', 
+                                        width: '100%', 
+                                        background: 'var(--bg-app)', 
+                                        borderRadius: '10px', 
+                                        marginTop: '20px',
+                                        border: '1px solid var(--glass-border)',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{ 
+                                            height: '100%', 
+                                            width: `${Math.min(100, user.growth_score || 0)}%`, 
+                                            background: `linear-gradient(90deg, ${getTierColor(user.membership_tier)}, ${getTierColor(user.membership_tier)}80)`, 
+                                            borderRadius: 'inherit',
+                                            boxShadow: `0 0 10px ${getTierColor(user.membership_tier)}50`,
+                                            transition: 'width 0.5s ease'
+                                        }}></div>
+                                    </div>
+                                    {user.rank && (
+                                        <div style={{ 
+                                            fontSize: '0.7rem', 
+                                            color: 'var(--text-muted)', 
+                                            fontWeight: 700, 
+                                            marginTop: '12px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}>
+                                            <span>Global Rank:</span>
+                                            <span style={{ color: getTierColor(user.membership_tier), fontWeight: 950 }}>#{user.rank}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="glass-panel" style={{ padding: '35px' }}>
-                            <h3 style={{ fontSize: '1rem', fontWeight: 950, marginBottom: '35px', letterSpacing: '0.5px' }}>Security Verification</h3>
+                        <div className="glass-panel" style={{ 
+                            padding: '35px',
+                            background: `linear-gradient(135deg, var(--success)08, transparent)`,
+                            border: '1px solid var(--success)30'
+                        }}>
+                            <h3 style={{ 
+                                fontSize: '1rem', 
+                                fontWeight: 950, 
+                                marginBottom: '35px', 
+                                letterSpacing: '0.5px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px'
+                            }}>
+                                <div style={{ 
+                                    width: '4px', 
+                                    height: '12px', 
+                                    background: 'var(--success)', 
+                                    borderRadius: '10px',
+                                    boxShadow: '0 0 8px var(--success)50'
+                                }}></div>
+                                Security Verification
+                            </h3>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                                 {[
-                                    { label: 'Account Integrity', value: 'VERIFIED', color: 'var(--success)' },
-                                    { label: 'Login Context', value: 'MOBILE_GATEWAY', color: 'var(--text-main)' },
-                                    { label: 'Last Activity', value: user.last_activity_date ? new Date(user.last_activity_date).toLocaleTimeString() : 'LIVE_SYNC', color: 'var(--text-main)' }
+                                    { label: 'Account Integrity', value: 'VERIFIED', color: 'var(--success)', icon: '✓' },
+                                    { label: 'Login Context', value: 'MOBILE_GATEWAY', color: getTierColor(user.membership_tier), icon: '📱' },
+                                    { label: 'Last Activity', value: user.last_activity_date ? new Date(user.last_activity_date).toLocaleTimeString() : 'LIVE_SYNC', color: 'var(--text-main)', icon: '🔄' }
                                 ].map((row, idx) => (
-                                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: idx < 2 ? '1px solid var(--glass-border)' : 'none' }}>
-                                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700 }}>{row.label}</span>
-                                        <span style={{ fontSize: '0.8rem', fontWeight: 950, color: row.color }}>{row.value}</span>
+                                    <div key={idx} style={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'space-between', 
+                                        alignItems: 'center', 
+                                        padding: '12px 15px',
+                                        paddingBottom: '12px', 
+                                        borderBottom: idx < 2 ? '1px solid var(--glass-border)' : 'none',
+                                        background: idx === 0 ? `${row.color}10` : 'transparent',
+                                        borderRadius: idx === 0 ? '12px' : '0',
+                                        border: idx === 0 ? `1px solid ${row.color}30` : 'none'
+                                    }}>
+                                        <span style={{ 
+                                            fontSize: '0.8rem', 
+                                            color: 'var(--text-muted)', 
+                                            fontWeight: 700,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '8px'
+                                        }}>
+                                            <span>{row.icon}</span>
+                                            {row.label}
+                                        </span>
+                                        <span style={{ 
+                                            fontSize: '0.8rem', 
+                                            fontWeight: 950, 
+                                            color: row.color,
+                                            textTransform: idx === 0 ? 'uppercase' : 'none',
+                                            letterSpacing: idx === 0 ? '0.5px' : '0'
+                                        }}>{row.value}</span>
                                     </div>
                                 ))}
                             </div>
@@ -416,7 +680,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                                     </div>
                                                                     <span style={{ fontWeight: 800, fontSize: '0.8rem', flex: 1, opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
 
-                                                                    {a.min_tier && a.min_tier !== 'Free' && (
+                                                                    {a.min_tier && a.min_tier !== 'Consultant' && (
                                                                         <span style={{
                                                                             fontSize: '0.55rem',
                                                                             padding: '2px 8px',
@@ -451,7 +715,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                                     </div>
                                                                     <span style={{ fontWeight: 800, fontSize: '0.8rem', flex: 1, opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
 
-                                                                    {a.min_tier && a.min_tier !== 'Free' && (
+                                                                    {a.min_tier && a.min_tier !== 'Consultant' && (
                                                                         <span style={{
                                                                             fontSize: '0.55rem',
                                                                             padding: '2px 8px',

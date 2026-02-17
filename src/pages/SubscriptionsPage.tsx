@@ -39,19 +39,17 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
     const clientUsers = users.filter(u => u.email !== 'rhaenyratargaryen@gmail.com' && u.email !== 'admin@realtorone.com' && !u.is_admin);
 
     // Calculate stats
-    const diamondUsers = clientUsers.filter(u => u.membership_tier === 'Diamond').length;
-    const goldUsers = clientUsers.filter(u => u.membership_tier === 'Gold').length;
-    const silverUsers = clientUsers.filter(u => u.membership_tier === 'Silver').length;
-    const freeUsers = clientUsers.filter(u => !u.membership_tier || u.membership_tier === 'Free').length;
+    const titanGoldUsers = clientUsers.filter(u => u.membership_tier === 'Titan').length;
+    const rainmakerUsers = clientUsers.filter(u => u.membership_tier === 'Rainmaker').length;
+    const consultantUsers = clientUsers.filter(u => !u.membership_tier || u.membership_tier === 'Consultant').length;
 
     // Estimate revenue (assuming standard pricing if dynamic data isn't perfect)
-    const diamondPrice = packages.find(p => p.name === 'Diamond')?.price_monthly || 299;
-    const goldPrice = packages.find(p => p.name === 'Gold')?.price_monthly || 99;
-    const silverPrice = packages.find(p => p.name === 'Silver')?.price_monthly || 49;
-    const estimatedMRR = (diamondUsers * diamondPrice) + (goldUsers * goldPrice) + (silverUsers * silverPrice);
+    const titanGoldPrice = packages.find(p => p.name === 'Titan')?.price_monthly || 420;
+    const rainmakerPrice = packages.find(p => p.name === 'Rainmaker')?.price_monthly || 210;
+    const estimatedMRR = (titanGoldUsers * titanGoldPrice) + (rainmakerUsers * rainmakerPrice);
 
     // State for filtering and expansion
-    const [selectedTierFilter, setSelectedTierFilter] = useState<'All' | 'Diamond' | 'Gold' | 'Silver' | 'Free'>('All');
+    const [selectedTierFilter, setSelectedTierFilter] = useState<'All' | 'Titan' | 'Rainmaker' | 'Consultant'>('All');
     const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
 
     return (
@@ -62,24 +60,19 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                     <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--success)' }}>${estimatedMRR.toLocaleString()}</div>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Monthly Recurring</div>
                 </div>
-                <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Diamond'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Diamond' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Diamond' ? '1px solid #7E22CE' : '1px solid transparent' }}>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Diamond Icons</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#7E22CE' }}>{diamondUsers}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>${(diamondUsers * diamondPrice).toLocaleString()}/mo</div>
+                <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Titan'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Titan' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Titan' ? '1px solid #F59E0B' : '1px solid transparent' }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Titan</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#F59E0B' }}>{titanGoldUsers}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>${(titanGoldUsers * titanGoldPrice).toLocaleString()}/mo</div>
                 </div>
-                <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Gold'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Gold' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Gold' ? '1px solid var(--accent)' : '1px solid transparent' }}>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Gold Elite</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--accent)' }}>{goldUsers}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>${(goldUsers * goldPrice).toLocaleString()}/mo</div>
+                <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Rainmaker'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Rainmaker' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Rainmaker' ? '1px solid #94A3B8' : '1px solid transparent' }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Rainmaker</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#94A3B8' }}>{rainmakerUsers}</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>${(rainmakerUsers * rainmakerPrice).toLocaleString()}/mo</div>
                 </div>
-                <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Silver'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Silver' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Silver' ? '1px solid var(--primary)' : '1px solid transparent' }}>
-                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Silver Pro</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-main)' }}>{silverUsers}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>${(silverUsers * silverPrice).toLocaleString()}/mo</div>
-                </div>
-                <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Free'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Free' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Free' ? '1px solid var(--text-muted)' : '1px solid transparent' }}>
+                <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Consultant'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Consultant' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Consultant' ? '1px solid var(--text-muted)' : '1px solid transparent' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Prospects</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-muted)' }}>{freeUsers}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-muted)' }}>{consultantUsers}</div>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Upsell Pool</div>
                 </div>
             </div>
@@ -105,15 +98,72 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                         </div>
                         <span style={{ fontWeight: 800 }}>Create New Package</span>
                     </div>
-                    {packages.map(pkg => (
-                        <div key={pkg.id} className="glass-panel" style={{ padding: '25px', border: pkg.name === 'Gold' ? '2px solid var(--accent)' : 'none' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    {packages.map(pkg => {
+                        // Remove "GOLD" from display name
+                        const displayName = pkg.name.replace(/\s*-\s*GOLD/gi, '').replace(/\s*GOLD/gi, '');
+                        // Determine card colors based on tier
+                        const isTitan = pkg.name.toLowerCase().includes('titan');
+                        const isRainmaker = pkg.name.toLowerCase().includes('rainmaker');
+                        const cardBg = isTitan 
+                            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.08))' 
+                            : isRainmaker 
+                            ? 'linear-gradient(135deg, rgba(148, 163, 184, 0.15), rgba(100, 116, 139, 0.08))'
+                            : 'transparent';
+                        const cardBorder = isTitan 
+                            ? '2px solid rgba(245, 158, 11, 0.5)' 
+                            : isRainmaker 
+                            ? '2px solid rgba(148, 163, 184, 0.5)'
+                            : '1px solid var(--glass-border)';
+                        const titleColor = isTitan 
+                            ? '#F59E0B' 
+                            : isRainmaker 
+                            ? '#94A3B8'
+                            : 'var(--text-main)';
+                        const priceColor = isTitan 
+                            ? '#F59E0B' 
+                            : isRainmaker 
+                            ? '#94A3B8'
+                            : 'var(--primary)';
+                        
+                        return (
+                        <div key={pkg.id} className="glass-panel" style={{ 
+                            padding: '25px', 
+                            border: cardBorder,
+                            background: cardBg,
+                            position: 'relative',
+                            overflow: 'hidden'
+                        }}>
+                            {isTitan && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: -50,
+                                    right: -50,
+                                    width: '200px',
+                                    height: '200px',
+                                    borderRadius: '50%',
+                                    background: 'radial-gradient(circle, rgba(245, 158, 11, 0.2), transparent)',
+                                    opacity: 0.5
+                                }}></div>
+                            )}
+                            {isRainmaker && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: -50,
+                                    right: -50,
+                                    width: '200px',
+                                    height: '200px',
+                                    borderRadius: '50%',
+                                    background: 'radial-gradient(circle, rgba(148, 163, 184, 0.2), transparent)',
+                                    opacity: 0.5
+                                }}></div>
+                            )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative' }}>
                                 <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Tier {pkg.tier_level}</span>
                                 <div className={`status-indicator ${pkg.is_active ? 'active' : ''}`} style={{ width: '8px', height: '8px', borderRadius: '50%', background: pkg.is_active ? 'var(--success)' : 'var(--error)' }}></div>
                             </div>
-                            <h3 style={{ margin: '10px 0', fontSize: '1.5rem', fontWeight: 900 }}>{pkg.name}</h3>
-                            <div style={{ marginBottom: '20px' }}>
-                                <span style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--primary)' }}>${pkg.price_monthly}</span>
+                            <h3 style={{ margin: '10px 0', fontSize: '1.5rem', fontWeight: 900, color: titleColor, position: 'relative' }}>{displayName}</h3>
+                            <div style={{ marginBottom: '20px', position: 'relative' }}>
+                                <span style={{ fontSize: '2rem', fontWeight: 900, color: priceColor }}>${pkg.price_monthly}</span>
                                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>/mo</span>
                             </div>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', marginBottom: '20px', lineHeight: '1.5' }}>{pkg.description}</p>
@@ -147,7 +197,8 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                                 }}>Remove</button>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
 
@@ -157,10 +208,9 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                         <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800 }}>{selectedTierFilter === 'All' ? 'Global Subscriber Base' : `${selectedTierFilter} Tier Operators`}</h3>
                         <div className="filter-group">
                             <button className={`filter-btn ${selectedTierFilter === 'All' ? 'active' : ''}`} onClick={() => setSelectedTierFilter('All')}>All</button>
-                            <button className={`filter-btn ${selectedTierFilter === 'Diamond' ? 'active' : ''}`} onClick={() => setSelectedTierFilter('Diamond')}>Diamond</button>
-                            <button className={`filter-btn ${selectedTierFilter === 'Gold' ? 'active' : ''}`} onClick={() => setSelectedTierFilter('Gold')}>Gold</button>
-                            <button className={`filter-btn ${selectedTierFilter === 'Silver' ? 'active' : ''}`} onClick={() => setSelectedTierFilter('Silver')}>Silver</button>
-                            <button className={`filter-btn ${selectedTierFilter === 'Free' ? 'active' : ''}`} onClick={() => setSelectedTierFilter('Free')}>Free</button>
+                            <button className={`filter-btn ${selectedTierFilter === 'Titan' ? 'active' : ''}`} onClick={() => setSelectedTierFilter('Titan')}>Titan</button>
+                            <button className={`filter-btn ${selectedTierFilter === 'Rainmaker' ? 'active' : ''}`} onClick={() => setSelectedTierFilter('Rainmaker')}>Rainmaker</button>
+                            <button className={`filter-btn ${selectedTierFilter === 'Consultant' ? 'active' : ''}`} onClick={() => setSelectedTierFilter('Consultant')}>Consultant</button>
                         </div>
                     </div>
                     <table className="data-table" style={{ width: '100%' }}>
@@ -174,7 +224,7 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                             </tr>
                         </thead>
                         <tbody>
-                            {clientUsers.filter(u => selectedTierFilter === 'All' || (u.membership_tier || 'Free') === selectedTierFilter).map(u => {
+                            {clientUsers.filter(u => selectedTierFilter === 'All' || (u.membership_tier || 'Consultant') === selectedTierFilter).map(u => {
                                 const sub = activeSubscriptions.find(s => s.user?.id === u.id && s.status === 'active');
                                 const tier = u.membership_tier || 'Free';
                                 const isExpanded = expandedUserId === u.id;

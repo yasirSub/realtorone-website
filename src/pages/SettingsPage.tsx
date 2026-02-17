@@ -107,7 +107,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                                 {packages.map(pkg => (
                                     <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-app)', padding: '12px 15px', borderRadius: '12px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: pkg.name === 'Diamond' ? '#7E22CE' : pkg.name === 'Gold' ? 'var(--accent)' : 'var(--primary)' }}></div>
+                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: pkg.name === 'Titan' ? '#F59E0B' : pkg.name === 'Rainmaker' ? '#94A3B8' : 'var(--primary)' }}></div>
                                             <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{pkg.name} TIER</span>
                                         </div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>

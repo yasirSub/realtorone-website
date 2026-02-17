@@ -80,9 +80,9 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
                                 value={newActivity.min_tier}
                                 onChange={e => setNewActivity({ ...newActivity, min_tier: e.target.value })}
                             >
-                                <option value="Free">Free</option>
-                                <option value="Silver">Silver</option>
-                                <option value="Gold">Gold</option>
+                                <option value="Consultant">Consultant</option>
+                                <option value="Rainmaker">Rainmaker</option>
+                                <option value="Titan">Titan</option>
                             </select>
                         </div>
 
@@ -91,7 +91,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
                                 if (res.success) {
                                     setActivityTypes((prev: any[]) => [res.data, ...prev]);
                                     onClose();
-                                    setNewActivity({ name: '', points: 5, category: 'conscious', icon: 'Activity', is_global: true, min_tier: 'Free' });
+                                    setNewActivity({ name: '', points: 5, category: 'conscious', icon: 'Activity', is_global: true, min_tier: 'Consultant' });
                                 }
                             });
                         }}>Commit to Global Infrastructure</button>

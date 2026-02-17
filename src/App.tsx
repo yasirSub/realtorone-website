@@ -49,12 +49,12 @@ function App() {
   }, [activeTab]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
-  const [activeTier, setActiveTier] = useState<'All' | 'Free' | 'Silver' | 'Gold' | 'Diamond'>('All')
+  const [activeTier, setActiveTier] = useState<'All' | 'Consultant' | 'Rainmaker' | 'Titan'>('All')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true')
 
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([])
   const [showAddActivityModal, setShowAddActivityModal] = useState(false)
-  const [newActivity, setNewActivity] = useState({ name: '', points: 5, category: 'conscious' as const, icon: 'Activity', is_global: true, min_tier: 'Free' })
+  const [newActivity, setNewActivity] = useState({ name: '', points: 5, category: 'conscious' as const, icon: 'Activity', is_global: true, min_tier: 'Consultant' })
   const [userActivityPoints, setUserActivityPoints] = useState(20)
 
   const [packages, setPackages] = useState<SubscriptionPackage[]>([])
@@ -73,7 +73,7 @@ function App() {
     if (u.is_admin || u.email === 'admin@realtorone.com' || (u.name || '').toLowerCase().includes('admin')) return false;
     const matchesSearch = (u.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (u.email || '').toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesTier = activeTier === 'All' || (u.membership_tier || 'Free') === activeTier
+    const matchesTier = activeTier === 'All' || (u.membership_tier || 'Consultant') === activeTier
     return matchesSearch && matchesTier
   })
 

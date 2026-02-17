@@ -26,7 +26,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
                         <div style={{ paddingBottom: '10px' }}>
                             <h2 style={{ fontSize: '1.6rem', fontWeight: 900, margin: 0, color: 'white', textShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>{user.name}</h2>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px' }}>
-                                <span className={`tier-pill ${(user.membership_tier || 'Free').toLowerCase()}`} style={{ fontSize: '0.65rem', padding: '3px 10px' }}>{user.membership_tier || 'Free'} Member</span>
+                                <span className={`tier-pill ${(user.membership_tier || 'Consultant').toLowerCase().replace(/\s+/g, '-')}`} style={{ fontSize: '0.65rem', padding: '3px 10px' }}>{user.membership_tier || 'Consultant'} Member</span>
                                 <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.8)', fontWeight: 600 }}>{user.email}</span>
                             </div>
                         </div>

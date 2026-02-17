@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { apiClient } from '../api/client';
 import type { Course } from '../types';
 
@@ -15,8 +15,20 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
         title: '',
         description: '',
         url: '',
-        min_tier: 'Free'
+        min_tier: 'Consultant'
     });
+
+    const getTierColor = (tier: string) => {
+        switch (tier.toLowerCase()) {
+            case 'titan':
+                return '#F59E0B'; // gold
+            case 'rainmaker':
+                return '#94A3B8'; // silver / gray
+            case 'consultant':
+            default:
+                return '#38BDF8'; // blue
+        }
+    };
 
     const loadCourses = async () => {
         setLoading(true);
@@ -41,7 +53,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
             }
             setShowModal(false);
             setEditingCourse(null);
-            setFormData({ title: '', description: '', url: '', min_tier: 'Free' });
+            setFormData({ title: '', description: '', url: '', min_tier: 'Consultant' });
             loadCourses();
         } catch (error) {
             console.error('Failed to save course', error);
@@ -70,7 +82,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
             });
         } else {
             setEditingCourse(null);
-            setFormData({ title: '', description: '', url: '', min_tier: 'Free' });
+            setFormData({ title: '', description: '', url: '', min_tier: 'Consultant' });
         }
         setShowModal(true);
     };
@@ -92,10 +104,37 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
 
             <div className="grid-container" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
                 {courses.map(course => (
-                    <div key={course.id} className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px', position: 'relative' }}>
-                        <div style={{ position: 'absolute', top: '15px', right: '15px' }}>
-                            <span className={`tier-pill ${course.min_tier.toLowerCase()}`} style={{ fontSize: '0.65rem' }}>{course.min_tier} Content</span>
-                        </div>
+                <div
+                    key={course.id}
+                    className="glass-panel"
+                    style={{
+                        padding: '20px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '10px',
+                        position: 'relative',
+                        border: `1px solid ${getTierColor(course.min_tier)}30`,
+                        background: `linear-gradient(135deg, ${getTierColor(course.min_tier)}08, transparent)`
+                    }}
+                >
+                    <div style={{ position: 'absolute', top: '15px', right: '15px' }}>
+                        <span
+                            className={`tier-pill ${course.min_tier.toLowerCase()}`}
+                            style={{
+                                fontSize: '0.65rem',
+                                padding: '4px 10px',
+                                borderRadius: '999px',
+                                backgroundColor: `${getTierColor(course.min_tier)}20`,
+                                border: `1px solid ${getTierColor(course.min_tier)}60`,
+                                color: getTierColor(course.min_tier),
+                                fontWeight: 800,
+                                letterSpacing: '0.5px',
+                                textTransform: 'uppercase'
+                            }}
+                        >
+                            {course.min_tier} Content
+                        </span>
+                    </div>
 
                         <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '5px' }}>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
@@ -172,7 +211,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
                             <div className="form-group">
                                 <label>Access Tier</label>
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '10px' }}>
-                                    {['Free', 'Silver', 'Gold', 'Diamond'].map(tier => (
+                                    {['Consultant', 'Rainmaker', 'Titan'].map(tier => (
                                         <div
                                             key={tier}
                                             onClick={() => setFormData({ ...formData, min_tier: tier as any })}
@@ -181,9 +220,12 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
                                                 textAlign: 'center',
                                                 borderRadius: '8px',
                                                 cursor: 'pointer',
-                                                border: formData.min_tier === tier ? '2px solid var(--primary)' : '1px solid var(--glass-border)',
-                                                background: formData.min_tier === tier ? 'rgba(var(--primary-rgb), 0.1)' : 'transparent',
-                                                fontWeight: formData.min_tier === tier ? 800 : 500
+                                                border: formData.min_tier === tier ? `2px solid ${getTierColor(tier)}` : '1px solid var(--glass-border)',
+                                                background: formData.min_tier === tier ? `${getTierColor(tier)}20` : 'transparent',
+                                                fontWeight: formData.min_tier === tier ? 800 : 500,
+                                                color: formData.min_tier === tier ? getTierColor(tier) : 'var(--text-main)',
+                                                boxShadow: formData.min_tier === tier ? `0 0 12px ${getTierColor(tier)}30` : 'none',
+                                                transition: 'all 0.2s ease'
                                             }}
                                         >
                                             {tier}

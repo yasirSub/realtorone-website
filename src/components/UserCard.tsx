@@ -33,7 +33,7 @@ const UserCard: React.FC<UserCardProps> = ({
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '15px' }}>{user.email}</span>
 
                 <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginBottom: '20px' }}>
-                    <span className={`tier-pill ${(user.membership_tier || 'Free').toLowerCase()}`}>{user.membership_tier || 'Free'}</span>
+                    <span className={`tier-pill ${(user.membership_tier || 'Consultant').toLowerCase().replace(/\s+/g, '-')}`}>{user.membership_tier || 'Consultant'}</span>
                     <span style={{ background: 'var(--bg-app)', padding: '4px 12px', borderRadius: '10px', fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-secondary)' }}>ID: #{user.id}</span>
                 </div>
 

@@ -74,7 +74,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({
                                                 </div>
                                             </td>
                                             <td data-label="Activity"><span style={{ fontWeight: 800 }}>{type.name}</span></td>
-                                            <td data-label="Access"><span className={`tier-pill ${(type.min_tier || 'Free').toLowerCase()}`}>{type.min_tier || 'Free'}+</span></td>
+                                            <td data-label="Access"><span className={`tier-pill ${(type.min_tier || 'Consultant').toLowerCase().replace(/\s+/g, '-')}`}>{type.min_tier || 'Consultant'}+</span></td>
                                             <td data-label="Value"><span style={{ fontWeight: 900, color: 'var(--primary)' }}>+{type.points}</span></td>
                                             <td style={{ textAlign: 'right' }} data-label="Actions">
                                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -137,7 +137,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({
                                                 </div>
                                             </td>
                                             <td data-label="Activity"><span style={{ fontWeight: 800 }}>{type.name}</span></td>
-                                            <td data-label="Access"><span className={`tier-pill ${(type.min_tier || 'Free').toLowerCase()}`}>{type.min_tier || 'Free'}+</span></td>
+                                            <td data-label="Access"><span className={`tier-pill ${(type.min_tier || 'Consultant').toLowerCase().replace(/\s+/g, '-')}`}>{type.min_tier || 'Consultant'}+</span></td>
                                             <td data-label="Value"><span style={{ fontWeight: 900, color: 'var(--accent)' }}>+{type.points}</span></td>
                                             <td style={{ textAlign: 'right' }} data-label="Actions">
                                                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>

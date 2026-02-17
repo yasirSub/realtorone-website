@@ -25,10 +25,9 @@ const UsersPage: React.FC<UsersPageProps> = ({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
                 <div className="filter-group">
                     <button className={`filter-btn ${activeTier === 'All' ? 'active' : ''}`} onClick={() => setActiveTier('All')}>ALL LEVELS</button>
-                    <button className={`filter-btn ${activeTier === 'Free' ? 'active' : ''}`} onClick={() => setActiveTier('Free')}>FREE TIER</button>
-                    <button className={`filter-btn ${activeTier === 'Silver' ? 'active' : ''}`} onClick={() => setActiveTier('Silver')}>SILVER TIER</button>
-                    <button className={`filter-btn ${activeTier === 'Gold' ? 'active' : ''}`} onClick={() => setActiveTier('Gold')}>GOLD TIER</button>
-                    <button className={`filter-btn ${activeTier === 'Diamond' ? 'active' : ''}`} onClick={() => setActiveTier('Diamond')}>DIAMOND TIER</button>
+                    <button className={`filter-btn ${activeTier === 'Consultant' ? 'active' : ''}`} onClick={() => setActiveTier('Consultant')}>CONSULTANT TIER</button>
+                    <button className={`filter-btn ${activeTier === 'Rainmaker' ? 'active' : ''}`} onClick={() => setActiveTier('Rainmaker')}>RAINMAKER TIER</button>
+                    <button className={`filter-btn ${activeTier === 'Titan' ? 'active' : ''}`} onClick={() => setActiveTier('Titan')}>TITAN TIER</button>
                 </div>
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '1px' }}>
                     <span style={{ color: 'var(--primary)' }}>{filteredUsers.length}</span> OPERATORS IDENTIFIED
@@ -70,7 +69,7 @@ const UsersPage: React.FC<UsersPageProps> = ({
                                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700 }}>{user.email}</span>
                                     </td>
                                     <td data-label="Tier">
-                                        <span className={`tier-pill ${(user.membership_tier || 'Free').toLowerCase()}`}>{user.membership_tier || 'Free'}</span>
+                                        <span className={`tier-pill ${(user.membership_tier || 'Consultant').toLowerCase()}`}>{user.membership_tier || 'Consultant'}</span>
                                     </td>
                                     <td data-label="Score">
                                         <span style={{ fontWeight: 800, color: 'var(--primary)', fontSize: '0.95rem' }}>{user.growth_score || 0}%</span>

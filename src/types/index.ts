@@ -7,7 +7,7 @@ export interface Course {
     title: string;
     description: string;
     url: string;
-    min_tier: 'Free' | 'Silver' | 'Gold' | 'Diamond';
+    min_tier: 'Consultant' | 'Rainmaker' | 'Titan';
     created_at: string;
     updated_at: string;
 }
@@ -32,7 +32,7 @@ export interface User {
     mindset_index?: number;
     current_streak?: number;
     is_premium?: boolean;
-    membership_tier?: 'Free' | 'Silver' | 'Gold' | 'Diamond';
+    membership_tier?: 'Consultant' | 'Rainmaker' | 'Titan';
     is_admin?: boolean;
     status?: string;
     created_at?: string;
