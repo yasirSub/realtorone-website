@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --primary: #6d28d9;
+    --primary-glow: rgba(109, 40, 217, 0.3);
+    --accent: #d946ef;
+    --bg-app: #f4f7fe;
+    --bg-sidebar: #ffffff;
+    --bg-card: #ffffff;
+    --bg-modal: #ffffff;
+    --glass-border: rgba(226, 232, 240, 0.8);
+    --text-main: #1b254b;
+    --text-secondary: #a3aed0;
+    --text-muted: #707eae;
+    --success: #01b574;
+    --error: #ee5d50;
+    --warning: #ffb547;
+    --primary-shadow: rgba(109, 40, 217, 0.25);
+    --card-radius: 20px;
+    --sidebar-radius: 30px;
+    --sidebar-width: 290px;
+    --sidebar-collapsed-width: 100px;
+    --header-height: 70px;
+}
+
+[data-theme='dark'] {
+    --bg-app: #080b2a;
+    --bg-sidebar: #0f123b;
+    --bg-card: #151947;
+    --bg-modal: #0f123b;
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --text-main: #ffffff;
+    --text-secondary: #8b96c2;
+    --text-muted: #6e79a8;
+    --primary-shadow: rgba(109, 40, 217, 0.55);
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    overflow-x: hidden;
+    min-height: 100vh;
+}
