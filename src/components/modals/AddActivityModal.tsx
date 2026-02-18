@@ -63,12 +63,12 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
                                     className={`filter-btn ${newActivity.category === 'conscious' ? 'active' : ''}`}
                                     onClick={() => setNewActivity({ ...newActivity, category: 'conscious' })}
                                     style={{ flex: 1 }}
-                                >Conscious</button>
+                                >Revenue Actions</button>
                                 <button
                                     className={`filter-btn ${newActivity.category === 'subconscious' ? 'active' : ''}`}
                                     onClick={() => setNewActivity({ ...newActivity, category: 'subconscious' })}
                                     style={{ flex: 1 }}
-                                >Subconscious</button>
+                                >Identity Conditioning</button>
                             </div>
                         </div>
 

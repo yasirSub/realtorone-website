@@ -150,3 +150,34 @@ Website:
     - Developed premium `LeaderboardPage.tsx` and `BadgesPage.tsx` with dynamic category filtering.
     - Updated Sidebar and Dashboard for high-visibility access to gamification metrics.
     - Integrated real-time leaderboard refresh and badge retrieval system.
+
+### **Day 11: Clients & Revenue Onboarding**
+Application (Mobile):
+    - Added first-time "Add First Client" hero state in the Results Tracker when no clients exist.
+    - Integrated backend `clients/status` endpoint to detect whether the user has any clients.
+    - Reused the Results logging flow so the first client is logged as a hot lead with full scoring and badges support.
+    - Implemented Deal Room flow inside Tasks → Revenue Actions (intro → privacy modal → add client → clients list).
+Backend:
+    - Refined clients status + create-client endpoints to support lead-only counting and optional status.
+    - Updated per-client Revenue Actions API to store Yes/No selections per-day (date-scoped daily log).
+
+### **Day 11 (cont.): Action Bottom Sheets**
+Application (Mobile):
+    - Added action-specific bottom sheets for Cold Call, Site Visit, Deal Negotiation, Referral Ask.
+    - Each sheet matches Figma designs: Yes/No toggle, chip selectors, date/time pickers, themed inputs.
+    - Refactored follow-up sheet to use shared building-block widgets (sheetWrapper, chipRow, dateTimeRow, etc.).
+    - Added "Deal Closed!" celebration screen triggered when Deal Negotiation is saved as Finalized (deal type, amount, commission, Q-report note, green confirm button).
+Backend:
+    - Added `POST /clients/{id}/action-log` to persist detailed action data (cold_call, site_visit, deal_negotiation, deal_closed, referral_ask) with date-scoped storage in notes JSON.
+    - Added `GET /clients/{id}/action-logs` to retrieve logged action details per date.
+    - Deal Closed action auto-creates a `deal_closed` Result record for the performance pipeline with value and commission.
+Application (Mobile):
+    - All 5 action sheets now POST detailed form data to backend on save via `_logAction` helper.
+
+### **Day 11 (cont.): CLIENTS / REVENUE Tabs + Revenue Tracker**
+Backend:
+    - Added `GET /revenue/metrics?period=week|month|quarter` – returns hot leads, deals closed, commission, top source, period-over-period change, and recent activity.
+Application (Mobile):
+    - Added CLIENTS / REVENUE icon toggle at top of Revenue Actions tab.
+    - CLIENTS tab shows Deal Room client list + Core Priorities.
+    - REVENUE tab shows Revenue Tracker with Week/Month/Quarter toggle, Key Metrics (Hot Leads, Deals Closed, Commission, Top Source), and Recent Activity list.

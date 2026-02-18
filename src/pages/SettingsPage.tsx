@@ -98,7 +98,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                                     {saving ? 'SYNCING...' : 'UPDATE WEIGHT'}
                                 </button>
                             </div>
-                            <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Global points awarded to operators for custom subconscious rituals.</p>
+                            <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Global points awarded to operators for custom identity conditioning rituals.</p>
                         </div>
 
                         <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '25px' }}>

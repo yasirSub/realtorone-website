@@ -392,10 +392,10 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                 </div>
                                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }}>
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#7e22ce' }}></div> CONSCIOUS
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#7e22ce' }}></div> REVENUE ACTIONS
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }}>
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#d946ef' }}></div> SUBCO
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#d946ef' }}></div> IDENTITY CONDITIONING
                                     </div>
                                 </div>
                             </div>
@@ -645,8 +645,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                 <div>
                                                     <div style={{ fontSize: '1rem', fontWeight: 950, color: 'var(--text-main)', letterSpacing: '-0.3px' }}>Daily Tactical Execution</div>
                                                     <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                                                        <span style={{ fontSize: '0.65rem', padding: '4px 12px', background: 'rgba(126, 34, 206, 0.1)', color: '#a855f7', borderRadius: '30px', fontWeight: 950, border: '1px solid rgba(126, 34, 206, 0.2)' }}>CONSCIOUS: {day.conscious_score}%</span>
-                                                        <span style={{ fontSize: '0.65rem', padding: '4px 12px', background: 'rgba(217, 70, 239, 0.1)', color: '#d946ef', borderRadius: '30px', fontWeight: 950, border: '1px solid rgba(217, 70, 239, 0.2)' }}>SUBCO: {day.subconscious_score}%</span>
+                                                        <span style={{ fontSize: '0.65rem', padding: '4px 12px', background: 'rgba(126, 34, 206, 0.1)', color: '#a855f7', borderRadius: '30px', fontWeight: 950, border: '1px solid rgba(126, 34, 206, 0.2)' }}>REVENUE ACTIONS: {day.conscious_score}%</span>
+                                                        <span style={{ fontSize: '0.65rem', padding: '4px 12px', background: 'rgba(217, 70, 239, 0.1)', color: '#d946ef', borderRadius: '30px', fontWeight: 950, border: '1px solid rgba(217, 70, 239, 0.2)' }}>IDENTITY CONDITIONING: {day.subconscious_score}%</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -670,7 +670,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                     <div>
                                                         <h5 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950, color: '#a855f7', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                                                             <div style={{ width: '3px', height: '10px', background: '#a855f7', borderRadius: '10px' }}></div>
-                                                            Conscious (Part B) <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '0.6rem' }}>MAX 45 PTS</span>
+                                                            Revenue Actions (Part B) <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '0.6rem' }}>MAX 45 PTS</span>
                                                         </h5>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                             {dayActivities.filter(a => a.category === 'task' || a.category === 'conscious').map((a, i) => (
@@ -705,7 +705,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                     <div>
                                                         <h5 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950, color: '#d946ef', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>
                                                             <div style={{ width: '3px', height: '10px', background: '#d946ef', borderRadius: '10px' }}></div>
-                                                            Subconscious (Part A) <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '0.6rem' }}>MAX 40 PTS</span>
+                                                            Identity Conditioning (Part A) <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '0.6rem' }}>MAX 40 PTS</span>
                                                         </h5>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                             {dayActivities.filter(a => a.category === 'subconscious').map((a, i) => (
@@ -734,7 +734,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                                     <span style={{ fontSize: '0.7rem', fontWeight: 950, color: a.is_completed ? 'var(--accent)' : 'var(--text-muted)' }}>{a.is_completed ? `+${a.points}` : `(${a.points})`}</span>
                                                                 </div>
                                                             ))}
-                                                            {dayActivities.filter(a => a.category === 'subconscious').length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>No subconscious protocols detected</span>}
+                                                            {dayActivities.filter(a => a.category === 'subconscious').length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>No identity conditioning protocols detected</span>}
                                                         </div>
                                                     </div>
                                                 </div>

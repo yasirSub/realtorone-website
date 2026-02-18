@@ -41,11 +41,11 @@ const MomentumPage: React.FC<MomentumPageProps> = ({
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
-                {/* CONSCIOUS EXECUTION (PERFORMANCE) */}
+                {/* REVENUE ACTIONS (PERFORMANCE) */}
                 <div className="momentum-sector">
                     <h3 style={{ fontSize: '1rem', fontWeight: 900, marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--primary)' }}>
                         <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--primary)' }}></span>
-                        CONSCIOUS EXECUTION
+                        REVENUE ACTIONS
                     </h3>
                     <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
                         <table className="data-table">
@@ -62,7 +62,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({
                                 {activityTypes.filter(t => t.category === 'conscious').length === 0 ? (
                                     <tr>
                                         <td colSpan={5} style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)', fontWeight: 800 }}>
-                                            NO CONSCIOUS BEHAVIORAL PATTERNS DEFINED
+                                            NO REVENUE ACTIONS BEHAVIORAL PATTERNS DEFINED
                                         </td>
                                     </tr>
                                 ) : (
@@ -104,11 +104,11 @@ const MomentumPage: React.FC<MomentumPageProps> = ({
                     </div>
                 </div>
 
-                {/* SUBCONSCIOUS INFRASTRUCTURE */}
+                {/* IDENTITY CONDITIONING */}
                 <div className="momentum-sector">
                     <h3 style={{ fontSize: '1rem', fontWeight: 900, marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent)' }}>
                         <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: 'var(--accent)' }}></span>
-                        SUBCONSCIOUS INFRASTRUCTURE
+                        IDENTITY CONDITIONING
                     </h3>
                     <div className="glass-panel" style={{ padding: '0', overflow: 'hidden' }}>
                         <table className="data-table">
@@ -125,7 +125,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({
                                 {activityTypes.filter(t => t.category === 'subconscious').length === 0 ? (
                                     <tr>
                                         <td colSpan={5} style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)', fontWeight: 800 }}>
-                                            NO SUBCONSCIOUS BEHAVIORAL PATTERNS DEFINED
+                                            NO IDENTITY CONDITIONING BEHAVIORAL PATTERNS DEFINED
                                         </td>
                                     </tr>
                                 ) : (
