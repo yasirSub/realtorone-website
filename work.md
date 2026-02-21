@@ -151,7 +151,7 @@ Website:
     - Updated Sidebar and Dashboard for high-visibility access to gamification metrics.
     - Integrated real-time leaderboard refresh and badge retrieval system.
 
-### **Day 11: Clients & Revenue Onboarding**
+### **Day 11: Clients & Revenue Onboarding** GG
 Application (Mobile):
     - Added first-time "Add First Client" hero state in the Results Tracker when no clients exist.
     - Integrated backend `clients/status` endpoint to detect whether the user has any clients.
@@ -173,11 +173,30 @@ Backend:
     - Deal Closed action auto-creates a `deal_closed` Result record for the performance pipeline with value and commission.
 Application (Mobile):
     - All 5 action sheets now POST detailed form data to backend on save via `_logAction` helper.
-
-### **Day 11 (cont.): CLIENTS / REVENUE Tabs + Revenue Tracker**
 Backend:
     - Added `GET /revenue/metrics?period=week|month|quarter` – returns hot leads, deals closed, commission, top source, period-over-period change, and recent activity.
 Application (Mobile):
     - Added CLIENTS / REVENUE icon toggle at top of Revenue Actions tab.
     - CLIENTS tab shows Deal Room client list + Core Priorities.
     - REVENUE tab shows Revenue Tracker with Week/Month/Quarter toggle, Key Metrics (Hot Leads, Deals Closed, Commission, Top Source), and Recent Activity list.
+
+### **Day 12: Feb 19 - Revenue Tracker Polish & UI Cleanup**
+Application (Mobile):
+    - Fixed NoSuchMethodError in Revenue Tracker when comparing activity value (parsed String "0.00" to number before comparison).
+    - Implemented click navigation from Recent Activity tiles to new All Activities page.
+    - Made "VIEW ALL ACTIVITIES" text tappable to navigate to full timeline page.
+    - Created All Activities page with timeline layout (back arrow, "All Activities", "Your journey in motion", status tags, timestamps, FAB).
+    - Removed "Clients" label and diamond icon from Deal Room widget card.
+    - Removed Results Intelligence section from home page (momentum hub).
+    - Daily log actions (Yes) for a client now create Result records and appear in Recent Activity (global feed) while staying in that client's daily log.
+Backend:
+    - POST /clients/{id}/actions: when status=yes, creates type=revenue_action Result for Recent Activity.
+    - Revenue metrics API now includes notes in recent_activity for action_label display.
+    - Added migration to include `revenue_action` in results.type enum (MySQL) and recreated results table for SQLite (CHECK constraint was blocking inserts).
+    - Fixed missing activities: create Result when status=yes even if previously yes (backfill); added backfill on GET /clients/{id}/actions so actions marked Yes before the migration now appear in Activity.
+Backend:
+    - Key Metrics: total_commission now uses net commission from deal_closed notes (not deal amount); deal_closed Result created when commission > 0 even if deal amount is 0.
+    - Key Metrics: hot_leads, deals_closed, commission, top_source now show all-time totals (not period-filtered) so total clients, closed deals, and commission are always visible.
+Application (Mobile):
+    - Key Metrics: renamed COMMISSION to NET COMMISSION EARNED; commission card shows net commission entered when closing deals.
+    - Key Metrics cards tappable: Hot Leads → client list; Deals Closed → closed deals by client; Commission → commission earned by client; Top Source → clients from that source.
