@@ -8,9 +8,21 @@ interface UserProfilePageProps {
     onBack: () => void;
 }
 
+interface RevenueMetrics {
+    hot_leads: number;
+    deals_closed: number;
+    total_commission: number;
+    top_source: string | null;
+    recent_activity: any[];
+}
+
 const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
     const [performance, setPerformance] = useState<any[]>([]);
     const [activities, setActivities] = useState<any[]>([]);
+    const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetrics | null>(null);
+    const [resultsHotLeads, setResultsHotLeads] = useState<any[]>([]);
+    const [resultsDealsClosed, setResultsDealsClosed] = useState<any[]>([]);
+    const [expandedMetric, setExpandedMetric] = useState<'hot_leads' | 'deals_closed' | 'commission' | 'top_source' | null>(null);
     // Track loading state during profile data fetches
     const [, setLoading] = useState(false);
     const [viewRange, setViewRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
@@ -20,9 +32,10 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [perfRes, actRes] = await Promise.all([
+                const [perfRes, actRes, revRes] = await Promise.all([
                     apiClient.getUserPerformance(user.id),
-                    apiClient.getUserActivities(user.id)
+                    apiClient.getUserActivities(user.id),
+                    apiClient.getUserRevenueMetrics(user.id).catch(() => ({ success: false, data: null }))
                 ]);
 
                 if (perfRes.success) {
@@ -30,6 +43,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                 }
                 if (actRes.success) {
                     setActivities(actRes.data);
+                }
+                if (revRes.success && revRes.data) {
+                    setRevenueMetrics(revRes.data);
                 }
             } catch (error) {
                 console.error('Failed to sync operator data', error);
@@ -47,6 +63,34 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
         // Cleanup interval on unmount
         return () => clearInterval(intervalId);
     }, [user.id]);
+
+    const fetchMetricDetails = async (metric: 'hot_leads' | 'deals_closed') => {
+        try {
+            const res = await apiClient.getUserResults(user.id, { type: metric === 'hot_leads' ? 'hot_lead' : 'deal_closed' });
+            if (res.success) {
+                if (metric === 'hot_leads') setResultsHotLeads(res.data);
+                else setResultsDealsClosed(res.data);
+            }
+        } catch (e) {
+            console.error('Failed to fetch metric details', e);
+        }
+    };
+
+    const toggleMetricExpand = (metric: 'hot_leads' | 'deals_closed' | 'commission' | 'top_source') => {
+        if (expandedMetric === metric) {
+            setExpandedMetric(null);
+        } else {
+            setExpandedMetric(metric);
+            if (metric === 'hot_leads') fetchMetricDetails('hot_leads');
+            if (metric === 'deals_closed' || metric === 'commission') fetchMetricDetails('deals_closed');
+        }
+    };
+
+    const formatCommission = (v: number) => {
+        if (v >= 1000000) return `AED ${(v / 1000000).toFixed(1)}M`;
+        if (v >= 1000) return `AED ${(v / 1000).toFixed(0)}k`;
+        return `AED ${v.toFixed(0)}`;
+    };
 
     const toggleDay = (date: string) => {
         setExpandedDays(prev =>
@@ -354,6 +398,106 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                 }}>{stat.value}</div>
                             </div>
                         ))}
+                    </div>
+
+                    {/* Deal Room / Key Metrics - Admin view per user */}
+                    <div className="glass-panel" style={{ 
+                        padding: '35px', 
+                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.06), transparent)',
+                        border: '1px solid rgba(16, 185, 129, 0.25)'
+                    }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 950, marginBottom: '25px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '4px', height: '12px', background: 'var(--success)', borderRadius: '10px' }}></div>
+                            Deal Room / Key Metrics
+                        </h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+                            {[
+                                { key: 'hot_leads' as const, label: 'HOT LEADS', value: revenueMetrics?.hot_leads ?? '—', icon: '👥', color: 'var(--primary)' },
+                                { key: 'deals_closed' as const, label: 'DEALS CLOSED', value: revenueMetrics?.deals_closed ?? '—', icon: '🤝', color: '#a855f7' },
+                                { key: 'commission' as const, label: 'NET COMMISSION EARNED', value: revenueMetrics != null ? formatCommission(revenueMetrics.total_commission) : '—', icon: '💰', color: 'var(--success)' },
+                                { key: 'top_source' as const, label: 'TOP SOURCE', value: revenueMetrics?.top_source ?? '—', icon: '📊', color: '#f59e0b' },
+                            ].map((m) => (
+                                <div
+                                    key={m.key}
+                                    onClick={() => toggleMetricExpand(m.key)}
+                                    className="glass-panel"
+                                    style={{ 
+                                        padding: '20px', 
+                                        border: `1px solid ${m.color}30`, 
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        background: expandedMetric === m.key ? `${m.color}10` : 'transparent'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = `0 6px 20px ${m.color}25`;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                                        <span style={{ fontSize: '0.6rem', fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '1px' }}>{m.label}</span>
+                                        <span style={{ fontSize: '1.2rem' }}>{m.icon}</span>
+                                    </div>
+                                    <div style={{ fontSize: '1.4rem', fontWeight: 950, color: m.color }}>{m.value}</div>
+                                    {expandedMetric === m.key && (
+                                        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--glass-border)', maxHeight: '200px', overflowY: 'auto' }}>
+                                            {m.key === 'hot_leads' && resultsHotLeads.length > 0 && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
+                                                    {resultsHotLeads.slice(0, 20).map((r: any, i: number) => (
+                                                        <div key={i} style={{ padding: '6px 10px', background: 'var(--bg-app)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                                            <span>{r.client_name || '—'}</span>
+                                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{r.source || '—'}</span>
+                                                        </div>
+                                                    ))}
+                                                    {resultsHotLeads.length > 20 && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>+{resultsHotLeads.length - 20} more</span>}
+                                                </div>
+                                            )}
+                                            {m.key === 'deals_closed' && resultsDealsClosed.length > 0 && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
+                                                    {resultsDealsClosed.slice(0, 20).map((r: any, i: number) => {
+                                                        let notes: Record<string, any> = {};
+                                                        try { notes = typeof r.notes === 'string' ? JSON.parse(r.notes || '{}') : (r.notes || {}); } catch { notes = {}; }
+                                                        const amt = notes.commission ?? notes.deal_amount ?? 0;
+                                                        return (
+                                                            <div key={i} style={{ padding: '6px 10px', background: 'var(--bg-app)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span>{r.client_name || '—'}</span>
+                                                                <span style={{ color: 'var(--success)', fontWeight: 800 }}>{typeof amt === 'number' ? formatCommission(amt) : amt}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {resultsDealsClosed.length > 20 && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>+{resultsDealsClosed.length - 20} more</span>}
+                                                </div>
+                                            )}
+                                            {m.key === 'top_source' && revenueMetrics?.top_source && (
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Most common source when adding clients</div>
+                                            )}
+                                            {m.key === 'commission' && resultsDealsClosed.length > 0 && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
+                                                    {resultsDealsClosed.slice(0, 15).map((r: any, i: number) => {
+                                                        let notes: Record<string, any> = {};
+                                                        try { notes = typeof r.notes === 'string' ? JSON.parse(r.notes || '{}') : (r.notes || {}); } catch { notes = {}; }
+                                                        const amt = notes.commission ?? notes.deal_amount ?? 0;
+                                                        if (!amt) return null;
+                                                        return (
+                                                            <div key={i} style={{ padding: '6px 10px', background: 'var(--bg-app)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span>{r.client_name || '—'}</span>
+                                                                <span style={{ color: 'var(--success)', fontWeight: 800 }}>{typeof amt === 'number' ? formatCommission(amt) : String(amt)}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                            {(m.key === 'hot_leads' && resultsHotLeads.length === 0) || (m.key === 'deals_closed' && resultsDealsClosed.length === 0) ? (
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No data</span>
+                                            ) : null}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     </div>
 
                     <div className="glass-panel" style={{ padding: '35px', minHeight: '400px', position: 'relative' }}>

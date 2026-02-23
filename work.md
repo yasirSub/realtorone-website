@@ -200,3 +200,14 @@ Backend:
 Application (Mobile):
     - Key Metrics: renamed COMMISSION to NET COMMISSION EARNED; commission card shows net commission entered when closing deals.
     - Key Metrics cards tappable: Hot Leads → client list; Deals Closed → closed deals by client; Commission → commission earned by client; Top Source → clients from that source.
+### **Day 13: Feb 23 - Activity Log Header Polish**
+Application (Mobile):
+    - Redesigned Activity Log header: richer gradient, clearer lightning accent, and improved stat badges (STREAK, POINTS, LIVE) with icons, pill shape, and readable typography.
+    - Added client priority selection when creating a client (Normal / High / Urgent) and surfaced priority-aware styling in the Deal Room client list.
+    - Implemented per-client daily execution progress API and UI: Clients tab now shows today's daily-log completion (color-coded percentage / NOT STARTED) for each hot lead.
+    - Enhanced Deal Room Clients list UX: gold/silver priority chips, sort-by-priority-and-progress toggle, and faster client loading by embedding today's progress into the hot_lead results API.
+    - Reordered Activity Log tabs to surface Identity Conditioning first, keeping Revenue Actions as the second tab for clearer mental model.
+Backend:
+    - Admin endpoints: GET /admin/users/{id}/revenue-metrics and GET /admin/users/{id}/results (type, source filters) for per-user Deal Room metrics.
+Website:
+    - Added Deal Room / Key Metrics section to User Profile (admin view). Hot Leads, Deals Closed, Net Commission, Top Source with expandable detail lists per metric.

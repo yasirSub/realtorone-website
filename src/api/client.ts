@@ -86,6 +86,30 @@ export const apiClient = {
             throw error;
         }
     },
+    getUserRevenueMetrics: async (userId: number): Promise<{ success: boolean; data: { hot_leads: number; deals_closed: number; total_commission: number; top_source: string | null; recent_activity: any[] } }> => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/revenue-metrics`);
+            if (!response.ok) throw new Error('Failed to fetch revenue metrics');
+            return response.json();
+        } catch (error) {
+            console.error('Error fetching revenue metrics:', error);
+            throw error;
+        }
+    },
+    getUserResults: async (userId: number, params?: { type?: string; source?: string }): Promise<{ success: boolean; data: any[] }> => {
+        try {
+            const q = new URLSearchParams();
+            if (params?.type) q.set('type', params.type);
+            if (params?.source) q.set('source', params.source);
+            const url = `${API_BASE_URL}/admin/users/${userId}/results${q.toString() ? '?' + q : ''}`;
+            const response = await fetch(url);
+            if (!response.ok) throw new Error('Failed to fetch results');
+            return response.json();
+        } catch (error) {
+            console.error('Error fetching results:', error);
+            throw error;
+        }
+    },
     getPackages: async (): Promise<{ success: boolean; data: SubscriptionPackage[] }> => {
         const response = await fetch(`${API_BASE_URL}/admin/packages`);
         return response.json();
