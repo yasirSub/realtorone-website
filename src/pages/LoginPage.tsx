@@ -102,29 +102,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
                         Infiltrate Control Plane
                     </button>
 
-                    <button
-                        type="button"
-                        onClick={() => {
-                            localStorage.clear();
-                            window.location.reload();
-                        }}
-                        style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '0.7rem', fontWeight: 800, cursor: 'pointer', textDecoration: 'underline' }}
-                    >
-                        Clear Stale Session & Reload
-                    </button>
                 </form>
-
-                <div style={{ marginTop: '40px', textAlign: 'center', padding: '20px', borderTop: '1px solid var(--glass-border)' }}>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 800, marginBottom: '15px', letterSpacing: '1px' }}>SECURE ACCESS PROTOCOL</p>
-                    <div style={{ display: 'flex', justifyContent: 'center', gap: '25px' }}>
-                        <span style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }}></span> SSL_ENCRYPTED
-                        </span>
-                        <span style={{ fontSize: '0.6rem', fontWeight: 900, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)' }}></span> NODE_PROTOCOL_v2
-                        </span>
-                    </div>
-                </div>
             </div>
         </div>
     );
