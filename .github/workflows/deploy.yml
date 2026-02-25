@@ -25,13 +25,5 @@ jobs:
             
             git pull origin main
             
-            # Install and Build
-            if ! command -v npm &> /dev/null; then
-              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-              apt-get install -y nodejs
-            fi
-            
-            npm install
-            npm run build
-            
-            # Note: You will need Nginx to serve /root/realtorone/website/dist
+            # Start Website using Docker
+            docker-compose up -d --build
