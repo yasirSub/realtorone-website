@@ -22,5 +22,8 @@ jobs:
               git clone https://github.com/yasirSub/realtorone-website.git .
             fi
             git pull origin main --rebase
+            # Stop default host Nginx to avoid port 80 conflict
+            sudo systemctl stop nginx || true
+            sudo systemctl disable nginx || true
             docker compose down --remove-orphans
             docker compose up -d --build
