@@ -12,7 +12,7 @@ jobs:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 187.77.104.129
+          host: 187.77.184.129
           username: root
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
