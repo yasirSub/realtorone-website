@@ -22,4 +22,5 @@ jobs:
               git clone https://github.com/yasirSub/realtorone-website.git .
             fi
             git pull origin main --rebase
+            docker compose down --remove-orphans
             docker compose up -d --build
