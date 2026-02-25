@@ -211,3 +211,15 @@ Backend:
     - Admin endpoints: GET /admin/users/{id}/revenue-metrics and GET /admin/users/{id}/results (type, source filters) for per-user Deal Room metrics.
 Website:
     - Added Deal Room / Key Metrics section to User Profile (admin view). Hot Leads, Deals Closed, Net Commission, Top Source with expandable detail lists per metric.
+
+### **Day 14: Feb 25 - Production Dockerization & VPS Deployment Pipeline**
+Website (Web Application):
+    - Authored production `Dockerfile` for the React/Vite application to operate in an isolated container.
+    - Set up an automated GitHub Actions CI/CD pipeline (`deploy.yml`) allowing push-to-deploy to a remote VPS over SSH.
+    - Configured server-side script logic to clone/pull the repository and execute `docker-compose up -d --build` automatically.
+    - Implemented a push system using `deploy_trigger.txt` marker files for easy manual workflow triggering.
+Backend:
+    - Fully containerized the Laravel backend using a custom PHP 8.4 `Dockerfile` packed with necessary system extensions (PDO, MySQL, Postgres, Zip).
+    - Hardened startup commands (`CMD`) to automatically map storage links, clear cache, and enforce database migrations (`--force`) upon Boot.
+    - Structured deployment logic to automatically execute default database seeders sequentially post-migration.
+    - Updated `DatabaseSeeder.php` configurations targeting consistent data seeding upon fresh VPS deployments.
