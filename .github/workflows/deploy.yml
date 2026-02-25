@@ -1,0 +1,37 @@
+name: Deploy Website to VPS
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: 187.77.104.129
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            mkdir -p /root/realtorone/website
+            cd /root/realtorone/website
+            
+            if [ ! -d .git ]; then
+              git clone https://github.com/yasirSub/realtorone-website.git .
+            fi
+            
+            git pull origin main
+            
+            # Install and Build
+            if ! command -v npm &> /dev/null; then
+              curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+              apt-get install -y nodejs
+            fi
+            
+            npm install
+            npm run build
+            
+            # Note: You will need Nginx to serve /root/realtorone/website/dist
