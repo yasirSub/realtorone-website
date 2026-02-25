@@ -224,7 +224,6 @@ Backend:
     - Fully containerized the Laravel backend using a custom PHP 8.4 `Dockerfile` with system-level extensions.
     - Resolved critical 500 Server Error by injecting a secure `APP_KEY` into the production environment.
     - Hardened startup commands (`CMD`) to automatically map storage, migrate database schemas (`--force`), and seed demo data.
-    ----------------------
     - Synced administrative login logic in `DatabaseSeeder.php` and `api.php` with updated credentials (`admin@yas1r.local`).
     - Configured MySQL and phpMyAdmin (Port 8080) in the service layer for easier database management.
 Infrastructure & Domain:
