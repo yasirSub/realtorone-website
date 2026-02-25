@@ -215,11 +215,21 @@ Website:
 ### **Day 14: Feb 25 - Production Dockerization & VPS Deployment Pipeline**
 Website (Web Application):
     - Authored production `Dockerfile` for the React/Vite application to operate in an isolated container.
-    - Set up an automated GitHub Actions CI/CD pipeline (`deploy.yml`) allowing push-to-deploy to a remote VPS over SSH.
-    - Configured server-side script logic to clone/pull the repository and execute `docker-compose up -d --build` automatically.
-    - Implemented a push system using `deploy_trigger.txt` marker files for easy manual workflow triggering.
+    - Set up an automated GitHub Actions CI/CD pipeline (`deploy.yml`) for push-to-deploy to a remote Hostinger VPS over SSH.
+    - Implemented custom `nginx.conf` for SPA routing, resolving 404 errors on direct route access (e.g., /dashboard).
+    - Synchronized environment variables (`.env`) to point the production build to the live VPS API endpoint.
+    - Moved infrastructure from Port 3000 to Port 80 for professional root domain access without port numbers.
+    - Automated host-level Nginx deactivation to prevent port 80 conflicts with the Dockerized application.
 Backend:
-    - Fully containerized the Laravel backend using a custom PHP 8.4 `Dockerfile` packed with necessary system extensions (PDO, MySQL, Postgres, Zip).
-    - Hardened startup commands (`CMD`) to automatically map storage links, clear cache, and enforce database migrations (`--force`) upon Boot.
-    - Structured deployment logic to automatically execute default database seeders sequentially post-migration.
-    - Updated `DatabaseSeeder.php` configurations targeting consistent data seeding upon fresh VPS deployments.
+    - Fully containerized the Laravel backend using a custom PHP 8.4 `Dockerfile` with system-level extensions.
+    - Resolved critical 500 Server Error by injecting a secure `APP_KEY` into the production environment.
+    - Hardened startup commands (`CMD`) to automatically map storage, migrate database schemas (`--force`), and seed demo data.
+    ----------------------
+    - Synced administrative login logic in `DatabaseSeeder.php` and `api.php` with updated credentials (`admin@yas1r.local`).
+    - Configured MySQL and phpMyAdmin (Port 8080) in the service layer for easier database management.
+Infrastructure & Domain:
+    - Directed `aanantbishthealing.com` and `api.aanantbishthealing.com` A-records to the Hostinger VPS IP.
+    - Configured Hostinger VPS Firewall rules to allow traffic on Port 80 (Web), 8000 (API), and 8080 (Admin Database).
+    - Repaired local Git repository reference corruption, ensuring a stable push-to-deploy pipeline.
+    - Validated end-to-end data flow from DNS → Nginx → Docker → PHP → MySQL.
+
