@@ -6,8 +6,11 @@ export interface Course {
     id: number;
     title: string;
     description: string;
+    thumbnail_url?: string;
     url: string;
     min_tier: 'Consultant' | 'Rainmaker' | 'Titan';
+    module_number?: number;
+    sequence?: number;
     created_at: string;
     updated_at: string;
 }

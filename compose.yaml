@@ -5,3 +5,5 @@ services:
     restart: always
     ports:
       - "80:80"
+    environment:
+      - API_PROXY_URL=${API_PROXY_URL:-http://187.77.184.129:8000/api/}

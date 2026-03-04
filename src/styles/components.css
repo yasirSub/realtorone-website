@@ -44,40 +44,30 @@
     color: var(--text-main);
 }
 
-/* Forms & Inputs - FIXED VISIBILITY */
+/* Forms & Inputs */
 .form-input {
     width: 100%;
     padding: 18px 22px;
     border-radius: 18px;
-    border: 4px solid #111c44 !important;
-    background: #ffffff !important;
+    border: 1px solid var(--glass-border);
+    background: var(--bg-app);
     outline: none;
-    font-weight: 800;
-    color: #0b1437 !important;
+    font-weight: 600;
+    color: var(--text-main);
     transition: all 0.2s;
     display: block;
-    font-size: 1.1rem;
+    font-size: 1rem;
 }
 
 .form-input::placeholder {
-    color: #707eae;
-    opacity: 1;
+    color: var(--text-muted);
+    opacity: 0.7;
 }
 
 .form-input:focus {
-    border-color: var(--primary) !important;
+    border-color: var(--primary);
+    background: var(--bg-card);
     box-shadow: 0 0 0 4px var(--primary-glow);
-}
-
-[data-theme='dark'] .form-input {
-    background: #ffffff !important;
-    color: #0b1437 !important;
-    border-color: #111c44 !important;
-}
-
-[data-theme='dark'] .form-input:focus {
-    background: #ffffff !important;
-    border-color: var(--primary) !important;
 }
 
 /* Buttons */

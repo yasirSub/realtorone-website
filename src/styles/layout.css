@@ -25,9 +25,9 @@
     display: none;
 }
 
-/* Header / Top Bar */
+/* Header / Top Bar — dark by default */
 .top-bar {
-    background: rgba(255, 255, 255, 0.4);
+    background: rgba(15, 18, 59, 0.6);
     backdrop-filter: blur(25px);
     padding: 10px 20px;
     height: 70px;
@@ -35,14 +35,15 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
     margin-bottom: 25px;
-    border: 1px solid rgba(255, 255, 255, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-[data-theme='dark'] .top-bar {
-    background: rgba(15, 18, 59, 0.6);
-    border-color: rgba(255, 255, 255, 0.05);
+[data-theme='light'] .top-bar {
+    background: rgba(255, 255, 255, 0.4);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
 }
 
 /* Search & Active Controls */

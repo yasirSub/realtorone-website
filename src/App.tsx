@@ -29,6 +29,8 @@ function App() {
   const [showPassword, setShowPassword] = useState(false)
   const [loginError, setLoginError] = useState('')
 
+  // Dark mode is always the default — ignore any saved 'light' preference
+
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState({ total_users: 0, active_today: 0, total_activities: 0, db_connected: false })
   const [users, setUsers] = useState<User[]>([])
@@ -48,7 +50,7 @@ function App() {
     }
   }, [activeTab]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'light')
+  const [theme, setTheme] = useState<string>('dark') // always default to dark
   const [activeTier, setActiveTier] = useState<'All' | 'Consultant' | 'Rainmaker' | 'Titan'>('All')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true')
 

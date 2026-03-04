@@ -1,6 +1,6 @@
 import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (window.location.hostname === 'localhost' ? 'http://localhost:8000/api' : '/api');
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://127.0.0.1:8000/api' : '/api');
 console.log('API Base URL:', API_BASE_URL);
 
 export const apiClient = {
@@ -275,6 +275,133 @@ export const apiClient = {
             method: 'DELETE'
         });
         return response.json();
+    },
+    getCourseDetails: async (id: number): Promise<{ success: boolean; data: any }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/courses/${id}`);
+        return response.json();
+    },
+    // Modules
+    createModule: async (courseId: number, data: any): Promise<{ success: boolean; data: any }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/courses/${courseId}/modules`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    },
+    updateModule: async (id: number, data: any): Promise<{ success: boolean; data: any }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/modules/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    },
+    deleteModule: async (id: number): Promise<{ success: boolean }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/modules/${id}`, {
+            method: 'DELETE'
+        });
+        return response.json();
+    },
+    // Lessons
+    createLesson: async (moduleId: number, data: any): Promise<{ success: boolean; data: any }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/modules/${moduleId}/lessons`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    },
+    updateLesson: async (id: number, data: any): Promise<{ success: boolean; data: any }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/lessons/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    },
+    deleteLesson: async (id: number): Promise<{ success: boolean }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/lessons/${id}`, {
+            method: 'DELETE'
+        });
+        return response.json();
+    },
+    // Materials
+    createMaterial: async (lessonId: number, data: any): Promise<{ success: boolean; data: any }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/lessons/${lessonId}/materials`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    },
+    updateMaterial: async (id: number, data: any): Promise<{ success: boolean; data: any }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/materials/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    },
+    deleteMaterial: async (id: number): Promise<{ success: boolean }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/materials/${id}`, {
+            method: 'DELETE'
+        });
+        return response.json();
+    },
+    uploadFile: async (file: File, type: string): Promise<{ success: boolean; url: string; name: string; message?: string }> => {
+        const formData = new FormData();
+        const token = localStorage.getItem('adminToken');
+        formData.append('file', file);
+        formData.append('type', type);
+        const response = await fetch(`${API_BASE_URL}/admin/courses/upload`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
+        return response.json();
+    },
+    uploadFileWithProgress: (file: File, type: string, onProgress: (percent: number) => void): Promise<{ success: boolean; url: string; name: string; message?: string }> => {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const formData = new FormData();
+            const token = localStorage.getItem('adminToken');
+            formData.append('file', file);
+            formData.append('type', type);
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    onProgress(percent);
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 400) {
+                    reject(new Error(`Server error (${xhr.status}): ${xhr.responseText.substring(0, 100)}`));
+                    return;
+                }
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    resolve(data);
+                } catch (e) {
+                    console.error('SERVER RESPONSE ERROR:', xhr.responseText);
+                    const snippet = xhr.responseText.substring(0, 150).replace(/<[^>]*>/g, '').trim();
+                    reject(new Error(`Server sent non-JSON response: "${snippet || 'Empty or Binary'}"`));
+                }
+            });
+
+            xhr.addEventListener('error', () => reject(new Error('Upload failed')));
+            xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
+
+            xhr.open('POST', `${API_BASE_URL}/admin/courses/upload`);
+            if (token) {
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            }
+            xhr.send(formData);
+        });
     },
     // Leaderboard
     getLeaderboard: async (category: string, period: string): Promise<{ success: boolean; data: LeaderboardEntry[]; category: string; period: string }> => {
