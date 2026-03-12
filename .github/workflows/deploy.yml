@@ -1,29 +1,46 @@
-name: Deploy Website to VPS
+name: Deploy Website
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
+concurrency:
+  group: realtorone-website-production
+  cancel-in-progress: true
+
+env:
+  DEPLOY_PATH: /opt/realtorone-website
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Deploy latest code on VPS
+        uses: appleboy/ssh-action@v1.2.0
         with:
-          host: 187.77.184.129
-          username: root
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST || '187.77.184.129' }}
+          username: ${{ secrets.VPS_USER || 'root' }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script_stop: true
           script: |
-            mkdir -p /root/realtorone/website
-            cd /root/realtorone/website
-            if [ ! -d .git ]; then
-              git clone https://github.com/yasirSub/realtorone-website.git .
+            set -e
+
+            if [ ! -d "${{ env.DEPLOY_PATH }}/.git" ]; then
+              rm -rf "${{ env.DEPLOY_PATH }}"
+              git clone https://github.com/${{ github.repository }}.git "${{ env.DEPLOY_PATH }}"
             fi
-            git pull origin main --rebase
-            # Stop default host Nginx to avoid port 80 conflict
-            sudo systemctl stop nginx || true
-            sudo systemctl disable nginx || true
-            docker compose down --remove-orphans
-            docker compose up -d --build
+
+            cd "${{ env.DEPLOY_PATH }}"
+            git fetch origin main
+            git checkout main || git checkout -b main origin/main
+            git pull --ff-only origin main
+
+            systemctl stop nginx || true
+            systemctl disable nginx || true
+
+            docker compose up -d --build --remove-orphans website
+            docker image prune -af
+            docker ps --filter name=realtorone-website

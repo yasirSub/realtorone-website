@@ -1,10 +1,10 @@
 # Same as compose.yaml - some tools look for docker-compose.yml
-# Image: ghcr.io/yasirsub/realtorone-website:latest (pre-built by GitHub Actions)
-version: '3.8'
 services:
   website:
-    image: ghcr.io/yasirsub/realtorone-website:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: realtorone-website:latest
     container_name: realtorone-website
     restart: always
     ports:

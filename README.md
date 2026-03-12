@@ -1,73 +1,53 @@
-# React + TypeScript + Vite
+# RealtorOne Website
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This repo deploys the RealtorOne website to the live VPS automatically whenever code is pushed to `main`.
 
-Currently, two official plugins are available:
+## Local development
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Install dependencies and start Vite:
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Create a production build locally:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+## Auto deploy on push
+
+The live deploy flow is defined in `.github/workflows/deploy.yml`.
+
+What happens on each push to `main`:
+
+1. GitHub Actions connects to the VPS over SSH.
+2. The VPS pulls the latest repo state.
+3. The VPS rebuilds and restarts the `website` container with `docker compose`.
+
+Required GitHub repository secrets:
+
+- `VPS_PASSWORD`: password for the deployment user.
+
+Optional GitHub repository secrets:
+
+- `VPS_HOST`: override the default VPS host.
+- `VPS_USER`: override the default SSH user.
+
+Server requirements:
+
+- Docker and Docker Compose plugin installed.
+- Port `80` open.
+- If another host Nginx is using port `80`, disable it or move the website container to another port.
+- The VPS must be able to run `git`, `docker`, and `docker compose`.
+
+Manual server bootstrap, one time only:
+
+```bash
+sudo mkdir -p /opt/realtorone-website
+sudo chown -R $USER:$USER /opt/realtorone-website
+```
+
+After that, pushing to `main` should update the live site automatically.
