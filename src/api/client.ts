@@ -96,6 +96,27 @@ export const apiClient = {
             throw error;
         }
     },
+    getUserCourseDetail: async (userId: number): Promise<{
+        success: boolean;
+        data: {
+            subscription: { package_name: string; expires_at: string } | null;
+            course_progress: any[];
+            exam_attempts: any[];
+            material_progress: any[];
+        };
+    }> => {
+        try {
+            const token = localStorage.getItem('adminToken');
+            const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/course-detail`, {
+                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+            });
+            if (!response.ok) throw new Error('Failed to fetch course detail');
+            return response.json();
+        } catch (e) {
+            console.error('Error fetching user course detail:', e);
+            throw e;
+        }
+    },
     getUserResults: async (userId: number, params?: { type?: string; source?: string }): Promise<{ success: boolean; data: any[] }> => {
         try {
             const q = new URLSearchParams();
@@ -346,6 +367,32 @@ export const apiClient = {
     deleteMaterial: async (id: number): Promise<{ success: boolean }> => {
         const response = await fetch(`${API_BASE_URL}/admin/materials/${id}`, {
             method: 'DELETE'
+        });
+        return response.json();
+    },
+    // Course Exam (admin)
+    getCourseExam: async (courseId: number): Promise<{ success: boolean; data: { id: number; title: string; passing_percent: number; time_minutes: number | null; questions: { id: number; question_text: string; options: string[]; correct_index: number; sequence: number }[] } | null }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/courses/${courseId}/exam`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+    createCourseExam: async (courseId: number, data: { title: string; passing_percent?: number; time_minutes?: number }): Promise<{ success: boolean; data: { id: number } }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/courses/${courseId}/exam`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    },
+    addExamQuestion: async (examId: number, data: { question_text: string; options: string[]; correct_index: number; sequence?: number }): Promise<{ success: boolean; data: { id: number } }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/exams/${examId}/questions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+            body: JSON.stringify(data)
         });
         return response.json();
     },

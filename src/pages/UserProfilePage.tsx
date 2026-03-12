@@ -16,6 +16,8 @@ interface RevenueMetrics {
     recent_activity: any[];
 }
 
+type LearningFilter = 'all' | 'courses' | 'exams' | 'materials';
+
 const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
     const [performance, setPerformance] = useState<any[]>([]);
     const [activities, setActivities] = useState<any[]>([]);
@@ -23,29 +25,39 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
     const [resultsHotLeads, setResultsHotLeads] = useState<any[]>([]);
     const [resultsDealsClosed, setResultsDealsClosed] = useState<any[]>([]);
     const [expandedMetric, setExpandedMetric] = useState<'hot_leads' | 'deals_closed' | 'commission' | 'top_source' | null>(null);
-    // Track loading state during profile data fetches
     const [, setLoading] = useState(false);
     const [viewRange, setViewRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
     const [expandedDays, setExpandedDays] = useState<string[]>([]);
+    const [learningData, setLearningData] = useState<{
+        subscription: { package_name: string; expires_at: string } | null;
+        course_progress: any[];
+        exam_attempts: any[];
+        material_progress: any[];
+    } | null>(null);
+    const [learningFilter, setLearningFilter] = useState<LearningFilter>('all');
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [perfRes, actRes, revRes] = await Promise.all([
+                const [perfRes, actRes, revRes, courseRes] = await Promise.all([
                     apiClient.getUserPerformance(user.id),
                     apiClient.getUserActivities(user.id),
-                    apiClient.getUserRevenueMetrics(user.id).catch(() => ({ success: false, data: null }))
+                    apiClient.getUserRevenueMetrics(user.id).catch(() => ({ success: false, data: null })),
+                    apiClient.getUserCourseDetail(user.id).catch(() => ({ success: false, data: null }))
                 ]);
 
                 if (perfRes.success) {
-                    setPerformance(perfRes.data.reverse()); // Oldest to newest
+                    setPerformance(perfRes.data.reverse());
                 }
                 if (actRes.success) {
                     setActivities(actRes.data);
                 }
                 if (revRes.success && revRes.data) {
                     setRevenueMetrics(revRes.data);
+                }
+                if (courseRes.success && courseRes.data) {
+                    setLearningData(courseRes.data);
                 }
             } catch (error) {
                 console.error('Failed to sync operator data', error);
@@ -498,6 +510,236 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                 </div>
                             ))}
                         </div>
+                    </div>
+
+                    {/* Learning & courses — clean layout: package, courses, exams, materials */}
+                    <div className="glass-panel" style={{
+                        padding: '28px 32px',
+                        background: 'linear-gradient(160deg, rgba(99, 102, 241, 0.08) 0%, transparent 50%)',
+                        border: '1px solid rgba(99, 102, 241, 0.2)',
+                        borderRadius: '20px'
+                    }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+                            <div>
+                                <h3 style={{ fontSize: '1.05rem', fontWeight: 900, margin: 0, letterSpacing: '-0.02em', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <span style={{ width: '4px', height: '20px', background: '#6366f1', borderRadius: '4px' }} />
+                                    Learning & courses
+                                </h3>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 0 0', fontWeight: 500 }}>Package, course progress, exams, and video watch status</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-app)', padding: '4px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+                                {(['all', 'courses', 'exams', 'materials'] as const).map(f => (
+                                    <button
+                                        key={f}
+                                        onClick={() => setLearningFilter(f)}
+                                        style={{
+                                            padding: '10px 18px',
+                                            fontSize: '0.8rem',
+                                            fontWeight: 700,
+                                            background: learningFilter === f ? '#6366f1' : 'transparent',
+                                            color: learningFilter === f ? '#fff' : 'var(--text-muted)',
+                                            border: 'none',
+                                            borderRadius: '10px',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s ease'
+                                        }}
+                                    >
+                                        {f === 'all' ? 'All' : f === 'courses' ? 'Courses' : f === 'exams' ? 'Exams' : 'Watching'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {!learningData ? (
+                            <div style={{
+                                padding: '48px 24px',
+                                textAlign: 'center',
+                                color: 'var(--text-muted)',
+                                fontSize: '0.9rem',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                gap: '14px'
+                            }}>
+                                <div className="loader" style={{ width: '36px', height: '36px', borderWidth: '3px', borderColor: 'var(--glass-border)', borderTopColor: '#6366f1' }} />
+                                <span>Loading learning data…</span>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Package — only when All or Courses */}
+                                {(learningFilter === 'all' || learningFilter === 'courses') && learningData.subscription && (
+                                    <div style={{
+                                        marginBottom: '24px',
+                                        padding: '16px 20px',
+                                        background: 'rgba(99, 102, 241, 0.12)',
+                                        borderRadius: '14px',
+                                        border: '1px solid rgba(99, 102, 241, 0.25)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        flexWrap: 'wrap',
+                                        gap: '12px'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <span style={{ fontSize: '1.25rem' }}>📦</span>
+                                            <div>
+                                                <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Current package</div>
+                                                <div style={{ fontSize: '1rem', fontWeight: 800, color: '#6366f1' }}>{learningData.subscription.package_name}</div>
+                                            </div>
+                                        </div>
+                                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                                            Expires {new Date(learningData.subscription.expires_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Course progress — table-style */}
+                                {(learningFilter === 'all' || learningFilter === 'courses') && learningData.course_progress.length > 0 && (
+                                    <div style={{ marginBottom: '24px' }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Course progress</div>
+                                        <div style={{ overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                                <thead>
+                                                    <tr style={{ background: 'var(--bg-app)', borderBottom: '1px solid var(--glass-border)' }}>
+                                                        <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)' }}>Course</th>
+                                                        <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '90px' }}>Progress</th>
+                                                        <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '120px' }}>Status</th>
+                                                        <th style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '110px' }}>Last accessed</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {learningData.course_progress.map((p: any, i: number) => (
+                                                        <tr key={i} style={{ borderBottom: i < learningData.course_progress.length - 1 ? '1px solid var(--glass-border)' : 'none', background: 'var(--bg-card)' }}>
+                                                            <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-main)' }}>{p.course_title}</td>
+                                                            <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                                                                <span style={{ fontWeight: 800, color: '#6366f1' }}>{p.progress_percent}%</span>
+                                                            </td>
+                                                            <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                                                                <span style={{
+                                                                    display: 'inline-block',
+                                                                    padding: '4px 12px',
+                                                                    borderRadius: '20px',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: 700,
+                                                                    background: p.is_completed ? 'rgba(16, 185, 129, 0.2)' : 'var(--bg-app)',
+                                                                    color: p.is_completed ? 'var(--success)' : 'var(--text-muted)'
+                                                                }}>
+                                                                    {p.is_completed ? 'Completed' : 'In progress'}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '14px 16px', textAlign: 'right', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                                {p.last_accessed_at ? new Date(p.last_accessed_at).toLocaleDateString() : '—'}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Exam attempts — table-style */}
+                                {(learningFilter === 'all' || learningFilter === 'exams') && learningData.exam_attempts.length > 0 && (
+                                    <div style={{ marginBottom: '24px' }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Exam attempts</div>
+                                        <div style={{ overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                                <thead>
+                                                    <tr style={{ background: 'var(--bg-app)', borderBottom: '1px solid var(--glass-border)' }}>
+                                                        <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)' }}>Course</th>
+                                                        <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '80px' }}>Score</th>
+                                                        <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '100px' }}>Result</th>
+                                                        <th style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '140px' }}>Submitted</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {learningData.exam_attempts.map((a: any, i: number) => (
+                                                        <tr key={i} style={{ borderBottom: i < learningData.exam_attempts.length - 1 ? '1px solid var(--glass-border)' : 'none', background: 'var(--bg-card)' }}>
+                                                            <td style={{ padding: '14px 16px', fontWeight: 700, color: 'var(--text-main)' }}>{a.course_title}</td>
+                                                            <td style={{ padding: '14px 16px', textAlign: 'center', fontWeight: 800, color: a.passed ? 'var(--success)' : '#f59e0b' }}>{a.score_percent}%</td>
+                                                            <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                                                                <span style={{
+                                                                    display: 'inline-block',
+                                                                    padding: '4px 12px',
+                                                                    borderRadius: '20px',
+                                                                    fontSize: '0.75rem',
+                                                                    fontWeight: 700,
+                                                                    background: a.passed ? 'rgba(16, 185, 129, 0.2)' : 'rgba(245, 158, 11, 0.2)',
+                                                                    color: a.passed ? 'var(--success)' : '#f59e0b'
+                                                                }}>
+                                                                    {a.passed ? 'Passed' : 'Not passed'}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ padding: '14px 16px', textAlign: 'right', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                                                                {new Date(a.submitted_at).toLocaleString()}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Materials / watching — table-style */}
+                                {(learningFilter === 'all' || learningFilter === 'materials') && learningData.material_progress.length > 0 && (
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>Videos & materials (watch status)</div>
+                                        <div style={{ overflow: 'hidden', borderRadius: '12px', border: '1px solid var(--glass-border)', maxHeight: '320px', overflowY: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                                                <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg-app)' }}>
+                                                    <tr style={{ borderBottom: '1px solid var(--glass-border)' }}>
+                                                        <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)' }}>Course · Module</th>
+                                                        <th style={{ textAlign: 'left', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)' }}>Material</th>
+                                                        <th style={{ textAlign: 'center', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '70px' }}>Type</th>
+                                                        <th style={{ textAlign: 'right', padding: '12px 16px', fontWeight: 700, color: 'var(--text-muted)', width: '100px' }}>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {learningData.material_progress.map((m: any, i: number) => (
+                                                        <tr key={i} style={{ borderBottom: i < learningData.material_progress.length - 1 ? '1px solid var(--glass-border)' : 'none', background: 'var(--bg-card)' }}>
+                                                            <td style={{ padding: '12px 16px' }}>
+                                                                <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{m.course_title}</div>
+                                                                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '2px' }}>{m.module_title}</div>
+                                                            </td>
+                                                            <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-main)' }}>{m.material_title || m.material_type}</td>
+                                                            <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                                                <span style={{ fontSize: '0.75rem', padding: '3px 8px', borderRadius: '8px', background: m.material_type === 'Video' ? 'rgba(99, 102, 241, 0.15)' : 'var(--bg-app)', color: '#6366f1', fontWeight: 700 }}>{m.material_type}</span>
+                                                            </td>
+                                                            <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                                                {m.is_completed ? (
+                                                                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--success)' }}>✓ Done</span>
+                                                                ) : (
+                                                                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Watched {Math.floor((m.progress_seconds || 0) / 60)} min</span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Empty states */}
+                                {learningFilter === 'all' && !learningData.subscription && learningData.course_progress.length === 0 && learningData.exam_attempts.length === 0 && learningData.material_progress.length === 0 && (
+                                    <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                        <div style={{ fontSize: '2rem', marginBottom: '8px', opacity: 0.6 }}>📚</div>
+                                        <div style={{ fontWeight: 600 }}>No course or exam activity yet</div>
+                                        <div style={{ marginTop: '4px', fontSize: '0.85rem' }}>Progress and exam attempts will appear here once the user starts learning.</div>
+                                    </div>
+                                )}
+                                {learningFilter === 'courses' && !learningData.subscription && learningData.course_progress.length === 0 && (
+                                    <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No course progress for this filter.</div>
+                                )}
+                                {learningFilter === 'exams' && learningData.exam_attempts.length === 0 && (
+                                    <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No exam attempts for this filter.</div>
+                                )}
+                                {learningFilter === 'materials' && learningData.material_progress.length === 0 && (
+                                    <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>No video or material watch data for this filter.</div>
+                                )}
+                            </>
+                        )}
                     </div>
 
                     <div className="glass-panel" style={{ padding: '35px', minHeight: '400px', position: 'relative' }}>

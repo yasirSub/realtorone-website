@@ -1,0 +1,46 @@
+name: Deploy to VPS on push
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Connect to VPS and deploy
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            set -e
+
+            # Ensure target directory exists and repo is present
+            if [ ! -d "/opt/realtorone-website/.git" ]; then
+              rm -rf /opt/realtorone-website
+              mkdir -p /opt/realtorone-website
+              git clone https://github.com/yasirSub/realtorone-website.git /opt/realtorone-website
+            fi
+
+            cd /opt/realtorone-website
+
+            # Pull latest code
+            git pull origin main
+
+            # Build new Docker image
+            docker build -t realtorone-website:latest .
+
+            # Restart container on same network as backend
+            docker rm -f realtorone-website || true
+            docker run -d --name realtorone-website \
+              --network backend_default \
+              -p 80:80 \
+              -e API_PROXY_URL=http://backend-app-1:8000/api/ \
+              realtorone-website:latest
+
