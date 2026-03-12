@@ -36,6 +36,20 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
         isOpen: boolean; title: string; placeholder: string; onConfirm: (val: string) => void;
     }>({ isOpen: false, title: '', placeholder: '', onConfirm: () => { } });
 
+    const resolveAssetUrl = (rawUrl?: string | null) => {
+        if (!rawUrl) return undefined;
+        if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+
+        const normalized = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+        const configuredBase = import.meta.env.VITE_API_BASE_URL || '/api';
+
+        if (configuredBase.startsWith('http://') || configuredBase.startsWith('https://')) {
+            return new URL(normalized, `${configuredBase.replace(/\/$/, '')}/`).toString();
+        }
+
+        return normalized;
+    };
+
     useEffect(() => { loadCourseDetails(); }, [courseId]);
     const loadExam = async () => {
         setExamLoading(true);
@@ -377,12 +391,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                             }}>×</button>
                                         </div>
                                         <div style={{ position: 'relative', flex: 1, background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%)', borderRadius: '0 0 24px 24px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                            <video src={(() => {
-                                                const url = videoMaterial.url;
-                                                const filename = url?.split('/').pop();
-                                                const base = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
-                                                return filename ? `${base.replace(/\/$/, '')}/stream/${filename}` : url || undefined;
-                                            })()} preload="metadata" controls poster={videoMaterial.thumbnail_url || undefined} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                            <video src={resolveAssetUrl(videoMaterial.url)} preload="metadata" controls poster={resolveAssetUrl(videoMaterial.thumbnail_url)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 
                                             <input type="file" accept="video/*" id="video-replace" hidden onChange={e => handleFileUpload(e, activeLesson.id, 'Video')} />
                                             <label htmlFor="video-replace" style={{ position: 'absolute', top: '10px', left: '10px', padding: '6px 14px', background: 'rgba(0,0,0,0.6)', color: 'white', borderRadius: '8px', fontSize: '9px', fontWeight: 900, cursor: 'pointer', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', opacity: 0, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0'}>REPLACE VIDEO</label>
@@ -403,7 +412,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                         </div>
                                         <div style={{ position: 'relative', flex: 1, background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%)', borderRadius: '0 0 24px 24px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.06)' }}>
                                             {videoMaterial.thumbnail_url ? (
-                                                <img src={videoMaterial.thumbnail_url} alt="Thumb" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                <img src={resolveAssetUrl(videoMaterial.thumbnail_url)} alt="Thumb" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                             ) : (
                                                 <div style={{ textAlign: 'center' }}>
                                                     <div style={{ fontSize: '36px', marginBottom: '10px', opacity: 0.2 }}>🖼️</div>
@@ -539,9 +548,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                     <a
                                                         href={(() => {
                                                             const pdf = (activeLesson.materials || []).find((m: any) => m.id === previewPdfId);
-                                                            if (!pdf) return '#';
-                                                            const filename = pdf.url?.split('/').pop();
-                                                            return filename ? `http://127.0.0.1:8000/api/stream/${filename}` : pdf.url;
+                                                            return resolveAssetUrl(pdf?.url) || '#';
                                                         })()}
                                                         target="_blank" rel="noreferrer"
                                                         style={{ fontSize: '9px', fontWeight: 900, color: 'var(--tier-color)', textDecoration: 'none', padding: '4px 10px', background: 'rgba(var(--primary-rgb), 0.1)', borderRadius: '6px' }}
@@ -552,12 +559,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                 {previewPdfId ? (
                                                     <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)', background: '#fff', height: '100%', minHeight: '350px' }}>
                                                         <iframe
-                                                            src={(() => {
-                                                                const pdf = (activeLesson.materials || []).find((m: any) => m.id === previewPdfId);
-                                                                if (!pdf) return '';
-                                                                const filename = pdf.url?.split('/').pop();
-                                                                return filename ? `http://127.0.0.1:8000/api/stream/${filename}` : pdf.url;
-                                                            })()}
+                                                            src={resolveAssetUrl((activeLesson.materials || []).find((m: any) => m.id === previewPdfId)?.url) || ''}
                                                             style={{ width: '100%', height: '100%', border: 'none' }}
                                                             key={previewPdfId}
                                                         />
