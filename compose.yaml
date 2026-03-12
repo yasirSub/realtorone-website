@@ -1,9 +1,26 @@
+# RealtorOne Admin Website - VPS Docker deployment
+# Image built by GitHub Actions → ghcr.io/yasirsub/realtorone-website:latest
+# Make package public: GitHub > Packages > realtorone-website > Settings > Change visibility
+# Uses same backend and database; set API_PROXY_URL to your backend (e.g. http://127.0.0.1:8000/api/)
+#
+# Portainer deploy:
+#   1. Stacks > Add stack > Web editor
+#   2. Paste this compose; set API_PROXY_URL env (Stacks > your stack > Editor > Environment)
+#   3. Deploy. Website runs on port 80; /api proxies to backend.
 version: '3.8'
 services:
   website:
-    build: .
+    # Pre-built image from GHCR (built by GitHub Actions on push to main)
+    # No build: - Hostinger pulls this image; does not build locally
+    image: ghcr.io/yasirsub/realtorone-website:latest
+    pull_policy: always
+    container_name: realtorone-website
     restart: always
     ports:
       - "80:80"
     environment:
-      - API_PROXY_URL=${API_PROXY_URL:-http://187.77.184.129:8000/api/}
+      # Point to your existing backend API (same VPS: use host IP or host.docker.internal)
+      - API_PROXY_URL=${API_PROXY_URL:-http://host.docker.internal:8000/api/}
+    extra_hosts:
+      # Allow container to reach backend on host (Linux Docker)
+      - "host.docker.internal:host-gateway"

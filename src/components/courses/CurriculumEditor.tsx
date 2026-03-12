@@ -18,11 +18,6 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
     const [editingTitle, setEditingTitle] = useState(false);
     const [titleDraft, setTitleDraft] = useState('');
 
-    const [activeView, setActiveView] = useState<'lesson' | 'exam'>('lesson');
-    const [exam, setExam] = useState<{ id: number; title: string; passing_percent: number; time_minutes: number | null; questions: { id: number; question_text: string; options: string[]; correct_index: number; sequence: number }[] } | null>(null);
-    const [examLoading, setExamLoading] = useState(false);
-    const [addQuestionModal, setAddQuestionModal] = useState<{ isOpen: boolean; question: string; options: string[]; correctIndex: number }>({ isOpen: false, question: '', options: ['', '', '', ''], correctIndex: 0 });
-
     const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; title: string; message: string; onConfirm: () => void }>({ isOpen: false, title: '', message: '', onConfirm: () => { } });
     const [errorDialog, setErrorDialog] = useState<{ isOpen: boolean; title: string; message: string }>({ isOpen: false, title: '', message: '' });
 
@@ -37,13 +32,6 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
     }>({ isOpen: false, title: '', placeholder: '', onConfirm: () => { } });
 
     useEffect(() => { loadCourseDetails(); }, [courseId]);
-    const loadExam = async () => {
-        setExamLoading(true);
-        try {
-            const res = await apiClient.getCourseExam(courseId);
-            if (res.success) setExam(res.data);
-        } catch (e) { console.error(e); } finally { setExamLoading(false); }
-    };
 
     const loadCourseDetails = async () => {
         setLoading(true);
@@ -176,7 +164,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                 </div>
                                 <div className="sidebar-lessons">
                                     {m.lessons?.map((l: any) => (
-                                        <div key={l.id} className={`lesson-item ${activeView === 'lesson' && activeLesson?.id === l.id ? 'active' : ''}`} onClick={() => { setActiveView('lesson'); setActiveLesson(l); }}>
+                                        <div key={l.id} className={`lesson-item ${activeLesson?.id === l.id ? 'active' : ''}`} onClick={() => setActiveLesson(l)}>
                                             <span>{l.title}</span>
                                             <button className="btn-sidebar-delete" onClick={(e) => { e.stopPropagation(); handleDeleteLesson(l.id, l.title); }}>×</button>
                                         </div>
@@ -184,99 +172,11 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                 </div>
                             </div>
                         ))}
-                        <div
-                            className={`lesson-item ${activeView === 'exam' ? 'active' : ''}`}
-                            onClick={() => { setActiveView('exam'); setActiveLesson(null); loadExam(); }}
-                            style={{ marginTop: '12px', borderTop: '1px solid var(--glass-border)', paddingTop: '12px' }}
-                        >
-                            <span>📋 Test / Exam</span>
-                        </div>
                     </div>
                 </div>
 
                 <div className="curriculum-main">
-                    {activeView === 'exam' ? (
-                        <div className="lesson-editor" style={{ padding: '20px' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '28px' }}>
-                                <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: 'rgba(var(--primary-rgb), 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>📋</div>
-                                <div>
-                                    <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800 }}>Test / Exam</h2>
-                                    <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '13px' }}>Users take this exam when they complete the course 100%</p>
-                                </div>
-                            </div>
-                            {examLoading ? (
-                                <div style={{ textAlign: 'center', padding: '60px', color: 'var(--text-muted)' }}>Loading exam...</div>
-                            ) : !exam ? (
-                                <div className="editor-card" style={{ padding: '40px', textAlign: 'center', border: '2px dashed var(--glass-border)', borderRadius: '20px', background: 'rgba(var(--text-main-rgb), 0.02)' }}>
-                                    <div style={{ fontSize: '48px', marginBottom: '16px', opacity: 0.4 }}>📝</div>
-                                    <h3 style={{ margin: '0 0 12px', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 800 }}>No exam yet</h3>
-                                    <p style={{ color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '400px', margin: '0 auto 24px', lineHeight: 1.5 }}>Create an exam with questions. Users must pass it after completing all modules.</p>
-                                    <button
-                                        className="btn-premium-primary"
-                                        onClick={async () => {
-                                            const title = (course?.title || 'Course') + ' Exam';
-                                            const res = await apiClient.createCourseExam(courseId, { title, passing_percent: 70, time_minutes: 30 });
-                                            if (res.success) loadExam();
-                                        }}
-                                    >
-                                        Create Exam
-                                    </button>
-                                </div>
-                            ) : (
-                                <>
-                                    <div className="editor-card" style={{ marginBottom: '24px', padding: '24px' }}>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-                                            <div>
-                                                <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>EXAM TITLE</label>
-                                                <div style={{ color: 'var(--text-main)', fontWeight: 700, fontSize: '1rem' }}>{exam.title}</div>
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>PASSING %</label>
-                                                <div style={{ color: 'var(--text-main)', fontWeight: 700 }}>{exam.passing_percent}%</div>
-                                            </div>
-                                        </div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                                            Time limit: {exam.time_minutes ? `${exam.time_minutes} minutes` : 'No limit'} · {exam.questions.length} question{exam.questions.length !== 1 ? 's' : ''}
-                                        </div>
-                                    </div>
-                                    <div className="editor-card" style={{ padding: '0', overflow: 'hidden' }}>
-                                        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <h3 style={{ margin: 0, fontSize: '12px', fontWeight: 900, letterSpacing: '1px' }}>QUESTIONS</h3>
-                                            <button
-                                                className="btn-premium-primary"
-                                                style={{ padding: '8px 16px', fontSize: '11px' }}
-                                                onClick={() => setAddQuestionModal({ isOpen: true, question: '', options: ['', '', '', ''], correctIndex: 0 })}
-                                            >
-                                                + Add Question
-                                            </button>
-                                        </div>
-                                        <div style={{ padding: '20px' }}>
-                                            {exam.questions.length === 0 ? (
-                                                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontSize: '14px' }}>
-                                                    No questions yet. Add questions for users to answer.
-                                                </div>
-                                            ) : (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                                                    {exam.questions.map((q, idx) => (
-                                                        <div key={q.id} style={{ padding: '16px', background: 'rgba(var(--text-main-rgb), 0.03)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                                                            <div style={{ fontWeight: 700, marginBottom: '10px', color: 'var(--text-main)' }}>Q{idx + 1}. {q.question_text}</div>
-                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                                                                {q.options.map((opt, i) => (
-                                                                    <div key={i} style={{ fontSize: '13px', color: i === q.correct_index ? 'var(--success)' : 'var(--text-secondary)' }}>
-                                                                        {String.fromCharCode(65 + i)}. {opt} {i === q.correct_index ? ' ✓' : ''}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    ) : activeLesson ? (
+                    {activeLesson ? (
                         <div className="lesson-editor">
                             <div className="editor-card" style={{ marginBottom: '20px' }}>
                                 <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -361,28 +261,25 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                             </div>
 
                             {/* Resources Grid (Video twin-cards) */}
-                            {(() => {
-                                const materials = activeLesson.materials || [];
-                                const videoMaterial = materials.find((m: any) => (m.type || '').toString().toLowerCase() === 'video');
-                                return videoMaterial ? (
+                            {activeLesson.materials?.find((m: any) => m.type === 'Video') ? (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
                                     {/* Card 1: Main Video */}
                                     <div className="editor-card" style={{ padding: '0', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', overflow: 'hidden', height: '280px', display: 'flex', flexDirection: 'column' }}>
                                         <div className="card-header" style={{ border: 'none', background: 'transparent', padding: '15px 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <h3 style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2.5px' }}>VIDEO CONTENT</h3>
                                             <button className="btn-sidebar-delete" onClick={() => {
+                                                const vid = activeLesson.materials.find((m: any) => m.type === 'Video');
                                                 showConfirm('Delete Video', 'Remove this video file from the lesson?', () => {
-                                                    apiClient.deleteMaterial(videoMaterial.id).then(() => { loadCourseDetails(); closeConfirm(); });
+                                                    apiClient.deleteMaterial(vid.id).then(() => { loadCourseDetails(); closeConfirm(); });
                                                 });
                                             }}>×</button>
                                         </div>
-                                        <div style={{ position: 'relative', flex: 1, background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%)', borderRadius: '0 0 24px 24px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <div style={{ position: 'relative', flex: 1, background: '#000', borderRadius: '0 0 24px 24px', overflow: 'hidden' }}>
                                             <video src={(() => {
-                                                const url = videoMaterial.url;
+                                                const url = activeLesson.materials.find((m: any) => m.type === 'Video').url;
                                                 const filename = url?.split('/').pop();
-                                                const base = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
-                                                return filename ? `${base.replace(/\/$/, '')}/stream/${filename}` : url || undefined;
-                                            })()} preload="metadata" controls poster={videoMaterial.thumbnail_url || undefined} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                                return filename ? `http://127.0.0.1:8000/api/stream/${filename}` : url;
+                                            })()} preload="none" controls poster={activeLesson.materials.find((m: any) => m.type === 'Video').thumbnail_url} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
 
                                             <input type="file" accept="video/*" id="video-replace" hidden onChange={e => handleFileUpload(e, activeLesson.id, 'Video')} />
                                             <label htmlFor="video-replace" style={{ position: 'absolute', top: '10px', left: '10px', padding: '6px 14px', background: 'rgba(0,0,0,0.6)', color: 'white', borderRadius: '8px', fontSize: '9px', fontWeight: 900, cursor: 'pointer', backdropFilter: 'blur(10px)', border: '1px solid rgba(255,255,255,0.1)', opacity: 0, transition: '0.2s' }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0'}>REPLACE VIDEO</label>
@@ -393,17 +290,18 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                     <div className="editor-card" style={{ padding: '0', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', overflow: 'hidden', height: '280px', display: 'flex', flexDirection: 'column' }}>
                                         <div className="card-header" style={{ border: 'none', background: 'transparent', padding: '15px 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <h3 style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2.5px' }}>THUMBNAIL PREVIEW</h3>
-                                            {videoMaterial.thumbnail_url && (
+                                            {activeLesson.materials.find((m: any) => m.type === 'Video').thumbnail_url && (
                                                 <button className="btn-sidebar-delete" onClick={() => {
+                                                    const vid = activeLesson.materials.find((m: any) => m.type === 'Video');
                                                     showConfirm('Remove Thumbnail', 'Reset poster to default preview?', () => {
-                                                        apiClient.updateMaterial(videoMaterial.id, { thumbnail_url: '' }).then(() => { loadCourseDetails(); closeConfirm(); });
+                                                        apiClient.updateMaterial(vid.id, { thumbnail_url: '' }).then(() => { loadCourseDetails(); closeConfirm(); });
                                                     });
                                                 }}>×</button>
                                             )}
                                         </div>
-                                        <div style={{ position: 'relative', flex: 1, background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%)', borderRadius: '0 0 24px 24px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.06)' }}>
-                                            {videoMaterial.thumbnail_url ? (
-                                                <img src={videoMaterial.thumbnail_url} alt="Thumb" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                        <div style={{ position: 'relative', flex: 1, background: '#000', borderRadius: '0 0 24px 24px', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            {activeLesson.materials.find((m: any) => m.type === 'Video').thumbnail_url ? (
+                                                <img src={activeLesson.materials.find((m: any) => m.type === 'Video').thumbnail_url} alt="Thumb" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                                             ) : (
                                                 <div style={{ textAlign: 'center' }}>
                                                     <div style={{ fontSize: '36px', marginBottom: '10px', opacity: 0.2 }}>🖼️</div>
@@ -414,18 +312,17 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                 const f = e.target.files?.[0]; if (!f) return;
                                                 const res = await apiClient.uploadFile(f, 'Image');
                                                 if (res.success) {
-                                                    await apiClient.updateMaterial(videoMaterial.id, { thumbnail_url: res.url }); loadCourseDetails();
+                                                    const vid = activeLesson.materials.find((m: any) => m.type === 'Video');
+                                                    await apiClient.updateMaterial(vid.id, { thumbnail_url: res.url }); loadCourseDetails();
                                                 }
                                             }} />
                                             <label htmlFor="thumb-replace" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', opacity: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px', fontWeight: 900, transition: '0.2s', backdropFilter: 'blur(8px)' }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0'}>
-                                                {videoMaterial.thumbnail_url ? 'REPLACE POSTER' : 'UPLOAD CUSTOM POSTER'}
+                                                {activeLesson.materials.find((m: any) => m.type === 'Video').thumbnail_url ? 'REPLACE POSTER' : 'UPLOAD CUSTOM POSTER'}
                                             </label>
                                         </div>
                                     </div>
                                 </div>
-                                ) : null;
-                            })()}
-                            {!((activeLesson.materials || []).find((m: any) => (m.type || '').toString().toLowerCase() === 'video')) && (
+                            ) : (
                                 <div style={{ marginBottom: '25px', textAlign: 'center', padding: '50px', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '2px dashed var(--glass-border)' }}>
                                     <div style={{ fontSize: '40px', marginBottom: '15px', opacity: 0.4 }}>🎬</div>
                                     <h4 style={{ margin: '0 0 10px', color: 'var(--text-main)', fontSize: '15px', fontWeight: 800 }}>No main video detected</h4>
@@ -449,19 +346,19 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                 <div className="card-header" style={{ padding: '10px 20px 20px', border: 'none', background: 'transparent', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                                         <h3 style={{ fontSize: '12px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '1px', margin: 0 }}>PDF DOCUMENTS</h3>
-                                        {(activeLesson.materials || []).filter((m: any) => (m.type || '').toString().toLowerCase() === 'pdf').length > 0 && (
+                                        {activeLesson.materials?.filter((m: any) => m.type === 'PDF').length > 0 && (
                                             <span style={{ fontSize: '10px', fontWeight: 800, color: 'var(--tier-color)', background: 'rgba(var(--primary-rgb), 0.1)', padding: '4px 12px', borderRadius: '8px', border: '1px solid rgba(var(--primary-rgb), 0.1)' }}>
-                                                {(activeLesson.materials || []).filter((m: any) => (m.type || '').toString().toLowerCase() === 'pdf').length} ATTACHED
+                                                {activeLesson.materials.filter((m: any) => m.type === 'PDF').length} ATTACHED
                                             </span>
                                         )}
                                     </div>
                                 </div>
 
-                                {((activeLesson.materials || []).filter((m: any) => (m.type || '').toString().toLowerCase() === 'pdf').length > 0) && (
+                                {activeLesson.materials?.filter((m: any) => m.type === 'PDF').length > 0 && (
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '25px', alignItems: 'start' }}>
                                         {/* Left Side: List of Documents */}
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                            {(activeLesson.materials || []).filter((m: any) => (m.type || '').toString().toLowerCase() === 'pdf').map((pdf: any) => (
+                                            {activeLesson.materials.filter((m: any) => m.type === 'PDF').map((pdf: any) => (
                                                 <div
                                                     key={pdf.id}
                                                     className="editor-card"
@@ -479,12 +376,12 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                                             <div style={{ width: '24px', height: '24px', borderRadius: '6px', background: 'rgba(var(--error-rgb), 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px' }}>📄</div>
                                                             <span style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '0.5px' }}>
-                                                                {(pdf.title || '').length > 30 ? (pdf.title || '').substring(0, 27) + '...' : (pdf.title || 'Untitled')}
+                                                                {pdf.title.length > 30 ? pdf.title.substring(0, 27) + '...' : pdf.title}
                                                             </span>
                                                         </div>
                                                         <button className="btn-sidebar-delete" onClick={(e) => {
                                                             e.stopPropagation();
-                                                            showConfirm('Remove Document', `Delete "${pdf.title || 'this document'}"?`, () => {
+                                                            showConfirm('Remove Document', `Delete "${pdf.title}"?`, () => {
                                                                 apiClient.deleteMaterial(pdf.id).then(() => {
                                                                     if (previewPdfId === pdf.id) setPreviewPdfId(null);
                                                                     loadCourseDetails(); closeConfirm();
@@ -538,7 +435,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                 {previewPdfId && (
                                                     <a
                                                         href={(() => {
-                                                            const pdf = (activeLesson.materials || []).find((m: any) => m.id === previewPdfId);
+                                                            const pdf = activeLesson.materials.find((m: any) => m.id === previewPdfId);
                                                             if (!pdf) return '#';
                                                             const filename = pdf.url?.split('/').pop();
                                                             return filename ? `http://127.0.0.1:8000/api/stream/${filename}` : pdf.url;
@@ -553,7 +450,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                     <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)', background: '#fff', height: '100%', minHeight: '350px' }}>
                                                         <iframe
                                                             src={(() => {
-                                                                const pdf = (activeLesson.materials || []).find((m: any) => m.id === previewPdfId);
+                                                                const pdf = activeLesson.materials.find((m: any) => m.id === previewPdfId);
                                                                 if (!pdf) return '';
                                                                 const filename = pdf.url?.split('/').pop();
                                                                 return filename ? `http://127.0.0.1:8000/api/stream/${filename}` : pdf.url;
@@ -573,7 +470,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                     </div>
                                 )}
 
-                                {((activeLesson.materials || []).filter((m: any) => (m.type || '').toString().toLowerCase() === 'pdf').length === 0) && (
+                                {activeLesson.materials?.filter((m: any) => m.type === 'PDF').length === 0 && (
                                     <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 8px 30px rgba(0,0,0,0.1)' }}>
                                         <div style={{ fontSize: '40px', marginBottom: '15px', opacity: 0.4 }}>📄</div>
                                         <h4 style={{ margin: '0 0 10px', color: 'var(--text-main)', fontSize: '15px', fontWeight: 800 }}>No documents detected</h4>
@@ -648,82 +545,6 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                         </div>
                         <div className="modal-footer">
                             <button className="btn-premium-danger" style={{ width: '100%' }} onClick={closeError}>Acknowledge and Continue</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {addQuestionModal.isOpen && exam && (
-                <div className="premium-modal-overlay" onClick={() => setAddQuestionModal(p => ({ ...p, isOpen: false }))}>
-                    <div className="premium-modal-card" style={{ maxWidth: '520px' }} onClick={e => e.stopPropagation()}>
-                        <div className="modal-header">
-                            <h2>Add Question</h2>
-                        </div>
-                        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div>
-                                <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>QUESTION</label>
-                                <textarea
-                                    className="premium-input"
-                                    placeholder="Enter the question text..."
-                                    value={addQuestionModal.question}
-                                    onChange={e => setAddQuestionModal(p => ({ ...p, question: e.target.value }))}
-                                    rows={3}
-                                    style={{ width: '100%', minHeight: '80px', resize: 'vertical' }}
-                                />
-                            </div>
-                            {addQuestionModal.options.map((opt, i) => (
-                                <div key={i}>
-                                    <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>
-                                        OPTION {String.fromCharCode(65 + i)} {addQuestionModal.correctIndex === i ? '(Correct)' : ''}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        className="premium-input"
-                                        placeholder={`Option ${String.fromCharCode(65 + i)}`}
-                                        value={opt}
-                                        onChange={e => {
-                                            const next = [...addQuestionModal.options];
-                                            next[i] = e.target.value;
-                                            setAddQuestionModal(p => ({ ...p, options: next }));
-                                        }}
-                                    />
-                                </div>
-                            ))}
-                            <div>
-                                <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '1px', display: 'block', marginBottom: '8px' }}>CORRECT ANSWER</label>
-                                <select
-                                    className="premium-input"
-                                    value={addQuestionModal.correctIndex}
-                                    onChange={e => setAddQuestionModal(p => ({ ...p, correctIndex: Number(e.target.value) }))}
-                                >
-                                    {addQuestionModal.options.map((_, i) => (
-                                        <option key={i} value={i}>Option {String.fromCharCode(65 + i)}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                        <div className="modal-footer">
-                            <button className="btn-premium-ghost" onClick={() => setAddQuestionModal(p => ({ ...p, isOpen: false }))}>Cancel</button>
-                            <button
-                                className="btn-premium-primary"
-                                onClick={async () => {
-                                    const { question, options, correctIndex } = addQuestionModal;
-                                    const opts = options.filter(o => o.trim());
-                                    if (!question.trim() || opts.length < 2) {
-                                        showError('Validation', 'Provide a question and at least 2 options.');
-                                        return;
-                                    }
-                                    const res = await apiClient.addExamQuestion(exam.id, { question_text: question.trim(), options: opts, correct_index: correctIndex >= opts.length ? 0 : correctIndex, sequence: exam.questions.length });
-                                    if (res.success) {
-                                        loadExam();
-                                        setAddQuestionModal({ isOpen: false, question: '', options: ['', '', '', ''], correctIndex: 0 });
-                                    } else {
-                                        showError('Error', 'Failed to add question.');
-                                    }
-                                }}
-                            >
-                                Add Question
-                            </button>
                         </div>
                     </div>
                 </div>
