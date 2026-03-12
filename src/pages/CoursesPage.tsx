@@ -139,7 +139,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
             }}>
                 <div>
                     <h1 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, letterSpacing: '-0.5px' }}>
-                        Educational Content
+                        Course Library
                     </h1>
                     <p style={{ margin: '6px 0 0', color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
                         Manage courses by access tier — each column represents a subscription level

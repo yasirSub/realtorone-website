@@ -304,3 +304,10 @@ Backend & Data:
   - Exam banner now visible to everyone; shows progress % when locked (e.g. "40% complete — finish all modules to unlock"). Unlocks when course is 100% complete.
   - Certification exam page: realtor-focused copy ("Certification exam", "Submit for certification"), gradient header, meta badges (questions, pass %, time), refined question cards, result screen copy ("You passed!" / "Keep practicing").
   - Pass result screen: "Download certificate" button when user passes; placeholder for future certificate feature (shows "Coming soon").
+
+### **Day 17: Mar 12 - VPS Docker Runtime & Auto-Deploy**
+Website:
+  - Switched production website hosting from Hostinger Docker Manager builds to a stable Docker CLI flow on the VPS using `realtorone-website:latest` and the shared `backend_default` network.
+  - Updated Courses page copy (header now "Course Library") to avoid duplicate "Educational Content" wording on the curriculum grid screen.
+  - Added `docker-compose.yml` and refined `compose.yaml` for clean VPS deployments and future portability.
+  - Introduced `deploy-on-push.yml` GitHub Actions workflow that SSHes into the VPS, pulls the latest `main` branch, rebuilds the Docker image, and restarts the `realtorone-website` container automatically on each push.
