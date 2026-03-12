@@ -311,3 +311,14 @@ Website:
   - Updated Courses page copy (header now "Course Library") to avoid duplicate "Educational Content" wording on the curriculum grid screen.
   - Added `docker-compose.yml` and refined `compose.yaml` for clean VPS deployments and future portability.
   - Introduced `deploy-on-push.yml` GitHub Actions workflow that SSHes into the VPS, pulls the latest `main` branch, rebuilds the Docker image, and restarts the `realtorone-website` container automatically on each push.
+
+### **Day 18: Mar 13 - Deploy Hardening & Course Media Fixes**
+Website:
+    - Consolidated deployment to one GitHub Actions workflow and removed conflicting duplicate workflows.
+    - Updated curriculum media rendering to resolve live API asset URLs correctly (removed localhost-only preview behavior).
+    - Increased website proxy upload capacity and timeouts for large video/PDF uploads.
+Backend:
+    - Raised public runtime upload and input limits to align with 1GB course media handling.
+    - Enforced lesson material ordering so clients always receive Video first, then PDF, then other items.
+Documentation:
+    - Standardized progress logging to a single dated file (`work.md`) for all surfaces.
