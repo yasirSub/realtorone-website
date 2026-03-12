@@ -24,7 +24,7 @@ const Header: React.FC<HeaderProps> = ({
             case 'subscriptions': return 'REVENUE ENGINE';
             case 'settings': return 'SYSTEM CONFIGURATION';
             case 'user-profile': return 'PRACTITIONER DOSSIER';
-            case 'courses': return 'EDUCATIONAL CONTENT';
+            case 'courses': return 'COURSE LIBRARY';
             default: return activeTab.toUpperCase();
         }
     };
