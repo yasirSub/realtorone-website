@@ -116,6 +116,13 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
     const getTierColor = (tier: string) =>
         TIERS.find(t => t.key.toLowerCase() === tier.toLowerCase())?.color ?? '#38BDF8';
 
+    const resolveAssetUrl = (url?: string) => {
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+        const base = apiClient.getBaseUrl().replace('/api', '');
+        return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+    };
+
     if (selectedCourseForCurriculum) {
         return (
             <CurriculumEditor
@@ -378,7 +385,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
                                     display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative',
                                 }}>
                                     {formData.thumbnail_url ? (
-                                        <img src={formData.thumbnail_url} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                        <img src={resolveAssetUrl(formData.thumbnail_url)} alt="thumb" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                     ) : (
                                         <span style={{ fontSize: '28px' }}>🎓</span>
                                     )}
@@ -562,6 +569,13 @@ interface CourseCardProps {
 const CourseCard: React.FC<CourseCardProps> = ({ course, tierColor, onEdit, onDelete, onCurriculum }) => {
     const [hovered, setHovered] = useState(false);
 
+    const resolveAssetUrl = (url?: string) => {
+        if (!url) return '';
+        if (url.startsWith('http')) return url;
+        const base = apiClient.getBaseUrl().replace('/api', '');
+        return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+    };
+
     return (
         <div
             onMouseEnter={() => setHovered(true)}
@@ -580,7 +594,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, tierColor, onEdit, onDe
             {course.thumbnail_url ? (
                 <div style={{ height: '130px', overflow: 'hidden', position: 'relative' }}>
                     <img
-                        src={course.thumbnail_url}
+                        src={resolveAssetUrl(course.thumbnail_url)}
                         alt={course.title}
                         style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                     />

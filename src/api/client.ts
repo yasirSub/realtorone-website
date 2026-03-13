@@ -4,6 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (['localhost', '127.0.
 console.log('API Base URL:', API_BASE_URL);
 
 export const apiClient = {
+    getBaseUrl: () => API_BASE_URL,
     login: async (email: string, password: string): Promise<{ status: string; token: string; message?: string }> => {
         const response = await fetch(`${API_BASE_URL}/admin/login`, {
             method: 'POST',
