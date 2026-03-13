@@ -322,3 +322,7 @@ Backend:
     - Enforced lesson material ordering so clients always receive Video first, then PDF, then other items.
 Documentation:
     - Standardized progress logging to a single dated file (`work.md`) for all surfaces.
+Application (Mobile):
+    - Refined Activity Log flows: subconscious activities now follow the new mindset/growth grouping, and the conscious intro popup now appears only for users with zero clients based on live client status.
+    - Updated the conscious intro behavior so users with zero clients keep seeing the popup whenever they enter the tab, until they actually have clients.
+    - Hid Activity Log point values from the mobile UI, removing visible points badges and per-activity point labels for end users.
