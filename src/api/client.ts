@@ -253,9 +253,37 @@ export const apiClient = {
         });
         return response.json();
     },
+    updateActivityGroup: async (data: { category: 'conscious' | 'subconscious'; current_section_title: string; section_title: string; section_order: number }): Promise<{ success: boolean; data: ActivityType[] }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/activity-types/group-update`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    },
     deleteActivityType: async (id: number): Promise<{ success: boolean }> => {
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}`, {
             method: 'DELETE'
+        });
+        return response.json();
+    },
+    getActivityTypeDailyLogs: async (id: number, fromDay = 1, toDay = 60): Promise<{ success: boolean; data: Array<{ day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null }> }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs?from_day=${fromDay}&to_day=${toDay}`);
+        return response.json();
+    },
+    upsertActivityTypeDailyLog: async (id: number, day: number, data: { task_description?: string; script_idea?: string; feedback?: string }): Promise<{ success: boolean; data: any }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/${day}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        return response.json();
+    },
+    bulkUpsertActivityTypeDailyLogs: async (id: number, entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string }>): Promise<{ success: boolean; count: number }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/bulk`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entries })
         });
         return response.json();
     },

@@ -326,3 +326,35 @@ Application (Mobile):
     - Refined Activity Log flows: subconscious activities now follow the new mindset/growth grouping, and the conscious intro popup now appears only for users with zero clients based on live client status.
     - Updated the conscious intro behavior so users with zero clients keep seeing the popup whenever they enter the tab, until they actually have clients.
     - Hid Activity Log point values from the mobile UI, removing visible points badges and per-activity point labels for end users.
+
+### **Day 19: Mar 18 - Local Docker Stack Recovery**
+Backend:
+    - Fixed the Docker build context to ignore the `public/storage` symlink so the Laravel container can build locally again.
+    - Restarted the local Docker stack to align backend services with the MySQL/phpMyAdmin containers.
+Website:
+    - Rebuilt and launched the website inside Docker for server-style local testing instead of the Vite dev server.
+Application (Mobile):
+    - Centralized the app API base configuration so Android emulator, web, and desktop builds all target the correct local Docker backend automatically.
+    - Switched identity-conditioning sections on mobile to render from backend-provided section titles and ordering instead of hardcoded group names.
+Backend:
+    - Added backend-managed section metadata for `activity_types` and backfilled existing rows so admin changes can drive app grouping.
+Website:
+    - Renamed sidebar navigation from "Growth Profile" to "Tasks / Activities" and updated the admin page to manage grouped activity sections/orders.
+    - Reworked Tasks / Activities into a screenshot-style nested manager with left-side section tree, right-side activity detail panel, and group-wise update flow.
+
+### **Day 20: Mar 19 - Activity Manager Simplification**
+Backend:
+    - Normalized subconscious activity grouping into two backend-driven tabs (`Mindset & Inner Strength`, `Growth & Daily Performance`) and applied it to existing DB records via migration.
+    - Updated default activity seeding so fresh environments keep the same two-tab subconscious structure automatically.
+Website:
+    - Simplified Tasks / Activities UI to a cleaner editor-first layout: straightforward left list + right-side edit forms.
+    - Kept direct management actions in one place for admins: update group, update activity, add activity, delete activity, and delete group.
+    - Renamed the conscious side label from "Revenue Actions" to "Conscious" across Tasks / Activities and add-task defaults for clearer daily-task management.
+    - Added day-wise popup content management in Tasks / Activities so admins can save per-day task description + video/reel script idea (with bulk tab-separated import).
+    - Added collapsible/expandable editor blocks (Task Editor + Day-wise Popup Content + Bulk Import) and a one-click 60-day Visualization template loader for faster manual setup.
+Backend:
+    - Fixed activity deletion persistence by stopping automatic default reseeding on every `/activity-types` fetch (now seeds only when global activities are empty).
+    - Added `script_idea` support for activity types (migration + API/model updates) to store editable video/reel guidance per task.
+    - Added `activity_type_daily_logs` with admin endpoints for day-wise task/script content and exposed day-aware popup fields in `/activity-types` responses.
+Application (Mobile):
+    - Updated Activity Log cards to open a guided popup before YES/NO, showing day-wise task description and video/reel script idea from backend content.

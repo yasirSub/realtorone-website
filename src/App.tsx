@@ -56,7 +56,19 @@ function App() {
 
   const [activityTypes, setActivityTypes] = useState<ActivityType[]>([])
   const [showAddActivityModal, setShowAddActivityModal] = useState(false)
-  const [newActivity, setNewActivity] = useState({ name: '', points: 5, category: 'conscious' as const, icon: 'Activity', is_global: true, min_tier: 'Consultant' })
+  const [newActivity, setNewActivity] = useState({
+    name: '',
+    description: '',
+    script_idea: '',
+    points: 5,
+    category: 'conscious' as const,
+    section_title: 'Conscious',
+    section_order: 1,
+    item_order: 1,
+    icon: 'Activity',
+    is_global: true,
+    min_tier: 'Consultant'
+  })
   const [userActivityPoints, setUserActivityPoints] = useState(20)
 
   const [packages, setPackages] = useState<SubscriptionPackage[]>([])

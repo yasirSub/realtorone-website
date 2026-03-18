@@ -49,7 +49,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <button className={`nav-item ${activeTab === 'momentum' ? 'active' : ''}`} onClick={() => { setActiveTab('momentum'); setMobileMenuOpen(false); }}>
                         <span className="icon">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
-                        </span> <span>Growth Profile</span>
+                        </span> <span>Tasks / Activities</span>
                     </button>
                 </div>
 

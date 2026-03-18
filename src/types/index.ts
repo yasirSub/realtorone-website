@@ -78,8 +78,18 @@ export interface PerformanceMetric {
 export interface ActivityType {
     id: number;
     name: string;
+    description?: string;
+    script_idea?: string;
+    task_description?: string;
+    video_reel_script_idea?: string;
+    daily_feedback?: string | null;
+    today_day_number?: number;
+    has_daily_log?: boolean;
     points: number;
     category: 'conscious' | 'subconscious';
+    section_title?: string;
+    section_order?: number;
+    item_order?: number;
     icon: string;
     is_global: boolean;
     min_tier?: string;
