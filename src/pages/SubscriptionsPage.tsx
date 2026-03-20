@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import type { SubscriptionPackage, UserSubscription, Coupon } from '../types';
 import { apiClient } from '../api/client';
+import ConfirmModal from '../components/modals/ConfirmModal';
+import EditModal from '../components/modals/EditModal';
 
 interface SubscriptionsPageProps {
     subTab: string;
@@ -52,23 +54,44 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
     const [selectedTierFilter, setSelectedTierFilter] = useState<'All' | 'Titan' | 'Rainmaker' | 'Consultant'>('All');
     const [expandedUserId, setExpandedUserId] = useState<number | null>(null);
 
+    // Replace native prompt/confirm popups with custom modals
+    const [editPackagePriceModal, setEditPackagePriceModal] = useState<{
+        show: boolean;
+        pkgId: number;
+        pkgName: string;
+        value: string;
+    }>({ show: false, pkgId: 0, pkgName: '', value: '' });
+
+    const [confirmRemovePackageModal, setConfirmRemovePackageModal] = useState<{
+        show: boolean;
+        pkgId: number;
+        pkgName: string;
+    }>({ show: false, pkgId: 0, pkgName: '' });
+
+    const [addFeatureModal, setAddFeatureModal] = useState<{
+        show: boolean;
+        pkgId: number;
+        pkgName: string;
+        value: string;
+    }>({ show: false, pkgId: 0, pkgName: '', value: '' });
+
     return (
         <div className="view-container fade-in">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '15px', marginBottom: '30px' }}>
                 <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('All'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'All' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'All' ? '1px solid var(--primary)' : '1px solid transparent' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Total Revenue</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--success)' }}>${estimatedMRR.toLocaleString()}</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--success)' }}>AED {estimatedMRR.toLocaleString()}</div>
                     <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Monthly Recurring</div>
                 </div>
                 <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Titan'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Titan' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Titan' ? '1px solid #F59E0B' : '1px solid transparent' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Titan</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#F59E0B' }}>{titanGoldUsers}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>${(titanGoldUsers * titanGoldPrice).toLocaleString()}/mo</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>AED {(titanGoldUsers * titanGoldPrice).toLocaleString()}/mo</div>
                 </div>
                 <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Rainmaker'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Rainmaker' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Rainmaker' ? '1px solid #94A3B8' : '1px solid transparent' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Rainmaker</div>
                     <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#94A3B8' }}>{rainmakerUsers}</div>
-                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>${(rainmakerUsers * rainmakerPrice).toLocaleString()}/mo</div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>AED {(rainmakerUsers * rainmakerPrice).toLocaleString()}/mo</div>
                 </div>
                 <div onClick={() => { setSubTab('subscribers'); setSelectedTierFilter('Consultant'); }} className="glass-panel" style={{ padding: '15px', display: 'flex', flexDirection: 'column', gap: '5px', cursor: 'pointer', transition: 'transform 0.2s', transform: subTab === 'subscribers' && selectedTierFilter === 'Consultant' ? 'scale(1.02)' : 'none', border: subTab === 'subscribers' && selectedTierFilter === 'Consultant' ? '1px solid var(--text-muted)' : '1px solid transparent' }}>
                     <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px' }}>Prospects</div>
@@ -163,7 +186,7 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                             </div>
                             <h3 style={{ margin: '10px 0', fontSize: '1.5rem', fontWeight: 900, color: titleColor, position: 'relative' }}>{displayName}</h3>
                             <div style={{ marginBottom: '20px', position: 'relative' }}>
-                                <span style={{ fontSize: '2rem', fontWeight: 900, color: priceColor }}>${pkg.price_monthly}</span>
+                                <span style={{ fontSize: '2rem', fontWeight: 900, color: priceColor }}>AED {pkg.price_monthly}</span>
                                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>/mo</span>
                             </div>
                             <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', marginBottom: '20px', lineHeight: '1.5' }}>{pkg.description}</p>
@@ -177,23 +200,21 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                                             {f}
                                         </li>
                                     ))}
-                                    <button style={{ border: 'none', background: 'none', color: 'var(--primary)', fontWeight: 800, fontSize: '0.7rem', padding: 0, cursor: 'pointer' }} onClick={() => {
-                                        const feat = prompt('Add feature to ' + pkg.name);
-                                        if (feat) {
-                                            const newFeatures = [...(pkg.features || []), feat];
-                                            apiClient.updatePackage(pkg.id, { features: newFeatures }).then(res => res.success && setPackages((prev: any[]) => prev.map(p => p.id === pkg.id ? res.data : p)));
-                                        }
-                                    }}>+ Add Access Item</button>
+                                    <button
+                                        style={{ border: 'none', background: 'none', color: 'var(--primary)', fontWeight: 800, fontSize: '0.7rem', padding: 0, cursor: 'pointer' }}
+                                        onClick={() => setAddFeatureModal({ show: true, pkgId: pkg.id, pkgName: pkg.name, value: '' })}
+                                    >
+                                        + Add Access Item
+                                    </button>
                                 </ul>
                             </div>
 
                             <div style={{ marginTop: '25px', display: 'flex', gap: '10px' }}>
                                 <button className="btn-primary" style={{ flex: 1, padding: '8px', background: 'var(--bg-app)', color: 'var(--text-main)', border: 'none' }} onClick={() => {
-                                    const newPrice = prompt('New monthly price for ' + pkg.name, String(pkg.price_monthly));
-                                    if (newPrice) apiClient.updatePackage(pkg.id, { price_monthly: Number(newPrice) }).then(res => res.success && setPackages((prev: any[]) => prev.map(p => p.id === pkg.id ? res.data : p)));
+                                    setEditPackagePriceModal({ show: true, pkgId: pkg.id, pkgName: pkg.name, value: String(pkg.price_monthly) });
                                 }}>Change Price</button>
                                 <button className="btn-primary" style={{ flex: 1, padding: '8px', background: 'rgba(239,68,68,0.1)', color: 'var(--error)', border: 'none' }} onClick={() => {
-                                    if (confirm('Delete infrastructure element ' + pkg.name + '?')) apiClient.deletePackage(pkg.id).then(res => res.success && setPackages((prev: any[]) => prev.filter(p => p.id !== pkg.id)));
+                                    setConfirmRemovePackageModal({ show: true, pkgId: pkg.id, pkgName: pkg.name });
                                 }}>Remove</button>
                             </div>
                         </div>
@@ -244,7 +265,7 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                                             <td><span style={{ background: u.status === 'active' ? 'var(--success)15' : 'var(--error)15', color: u.status === 'active' ? 'var(--success)' : 'var(--error)', padding: '4px 10px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 900 }}>{u.status === 'active' ? 'OPERATIONAL' : 'INACTIVE'}</span></td>
                                             <td><span className={`tier-pill ${tier.toLowerCase()}`}>{tier}</span></td>
                                             <td style={{ fontWeight: 600 }}>{sub ? new Date(sub.expires_at).toLocaleDateString() : 'N/A'}</td>
-                                            <td style={{ fontWeight: 900, color: 'var(--primary)' }}>${sub ? sub.amount_paid : 0}</td>
+                                            <td style={{ fontWeight: 900, color: 'var(--primary)' }}>AED {sub ? sub.amount_paid : 0}</td>
                                         </tr>
                                         {isExpanded && (
                                             <tr style={{ background: 'rgba(0,0,0,0.05)' }}>
@@ -351,7 +372,7 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                                             PAYPAL
                                         </div>
                                     </td>
-                                    <td style={{ fontWeight: 900 }}>${s.amount_paid}</td>
+                                    <td style={{ fontWeight: 900 }}>AED {s.amount_paid}</td>
                                     <td style={{ color: 'var(--text-muted)' }}>{new Date(s.created_at).toLocaleDateString()}</td>
                                 </tr>
                             ))}
@@ -370,7 +391,7 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                                 <label className="form-label">SELECT INFRASTRUCTURE LEVEL</label>
                                 <select className="form-input" style={{ width: '100%' }} onChange={(e) => setSandboxPurchase({ ...sandboxPurchase, package_id: Number(e.target.value) })}>
                                     <option value="0">Choose Tier...</option>
-                                    {packages.map(p => <option key={p.id} value={p.id}>{p.name} - ${p.price_monthly}/mo</option>)}
+                                    {packages.map(p => <option key={p.id} value={p.id}>{p.name} - AED {p.price_monthly}/mo</option>)}
                                 </select>
                             </div>
 
@@ -400,18 +421,18 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                             <div style={{ background: 'var(--bg-app)', padding: '20px', borderRadius: '15px', marginTop: '10px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem' }}>
                                     <span>Subtotal</span>
-                                    <span style={{ fontWeight: 800 }}>${(packages.find(p => p.id === sandboxPurchase.package_id)?.price_monthly || 0) * sandboxPurchase.months}</span>
+                                    <span style={{ fontWeight: 800 }}>AED {(packages.find(p => p.id === sandboxPurchase.package_id)?.price_monthly || 0) * sandboxPurchase.months}</span>
                                 </div>
                                 {sandboxPurchase.appliedCoupon && (
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.85rem', color: 'var(--success)' }}>
                                         <span>Discount ({sandboxPurchase.appliedCoupon.discount_percentage}%)</span>
-                                        <span>-${((packages.find(p => p.id === sandboxPurchase.package_id)?.price_monthly || 0) * sandboxPurchase.months * (sandboxPurchase.appliedCoupon.discount_percentage / 100)).toFixed(2)}</span>
+                                        <span>-AED {((packages.find(p => p.id === sandboxPurchase.package_id)?.price_monthly || 0) * sandboxPurchase.months * (sandboxPurchase.appliedCoupon.discount_percentage / 100)).toFixed(2)}</span>
                                     </div>
                                 )}
                                 <hr style={{ border: 'none', borderTop: '1px solid var(--glass-border)', margin: '15px 0' }} />
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', fontWeight: 900 }}>
                                     <span>Total</span>
-                                    <span style={{ color: 'var(--primary)' }}>${(((packages.find(p => p.id === sandboxPurchase.package_id)?.price_monthly || 0) * sandboxPurchase.months) * (sandboxPurchase.appliedCoupon ? (1 - sandboxPurchase.appliedCoupon.discount_percentage / 100) : 1)).toFixed(2)}</span>
+                                    <span style={{ color: 'var(--primary)' }}>AED {(((packages.find(p => p.id === sandboxPurchase.package_id)?.price_monthly || 0) * sandboxPurchase.months) * (sandboxPurchase.appliedCoupon ? (1 - sandboxPurchase.appliedCoupon.discount_percentage / 100) : 1)).toFixed(2)}</span>
                                 </div>
                             </div>
 
@@ -440,6 +461,92 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                                 <span style={{ fontWeight: 900 }}><i>Pay</i>Pal</span> <span>Checkout</span>
                             </button>
                             <p style={{ textAlign: 'center', fontSize: '0.7rem', color: 'var(--text-muted)' }}>* This is a sandbox simulation for development.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+            <EditModal
+                show={editPackagePriceModal.show}
+                title="Change Price"
+                label={`New monthly price (AED) for ${editPackagePriceModal.pkgName}`}
+                value={editPackagePriceModal.value}
+                onChange={(val) => setEditPackagePriceModal((prev) => ({ ...prev, value: val }))}
+                onClose={() => setEditPackagePriceModal((prev) => ({ ...prev, show: false }))}
+                onSave={(val) => {
+                    const num = Number(val);
+                    if (!Number.isFinite(num)) return;
+                    apiClient.updatePackage(editPackagePriceModal.pkgId, { price_monthly: num }).then(res => {
+                        if (res.success) setPackages((prev: any[]) => prev.map(p => p.id === editPackagePriceModal.pkgId ? res.data : p));
+                        setEditPackagePriceModal((prev) => ({ ...prev, show: false }));
+                    });
+                }}
+            />
+
+            <ConfirmModal
+                show={confirmRemovePackageModal.show}
+                title="Remove Package"
+                message={`Delete "${confirmRemovePackageModal.pkgName}"?`}
+                onClose={() => setConfirmRemovePackageModal((prev) => ({ ...prev, show: false }))}
+                onConfirm={() => {
+                    apiClient.deletePackage(confirmRemovePackageModal.pkgId).then(res => {
+                        if (res.success) setPackages((prev: any[]) => prev.filter(p => p.id !== confirmRemovePackageModal.pkgId));
+                        setConfirmRemovePackageModal((prev) => ({ ...prev, show: false }));
+                    });
+                }}
+            />
+
+            {addFeatureModal.show && (
+                <div
+                    className="modal-overlay"
+                    onClick={() => setAddFeatureModal((prev) => ({ ...prev, show: false }))}
+                >
+                    <div
+                        className="modal-content"
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: '420px' }}
+                    >
+                        <div style={{ padding: '25px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                                <h3 style={{ margin: 0, fontWeight: 800, fontSize: '1.1rem' }}>
+                                    Add Access Item
+                                </h3>
+                                <button
+                                    onClick={() => setAddFeatureModal((prev) => ({ ...prev, show: false }))}
+                                    style={{ background: 'var(--bg-app)', border: 'none', width: '30px', height: '30px', borderRadius: '10px', cursor: 'pointer', fontWeight: 800, fontSize: '0.8rem' }}
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>
+                                Feature (for {addFeatureModal.pkgName})
+                            </label>
+
+                            <input
+                                type="text"
+                                value={addFeatureModal.value}
+                                onChange={(e) => setAddFeatureModal((prev) => ({ ...prev, value: e.target.value }))}
+                                autoFocus
+                                placeholder="e.g. Dedicated Account Manager"
+                                style={{ width: '100%', padding: '14px', borderRadius: '12px', border: '2px solid var(--glass-border)', background: 'var(--bg-app)', fontWeight: 800, fontSize: '1rem', textAlign: 'left', color: 'var(--text-main)', boxSizing: 'border-box' }}
+                            />
+
+                            <button
+                                onClick={() => {
+                                    const feat = addFeatureModal.value.trim();
+                                    if (!feat) return;
+                                    const pkg = packages.find(p => p.id === addFeatureModal.pkgId);
+                                    const newFeatures = [...(pkg?.features || []), feat];
+                                    apiClient.updatePackage(addFeatureModal.pkgId, { features: newFeatures }).then(res => {
+                                        if (res.success) setPackages((prev: any[]) => prev.map(p => p.id === addFeatureModal.pkgId ? res.data : p));
+                                        setAddFeatureModal((prev) => ({ ...prev, show: false, value: '' }));
+                                    });
+                                }}
+                                className="btn-primary"
+                                style={{ width: '100%', marginTop: '18px', padding: '12px', fontSize: '0.9rem' }}
+                            >
+                                Save Changes
+                            </button>
                         </div>
                     </div>
                 </div>

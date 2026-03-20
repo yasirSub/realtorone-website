@@ -77,29 +77,6 @@ const Header: React.FC<HeaderProps> = ({
 
             {/* Right Section: System Status & Controls */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: '250px', justifyContent: 'flex-end' }}>
-                <div style={{
-                    background: theme === 'dark' ? 'rgba(1, 181, 116, 0.1)' : 'rgba(1, 181, 116, 0.05)',
-                    color: 'var(--success)',
-                    padding: '8px 16px',
-                    borderRadius: '12px',
-                    fontSize: '0.7rem',
-                    fontWeight: 900,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    border: '1px solid rgba(1, 181, 116, 0.15)',
-                    letterSpacing: '0.5px'
-                }}>
-                    <span style={{
-                        width: '8px',
-                        height: '8px',
-                        borderRadius: '50%',
-                        background: 'var(--success)',
-                        boxShadow: '0 0 12px var(--success)'
-                    }}></span>
-                    LIVE GATEWAY
-                </div>
-
                 <button
                     className="icon-button"
                     onClick={toggleTheme}

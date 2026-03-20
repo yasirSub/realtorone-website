@@ -40,6 +40,13 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
         const fetchData = async () => {
             setLoading(true);
             try {
+                const emptyLearningData = {
+                    subscription: null,
+                    course_progress: [],
+                    exam_attempts: [],
+                    material_progress: [],
+                };
+
                 const [perfRes, actRes, revRes, courseRes] = await Promise.all([
                     apiClient.getUserPerformance(user.id),
                     apiClient.getUserActivities(user.id),
@@ -58,6 +65,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                 }
                 if (courseRes.success && courseRes.data) {
                     setLearningData(courseRes.data);
+                } else {
+                    // Prevent the "Loading learning data…" state from staying forever.
+                    setLearningData((prev) => prev ?? emptyLearningData);
                 }
             } catch (error) {
                 console.error('Failed to sync operator data', error);
@@ -159,7 +169,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
     };
 
     const activityData = getChartData();
-    const maxVal = Math.max(...activityData.map((d: any) => d.value), 100);
+    // Scale bars using separate maxima for each score so the chart doesn't look “flattened”.
+    const maxConVal = Math.max(...activityData.map((d: any) => Number(d.conscious ?? 0)), 100);
+    const maxSubVal = Math.max(...activityData.map((d: any) => Number(d.subco ?? 0)), 100);
 
     const getTierColor = (tier?: string) => {
         switch (tier?.toLowerCase()) {
@@ -180,10 +192,108 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
         }
     };
 
+    const IconSvg: React.FC<{ name: string; color?: string; size?: number }> = ({ name, color = 'currentColor', size = 18 }) => {
+        const common = {
+            width: size,
+            height: size,
+            viewBox: '0 0 24 24',
+            fill: 'none',
+            stroke: color,
+            strokeWidth: 2,
+            strokeLinecap: 'round' as const,
+            strokeLinejoin: 'round' as const,
+            style: { display: 'block' as const },
+        };
+
+        switch (name) {
+            case 'growth':
+                return (
+                    <svg {...common}>
+                        <polyline points="3 17 9 11 13 15 21 7" />
+                        <polyline points="21 7 21 13 15 13" />
+                        <path d="M3 17v4h4" />
+                    </svg>
+                );
+            case 'execution':
+                return (
+                    <svg {...common}>
+                        <path d="M13 2L3 14h8l-1 10 10-12h-8l1-10z" />
+                    </svg>
+                );
+            case 'mindset':
+                return (
+                    <svg {...common}>
+                        <path d="M9 18h6" />
+                        <path d="M10 22h4" />
+                        <path d="M8 2c-1.5 1-2 3-2 5 0 2 1 3 1 4 0 1-1 2-1 3 0 3 3 4 4 4" />
+                        <path d="M16 2c1.5 1 2 3 2 5 0 2-1 3-1 4 0 1 1 2 1 3 0 3-3 4-4 4" />
+                        <path d="M12 6v6" />
+                    </svg>
+                );
+            case 'streak':
+                return (
+                    <svg {...common}>
+                        <path d="M12 2s4 4 4 8-4 6-4 12-8-4-8-10 8-10 8-10z" />
+                        <path d="M12 22c3 0 6-3 6-6" />
+                    </svg>
+                );
+            case 'hot_leads':
+                return (
+                    <svg {...common}>
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" />
+                        <circle cx="10" cy="7" r="4" />
+                        <path d="M20 8v6" />
+                        <path d="M23 11h-6" />
+                    </svg>
+                );
+            case 'deals_closed':
+                return (
+                    <svg {...common}>
+                        <path d="M12 1l7 7-7 7-7-7 7-7z" />
+                        <path d="M5 18l-2 3h8l-2-3" />
+                        <path d="M19 18l2 3h-8l2-3" />
+                    </svg>
+                );
+            case 'commission':
+                return (
+                    <svg {...common}>
+                        <path d="M12 1v22" />
+                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7H14a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                );
+            case 'top_source':
+                return (
+                    <svg {...common}>
+                        <path d="M3 3v18h18" />
+                        <path d="M7 14l4-4 4 4 4-6" />
+                    </svg>
+                );
+            case 'package':
+                return (
+                    <svg {...common}>
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73L13 3a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73L11 21a2 2 0 0 0 2 0l7-3.27a2 2 0 0 0 1-1.73z" />
+                        <path d="M3.3 7.3L12 12l8.7-4.7" />
+                        <path d="M12 22V12" />
+                    </svg>
+                );
+            case 'book':
+                return (
+                    <svg {...common}>
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+                        <path d="M20 22V4a2 2 0 0 0-2-2H6.5A2.5 2.5 0 0 0 4 4.5v15" />
+                        <path d="M8 6h8" />
+                        <path d="M8 10h8" />
+                    </svg>
+                );
+            default:
+                return <span style={{ fontWeight: 900, color }}>{name}</span>;
+        }
+    };
+
     return (
-        <div className="view-container fade-in" style={{ padding: '0 20px 60px 20px' }}>
+        <div className="view-container fade-in userprofile-page">
             {/* Action Bar */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '35px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
                 <button
                     onClick={onBack}
                     className="btn-view"
@@ -217,11 +327,11 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: '35px', alignItems: 'flex-start' }}>
+            <div className="userprofile-grid">
                 {/* Left Tactical Column */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     <div className="glass-panel" style={{ 
-                        padding: '40px 30px', 
+                        padding: '32px 24px', 
                         textAlign: 'center', 
                         position: 'relative',
                         background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}08, transparent)`,
@@ -310,7 +420,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                     </div>
 
                     <div className="glass-panel" style={{ 
-                        padding: '35px',
+                        padding: '28px',
                         background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}05, transparent)`,
                         border: `1px solid ${getTierColor(user.membership_tier)}20`
                     }}>
@@ -320,7 +430,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                             gap: '10px', 
                             fontSize: '0.7rem', 
                             fontWeight: 950, 
-                            marginBottom: '30px', 
+                            marginBottom: '22px', 
                             textTransform: 'uppercase', 
                             letterSpacing: '2px', 
                             color: getTierColor(user.membership_tier)
@@ -334,7 +444,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                             }}></div>
                             System Diagnostics
                         </h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                             {[
                                 { l: 'Professional Branding', k: 'branding' as const, c: 'var(--primary)' },
                                 { l: 'Lead Gen System', k: 'lead_gen' as const, c: '#a855f7' },
@@ -359,13 +469,13 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                 </div>
 
                 {/* Main Performance Grid */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '35px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '25px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
                         {[
-                            { label: 'AGGREGATE GROWTH', value: `${user.growth_score || 0}%`, icon: '📈', color: 'var(--primary)' },
-                            { label: 'EXECUTION RATE', value: `${user.execution_rate || 0}%`, icon: '⚡', color: 'var(--success)' },
-                            { label: 'MINDSET INDEX', value: user.mindset_index || 0, icon: '🧠', color: '#f59e0b' },
-                            { label: 'CURRENT STREAK', value: `${user.current_streak || 0}D`, icon: '🔥', color: '#ef4444' },
+                            { label: 'AGGREGATE GROWTH', value: `${user.growth_score || 0}%`, iconKey: 'growth', color: 'var(--primary)' },
+                            { label: 'EXECUTION RATE', value: `${user.execution_rate || 0}%`, iconKey: 'execution', color: 'var(--success)' },
+                            { label: 'MINDSET INDEX', value: user.mindset_index || 0, iconKey: 'mindset', color: '#f59e0b' },
+                            { label: 'CURRENT STREAK', value: `${user.current_streak || 0}D`, iconKey: 'streak', color: '#ef4444' },
                         ].map((stat, i) => (
                             <div key={i} className="glass-panel" style={{ 
                                 padding: '25px', 
@@ -396,7 +506,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                 }}></div>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px', position: 'relative' }}>
                                     <span style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '1px' }}>{stat.label}</span>
-                                    <span style={{ fontSize: '1.4rem', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>{stat.icon}</span>
+                                    <span style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}>
+                                        <IconSvg name={stat.iconKey} color={stat.color} size={18} />
+                                    </span>
                                 </div>
                                 <div style={{ 
                                     fontSize: '2.4rem', 
@@ -414,7 +526,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
 
                     {/* Deal Room / Key Metrics - Admin view per user */}
                     <div className="glass-panel" style={{ 
-                        padding: '35px', 
+                        padding: '28px', 
                         background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.06), transparent)',
                         border: '1px solid rgba(16, 185, 129, 0.25)'
                     }}>
@@ -424,10 +536,10 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                         </h3>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
                             {[
-                                { key: 'hot_leads' as const, label: 'HOT LEADS', value: revenueMetrics?.hot_leads ?? '—', icon: '👥', color: 'var(--primary)' },
-                                { key: 'deals_closed' as const, label: 'DEALS CLOSED', value: revenueMetrics?.deals_closed ?? '—', icon: '🤝', color: '#a855f7' },
-                                { key: 'commission' as const, label: 'NET COMMISSION EARNED', value: revenueMetrics != null ? formatCommission(revenueMetrics.total_commission) : '—', icon: '💰', color: 'var(--success)' },
-                                { key: 'top_source' as const, label: 'TOP SOURCE', value: revenueMetrics?.top_source ?? '—', icon: '📊', color: '#f59e0b' },
+                                { key: 'hot_leads' as const, label: 'HOT LEADS', value: revenueMetrics?.hot_leads ?? '—', iconKey: 'hot_leads', color: 'var(--primary)' },
+                                { key: 'deals_closed' as const, label: 'DEALS CLOSED', value: revenueMetrics?.deals_closed ?? '—', iconKey: 'deals_closed', color: '#a855f7' },
+                                { key: 'commission' as const, label: 'NET COMMISSION EARNED', value: revenueMetrics != null ? formatCommission(revenueMetrics.total_commission) : '—', iconKey: 'commission', color: 'var(--success)' },
+                                { key: 'top_source' as const, label: 'TOP SOURCE', value: revenueMetrics?.top_source ?? '—', iconKey: 'top_source', color: '#f59e0b' },
                             ].map((m) => (
                                 <div
                                     key={m.key}
@@ -451,7 +563,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                 >
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
                                         <span style={{ fontSize: '0.6rem', fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '1px' }}>{m.label}</span>
-                                        <span style={{ fontSize: '1.2rem' }}>{m.icon}</span>
+                                        <span style={{ display: 'flex', alignItems: 'center' }}>
+                                            <IconSvg name={m.iconKey} color={m.color} size={18} />
+                                        </span>
                                     </div>
                                     <div style={{ fontSize: '1.4rem', fontWeight: 950, color: m.color }}>{m.value}</div>
                                     {expandedMetric === m.key && (
@@ -581,7 +695,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                         gap: '12px'
                                     }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <span style={{ fontSize: '1.25rem' }}>📦</span>
+                                            <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                <IconSvg name="package" color="#6366f1" size={20} />
+                                            </span>
                                             <div>
                                                 <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px' }}>Current package</div>
                                                 <div style={{ fontSize: '1rem', fontWeight: 800, color: '#6366f1' }}>{learningData.subscription.package_name}</div>
@@ -724,7 +840,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                 {/* Empty states */}
                                 {learningFilter === 'all' && !learningData.subscription && learningData.course_progress.length === 0 && learningData.exam_attempts.length === 0 && learningData.material_progress.length === 0 && (
                                     <div style={{ padding: '40px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                                        <div style={{ fontSize: '2rem', marginBottom: '8px', opacity: 0.6 }}>📚</div>
+                                        <div style={{ marginBottom: '10px', opacity: 0.7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <IconSvg name="book" color="var(--primary)" size={40} />
+                                        </div>
                                         <div style={{ fontWeight: 600 }}>No course or exam activity yet</div>
                                         <div style={{ marginTop: '4px', fontSize: '0.85rem' }}>Progress and exam attempts will appear here once the user starts learning.</div>
                                     </div>
@@ -742,8 +860,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                         )}
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '35px', minHeight: '400px', position: 'relative' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '50px' }}>
+                    <div className="glass-panel" style={{ padding: '28px', minHeight: '400px', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '35px' }}>
                             <div>
                                 <h3 style={{ fontSize: '1.3rem', fontWeight: 950, margin: 0, letterSpacing: '-0.5px' }}>Behavioral Momentum Path</h3>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600 }}>{
@@ -793,9 +911,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                             ) : activityData.map((d: any, i) => (
                                 <div key={i} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '15px' }}>
                                     <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', height: '100%', justifyContent: 'center' }}>
-                                        <div style={{
+                                            <div style={{
                                             width: '16px',
-                                            height: `${Math.max(10, (d.conscious / maxVal) * 200)}px`,
+                                            height: `${Math.max(10, (Number(d.conscious ?? 0) / maxConVal) * 200)}px`,
                                             background: 'linear-gradient(to top, #7e22ce, #a855f7)',
                                             borderRadius: '6px 6px 2px 2px',
                                             transition: 'height 1s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -803,7 +921,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                         }}></div>
                                         <div style={{
                                             width: '16px',
-                                            height: `${Math.max(10, (d.subco / maxVal) * 200)}px`,
+                                            height: `${Math.max(10, (Number(d.subco ?? 0) / maxSubVal) * 200)}px`,
                                             background: 'linear-gradient(to top, #d946ef, #f472b6)',
                                             borderRadius: '6px 6px 2px 2px',
                                             transition: 'height 1s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -816,9 +934,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '35px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '28px' }}>
                         <div className="glass-panel" style={{ 
-                            padding: '35px', 
+                            padding: '28px', 
                             background: `linear-gradient(135deg, ${getTierColor(user.membership_tier)}08, transparent)`,
                             border: `1px solid ${getTierColor(user.membership_tier)}30`,
                             position: 'relative',
@@ -933,14 +1051,14 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                         </div>
 
                         <div className="glass-panel" style={{ 
-                            padding: '35px',
+                        padding: '28px',
                             background: `linear-gradient(135deg, var(--success)08, transparent)`,
                             border: '1px solid var(--success)30'
                         }}>
                             <h3 style={{ 
                                 fontSize: '1rem', 
                                 fontWeight: 950, 
-                                marginBottom: '35px', 
+                                marginBottom: '22px', 
                                 letterSpacing: '0.5px',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -996,8 +1114,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                         </div>
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '40px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px' }}>
+                    <div className="glass-panel" style={{ padding: '32px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px' }}>
                             <div>
                                 <h3 style={{ fontSize: '1.4rem', fontWeight: 950, margin: 0, letterSpacing: '-0.5px' }}>Operational Activity Dossier</h3>
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600 }}>Decentralized behavioral logic auditing</p>

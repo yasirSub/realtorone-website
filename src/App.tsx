@@ -245,6 +245,7 @@ function App() {
           {activeTab === 'momentum' && (
             <MomentumPage
               activityTypes={activityTypes}
+              searchTerm={searchTerm}
               userActivityPoints={userActivityPoints}
               setShowAddActivityModal={setShowAddActivityModal}
               setUserActivityPoints={setUserActivityPoints}

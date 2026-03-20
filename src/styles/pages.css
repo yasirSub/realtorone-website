@@ -41,6 +41,18 @@
     font-size: 1rem;
 }
 
+/* User profile / Practitioner dossier */
+.userprofile-page {
+    padding: 0 20px 60px 20px;
+}
+
+.userprofile-grid {
+    display: grid;
+    grid-template-columns: 340px minmax(0, 1fr);
+    gap: 28px;
+    align-items: flex-start;
+}
+
 .debug-credits {
     position: absolute;
     top: 20px;

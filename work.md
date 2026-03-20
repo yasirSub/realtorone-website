@@ -352,9 +352,55 @@ Website:
     - Renamed the conscious side label from "Revenue Actions" to "Conscious" across Tasks / Activities and add-task defaults for clearer daily-task management.
     - Added day-wise popup content management in Tasks / Activities so admins can save per-day task description + video/reel script idea (with bulk tab-separated import).
     - Added collapsible/expandable editor blocks (Task Editor + Day-wise Popup Content + Bulk Import) and a one-click 60-day Visualization template loader for faster manual setup.
+    - Added an in-panel "Saved Day Logs" list that shows all saved days (Day 1, Day 2, ...) for the selected activity, with quick click-to-load into editor.
+    - Updated day-wise editor UI: section title shown as a single heading with edit icon, and day logs are now an expandable inline editor per day (click Day 1/Day 2 to expand and edit inside the list).
 Backend:
     - Fixed activity deletion persistence by stopping automatic default reseeding on every `/activity-types` fetch (now seeds only when global activities are empty).
     - Added `script_idea` support for activity types (migration + API/model updates) to store editable video/reel guidance per task.
     - Added `activity_type_daily_logs` with admin endpoints for day-wise task/script content and exposed day-aware popup fields in `/activity-types` responses.
 Application (Mobile):
     - Updated Activity Log cards to open a guided popup before YES/NO, showing day-wise task description and video/reel script idea from backend content.
+
+### **Day 21: Mar 20 - AED currency labels**
+- **Website (Subscriptions UI):**
+  - Updated subscription/package revenue and price displays from `$` to `AED`.
+- **Application (Mobile):**
+  - Updated subscription plans screen duration options to `1 Month / 6 Monthly / 1 Yearly`, synced totals to `AED`, and aligned 6/12 pricing discounts with backend rules.
+  - Enabled selecting the current tier card to renew for a new duration (instead of blocking taps on the active plan).
+- **Backend:**
+  - Updated `/subscriptions/purchase` to apply duration pricing discounts (6=10% off, 12=20% off) and to renew by extending from the current active `expires_at` (only one active record).
+
+### **Day 22: Mar 20 - Mobile edit billing UX**
+- **Application (Mobile):**
+  - Auto-selected the user’s current tier package and added an “EDIT BILLING” action.
+  - Bottom CTA now shows `RENEW` when managing the current tier (so users can change 1/6/12 months easily).
+  - Tier accent colors now drive the selected duration pill and bottom CTA button styling.
+- **Website (Admin):**
+  - Replaced native `prompt()/confirm()` dialogs in `SubscriptionsPage` with custom modals for `Change Price`, `Remove`, and `Add Access Item`.
+
+### **Day 23: Mar 20 - Admin UI cleanup**
+- **Website (Momentum/Curriculum Editor):**
+  - Removed the Reward Cap control and the stray `44` text near “Bulk Add”.
+- **Website (Top Bar):**
+  - Removed the `LIVE GATEWAY` status pill from the header.
+
+### **Day 24: Mar 20 - Bulk Add UX fix**
+- **Website (Momentum/Curriculum Editor):**
+  - Updated `Bulk Add` to open in the same panel spot (replaces “Add Day”) instead of expanding at the bottom.
+  - Added an in-editor `✎ Edit` button for the currently selected Visualization/Activity item.
+  - Wired the top header search box to filter Momentum activities (Visualization/Daily Task Library).
+  - Enhanced search to also filter day-wise popup content (task description / script idea / feedback) in the saved day list.
+
+### **Day 25: Mar 20 - Practitioner Dossier UI clean-up**
+- **Website:**
+  - Improved Practitioner Dossier layout spacing using shared CSS classes.
+  - Fixed Behavioral Momentum chart bar scaling (separate conscious/subconscious scaling).
+
+### **Day 26: Mar 20 - Icons + Learning loader fix**
+- **Website (Practitioner Dossier / UserProfilePage):**
+  - Replaced emoji icons in stats/cards with consistent inline SVG icons.
+  - Fixed “Learning & courses” panel stuck on loading by setting an empty default when the API fails.
+
+### **Day 27: Mar 20 - Practitioner dossier compact UI**
+- **Website (Practitioner Dossier / UserProfilePage):**
+  - Tightened spacing: reduced action bar margin, main grid gaps, and several large panel paddings/gaps for a more compact look.
