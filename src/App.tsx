@@ -15,6 +15,7 @@ import UserProfilePage from './pages/UserProfilePage'
 import { CoursesPage } from './pages/CoursesPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import BadgesPage from './pages/BadgesPage'
+import NotificationsPage from './pages/NotificationsPage'
 
 // Modals
 import ConfirmModal from './components/modals/ConfirmModal'
@@ -38,7 +39,7 @@ function App() {
   // Initialize from URL or default
   const getInitialTab = (): Tab => {
     const path = window.location.pathname.replace('/', '') as Tab;
-    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'subscriptions', 'courses', 'leaderboard', 'badges'];
+    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'subscriptions', 'courses', 'leaderboard', 'badges', 'notifications'];
     return validTabs.includes(path) ? path : 'dashboard';
   };
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab())
@@ -49,6 +50,7 @@ function App() {
       window.history.pushState(null, '', `/${activeTab}`);
     }
   }, [activeTab]);
+
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [theme, setTheme] = useState<string>('dark') // always default to dark
   const [activeTier, setActiveTier] = useState<'All' | 'Consultant' | 'Rainmaker' | 'Titan'>('All')
@@ -99,6 +101,13 @@ function App() {
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(isSidebarCollapsed))
   }, [isSidebarCollapsed])
+
+  // On refresh at /user-profile, selectedUser is never persisted — redirect to dashboard
+  useEffect(() => {
+    if (isLoggedIn && activeTab === 'user-profile' && !selectedUser) {
+      setActiveTab('dashboard');
+    }
+  }, [isLoggedIn, activeTab, selectedUser]);
 
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light')
 
@@ -219,12 +228,13 @@ function App() {
       toggleTheme={toggleTheme}
     >
       {isLoading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
-          <div className="loader"></div>
+        <div className="app-page-loader">
+          <div className="loader" style={{ width: 48, height: 48, borderWidth: 4 }} />
+          <span style={{ marginTop: 16, fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>Loading...</span>
         </div>
       ) : (
         <>
-          {activeTab === 'dashboard' && <DashboardPage stats={stats} />}
+          {(activeTab === 'dashboard' || !activeTab) && <DashboardPage stats={stats} />}
           {activeTab === 'users' && (
             <UsersPage
               filteredUsers={filteredUsers}
@@ -293,6 +303,13 @@ function App() {
           )}
           {activeTab === 'leaderboard' && <LeaderboardPage />}
           {activeTab === 'badges' && <BadgesPage />}
+          {activeTab === 'notifications' && <NotificationsPage users={users} />}
+          {activeTab === 'user-profile' && !selectedUser && (
+            <div className="app-page-loader">
+              <div className="loader" style={{ width: 48, height: 48, borderWidth: 4 }} />
+              <span style={{ marginTop: 16, fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>Redirecting...</span>
+            </div>
+          )}
         </>
       )}
 

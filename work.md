@@ -404,3 +404,80 @@ Application (Mobile):
 ### **Day 27: Mar 20 - Practitioner dossier compact UI**
 - **Website (Practitioner Dossier / UserProfilePage):**
   - Tightened spacing: reduced action bar margin, main grid gaps, and several large panel paddings/gaps for a more compact look.
+
+### **Day 29: Mar 22 - Day-wise audio for activity tasks**
+- **Backend:**
+  - Added `audio_url` column to `activity_type_daily_logs`; API accepts and returns it for daily log save/bulk; exposed as `daily_audio_url` in activity-types response for mobile.
+- **Website:**
+  - Added "AUDIO" field to Momentum admin day editor (Add Day + expanded day); supports pasting URL or uploading audio file with progress %; audio preview player before save; bulk import supports optional 5th column for audio URL.
+- **Application (Mobile):**
+  - Resolved relative audio URLs to full API URLs so playback works when backend returns paths like `/api/stream/...`.
+- **Application (Mobile):**
+  - Activity task popup shows inline audio player when admin has set an audio URL for that day; user can play/pause without leaving the app.
+### **Day 28: Mar 22 - Activity Log task responses**
+- **Application (Mobile):**
+  - Activity task popup: changed NO/YES to Cancel/Submit; added text input for user response; Submit enabled only when user enters 2+ words; user response sent as activity description.
+- **Backend:**
+  - User task response (description) already stored via existing POST /activities endpoint.
+- **Website:**
+  - Renamed "Operational Activity Dossier" to "Activity Log"; added display of user task responses in admin Practitioner Dossier per-activity cards.
+
+### Day 30: Mar 22 - Momentum task description UX
+Website:
+  - Made TASK DESCRIPTION collapsible per day card (expand/hide toggle with chevron); collapsed view shows one-line preview; collapsed by default.
+  - New days and empty days now default task description from the previous saved day (reuses content across days).
+  - Custom audio preview player: 2× speed toggle, seekable progress bar (click/drag to jump).
+Application (Mobile):
+  - Activity task audio player: 2× speed toggle, seekable progress bar (drag to listen from any position).
+  - Replaced standard slider with waveform-style seek bar: vertical blue bars (voice-note style), tap/drag to seek.
+
+### Day 31: Mar 22 - Compact activity audio player
+Application (Mobile):
+  - Removed the circular seek thumb; progress is indicated only by filled vs muted bars.
+  - Tightened player card (padding, radii, play control size) and shortened waveform bars for a more compact layout; tabular figures on timestamps.
+
+### Day 32: Mar 22 - Real activity-task waveform
+Application (Mobile):
+  - Activity audio seek bar uses native RMS waveform extraction (`audio_waveforms`) after caching the file via authenticated download; 56 bars mapped to the real envelope; synthetic fallback if extract fails or on web (no `dart:io`).
+  - Added conditional `activity_waveform_download` helper (IO vs stub) for temp download + Bearer token when present.
+done
+
+### Day 33: Mar 23 - Momentum remove audio
+Website:
+  - Daily Task Library day editor: REMOVE AUDIO next to UPLOAD AUDIO (shown when a URL is set); clears the field and preview; Save persists with explicit `audio_url: null` in the PUT body.
+  - Save on a day card shows a bottom toast popup (Day N saved on success; error message on failure); auto-dismiss ~3.8s or tap to dismiss; save reads drafts from `dayDraftsRef` so fields stay in sync.
+  - Add Day form: `editor-card` uses `overflow: visible` for this page so sticky save row works; top bar is sticky with stronger contrast; second Save day / Cancel row under Feedback so actions stay visible after scrolling.
+  - Layout: Momentum uses `.momentum-page` + `.momentum-curriculum-layout` - flex column, `min-height` tied to `100dvh`/viewport, editor `clamp(420px, 72dvh, 820px)`; sidebar uses `min()` width; <=900px stacks column with capped sidebar height and taller main panel.
+  - FEEDBACK (OPTIONAL): Collapsible like task description (▸/▾); collapsed shows one-line preview or -; expanded uses a small textarea; shared collapsible row styles + hover (`.momentum-collapsible-trigger`) for task + feedback.
+
+### Day 34: Mar 23 - Momentum audio upload reliability
+Website:
+  - Upload progress: `loadstart` + percent from `lengthComputable` or `loaded / file.size` when the browser/proxy hides totals (common); cap at 99% until JSON response; 100% only on success.
+  - Button shows UPLOADING until percent >= 3, then UPLOADING n%; progress callback uses `Math.max` to avoid flicker.
+  - After upload, auto-save uses current drafts via `dayDraftsRef` (fixes stale `dayDrafts` after `await`), stores relative `/api/stream/...` when the API returns that shape; alerts for missing admin token, failed upload URL, or failed save.
+
+### Day 35: Mar 23 - Cross-platform push notifications
+Backend:
+  - `user_push_tokens`, `notification_broadcasts`, `notification_automation_dedupes` migrations; FCM HTTP v1 via `google/auth` + `FcmSenderService`; `SendPushBroadcastJob`, recipient resolver, schedule helper.
+  - `POST/DELETE /user/push-token`; admin `GET/POST /admin/notifications`, cancel + send-now; `notifications:process-scheduled` (every minute) + `notifications:missed-activity` (daily 09:00) in `routes/console.php`; `.env.example` Firebase vars.
+Website:
+  - Notifications sidebar tab + `NotificationsPage` (compose: audience all/tier/users, display style, schedule, recurrence, deep link; list with cancel / send now); `apiClient` helpers + `NotificationBroadcast` type.
+  - Admin Notifications page uses sectioned layout, display-mode cards, live phone preview, and banner-only fields (subtitle, CTA label, accent color, image URL) stored in `extra_data`.
+  - Firebase web SDK + Analytics in `src/firebase.ts` / `main.tsx`.
+Application (Mobile):
+  - `firebase_core` / `firebase_messaging`, placeholder `firebase_options.dart` + `google-services.json` (replace via flutterfire configure); `PushNotificationService` (token sync, foreground banner vs snackbar vs silent).
+  - Hooks in `main`, login, splash; `ApiClient.beforeClearToken` removes push token on logout; foreground banner reads FCM data keys + `deep_link` for primary action.
+
+### Day 36: Mar 23 - App notification reliability + inbox
+Backend:
+  - Wired Firebase Admin service-account config in runtime `.env` (`FIREBASE_PROJECT_ID`, `FIREBASE_CREDENTIALS_PATH`) and verified broadcasts complete without the previous "FCM not configured" error.
+Application (Mobile):
+  - Replaced placeholder Android Firebase config with real `google-services.json` and real Android values in `firebase_options.dart` for project `realtor-one`, so FCM token registration can succeed.
+  - Added local notification inbox on app Home: bell icon with unread badge, history screen, and clear-all action.
+  - `PushNotificationService` now stores incoming messages in local history (foreground/background/opened), keeps unread count via `ValueNotifier`, and marks as read when opening the inbox.
+
+### Day 37: Mar 23 - Backend notification send troubleshooting
+Backend:
+  - Added Firebase environment passthrough to Docker `app` service (`FIREBASE_PROJECT_ID`, `FIREBASE_CREDENTIALS_PATH`, `FIREBASE_CREDENTIALS_JSON`) and rebuilt the app image so runtime config is consistent.
+  - Fixed `SendPushBroadcastJob` retry guard to allow re-processing broadcasts already in `processing` state after a failed first attempt, preventing permanent stuck states.
+  - Ran live admin API notification send tests; current blocker is still runtime FCM auth/class loading in the active backend worker process, which keeps recent broadcasts in `processing`.

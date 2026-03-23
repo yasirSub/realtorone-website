@@ -1,4 +1,4 @@
-import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge } from '../types';
+import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge, NotificationBroadcast } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://127.0.0.1:8000/api' : '/api');
 console.log('API Base URL:', API_BASE_URL);
@@ -267,22 +267,27 @@ export const apiClient = {
         });
         return response.json();
     },
-    getActivityTypeDailyLogs: async (id: number, fromDay = 1, toDay = 60): Promise<{ success: boolean; data: Array<{ day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null }> }> => {
-        const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs?from_day=${fromDay}&to_day=${toDay}`);
+    getActivityTypeDailyLogs: async (id: number, fromDay = 1, toDay = 60): Promise<{ success: boolean; data: Array<{ day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null }> }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs?from_day=${fromDay}&to_day=${toDay}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
         return response.json();
     },
-    upsertActivityTypeDailyLog: async (id: number, day: number, data: { task_description?: string; script_idea?: string; feedback?: string }): Promise<{ success: boolean; data: any }> => {
+    upsertActivityTypeDailyLog: async (id: number, day: number, data: { task_description?: string; script_idea?: string; feedback?: string; audio_url?: string | null }): Promise<{ success: boolean; data: any }> => {
+        const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/${day}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
             body: JSON.stringify(data)
         });
         return response.json();
     },
-    bulkUpsertActivityTypeDailyLogs: async (id: number, entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string }>): Promise<{ success: boolean; count: number }> => {
+    bulkUpsertActivityTypeDailyLogs: async (id: number, entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string }>): Promise<{ success: boolean; count: number }> => {
+        const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/bulk`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
             body: JSON.stringify({ entries })
         });
         return response.json();
@@ -447,10 +452,25 @@ export const apiClient = {
             formData.append('file', file);
             formData.append('type', type);
 
+            const reportProgress = (loaded: number, total: number) => {
+                let percent = 0;
+                if (total > 0) {
+                    percent = Math.round((loaded / total) * 100);
+                } else if (file.size > 0 && loaded > 0) {
+                    // Many proxies leave lengthComputable false; use the file size as a fallback.
+                    percent = Math.min(99, Math.round((loaded / file.size) * 100));
+                } else if (loaded > 0) {
+                    percent = 50;
+                }
+                onProgress(Math.min(99, Math.max(1, percent)));
+            };
+
+            xhr.upload.addEventListener('loadstart', () => onProgress(2));
             xhr.upload.addEventListener('progress', (e) => {
-                if (e.lengthComputable) {
-                    const percent = Math.round((e.loaded / e.total) * 100);
-                    onProgress(percent);
+                if (e.lengthComputable && e.total > 0) {
+                    reportProgress(e.loaded, e.total);
+                } else if (e.loaded > 0) {
+                    reportProgress(e.loaded, 0);
                 }
             });
 
@@ -461,6 +481,7 @@ export const apiClient = {
                 }
                 try {
                     const data = JSON.parse(xhr.responseText);
+                    onProgress(100);
                     resolve(data);
                 } catch (e) {
                     console.error('SERVER RESPONSE ERROR:', xhr.responseText);
@@ -476,6 +497,7 @@ export const apiClient = {
             if (token) {
                 xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             }
+            onProgress(1);
             xhr.send(formData);
         });
     },
@@ -523,7 +545,57 @@ export const apiClient = {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         return response.json();
-    }
+    },
+
+    getNotificationBroadcasts: async (): Promise<{ success: boolean; data: NotificationBroadcast[] }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/notifications`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.json();
+    },
+
+    createNotificationBroadcast: async (payload: {
+        title: string;
+        body: string;
+        display_style: 'standard' | 'banner' | 'silent';
+        audience: 'all' | 'tier' | 'users';
+        tier?: string;
+        target_user_ids?: number[];
+        scheduled_at?: string | null;
+        recurrence_type: 'none' | 'daily' | 'weekly';
+        recurrence_time?: string;
+        recurrence_day_of_week?: number;
+        timezone?: string;
+        deep_link?: string;
+        extra_data?: Record<string, string>;
+    }): Promise<{ success: boolean; data?: NotificationBroadcast; errors?: Record<string, string[]>; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/notifications`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        return response.json();
+    },
+
+    cancelNotificationBroadcast: async (id: number): Promise<{ success: boolean; data?: NotificationBroadcast; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/notifications/${id}/cancel`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.json();
+    },
+
+    sendNowNotificationBroadcast: async (id: number): Promise<{ success: boolean; data?: NotificationBroadcast; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/notifications/${id}/send-now`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.json();
+    },
 };
 
 

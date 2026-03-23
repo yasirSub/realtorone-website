@@ -1,4 +1,28 @@
-export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges';
+export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges' | 'notifications';
+
+export interface NotificationBroadcast {
+    id: number;
+    title: string;
+    body: string;
+    display_style: 'standard' | 'banner' | 'silent';
+    audience: 'all' | 'tier' | 'users';
+    tier?: string | null;
+    target_user_ids?: number[] | null;
+    scheduled_at?: string | null;
+    recurrence_type: 'none' | 'daily' | 'weekly';
+    recurrence_time?: string | null;
+    recurrence_day_of_week?: number | null;
+    timezone: string;
+    status: string;
+    next_run_at?: string | null;
+    last_run_at?: string | null;
+    deep_link?: string | null;
+    extra_data?: Record<string, string> | null;
+    last_sent_count?: number;
+    last_error?: string | null;
+    created_at?: string;
+    updated_at?: string;
+}
 
 // ... (existing interfaces)
 

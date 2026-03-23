@@ -1117,8 +1117,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                     <div className="glass-panel" style={{ padding: '32px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px' }}>
                             <div>
-                                <h3 style={{ fontSize: '1.4rem', fontWeight: 950, margin: 0, letterSpacing: '-0.5px' }}>Operational Activity Dossier</h3>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600 }}>Decentralized behavioral logic auditing</p>
+                                <h3 style={{ fontSize: '1.4rem', fontWeight: 950, margin: 0, letterSpacing: '-0.5px' }}>Activity Log</h3>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600 }}>User activity entries with task responses</p>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 950, textTransform: 'uppercase', letterSpacing: '2px' }}>Recent System Entries</div>
@@ -1178,11 +1178,18 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                         </h5>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                             {dayActivities.filter(a => a.category === 'task' || a.category === 'conscious').map((a, i) => (
-                                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 15px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                                                                    <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: a.is_completed ? 'var(--success)' : 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 15px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                                                    <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: a.is_completed ? 'var(--success)' : 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
                                                                         {a.is_completed && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                                                     </div>
-                                                                    <span style={{ fontWeight: 800, fontSize: '0.8rem', flex: 1, opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
+                                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                                        <span style={{ fontWeight: 800, fontSize: '0.8rem', opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
+                                                                        {a.description && (
+                                                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, padding: '8px 10px', background: 'rgba(0,0,0,0.08)', borderRadius: 8, lineHeight: 1.4, fontStyle: 'italic' }}>
+                                                                                <span style={{ fontWeight: 700, color: 'var(--text-muted)', marginRight: 4 }}>Response:</span>{a.description}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
 
                                                                     {a.min_tier && a.min_tier !== 'Consultant' && (
                                                                         <span style={{
@@ -1200,7 +1207,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                                         </span>
                                                                     )}
 
-                                                                    <span style={{ fontSize: '0.7rem', fontWeight: 950, color: a.is_completed ? 'var(--primary)' : 'var(--text-muted)' }}>{a.is_completed ? `+${a.points}` : `(${a.points})`}</span>
+                                                                    <span style={{ fontSize: '0.7rem', fontWeight: 950, color: a.is_completed ? 'var(--primary)' : 'var(--text-muted)', flexShrink: 0 }}>{a.is_completed ? `+${a.points}` : `(${a.points})`}</span>
                                                                 </div>
                                                             ))}
                                                             {dayActivities.filter(a => a.category === 'task' || a.category === 'conscious').length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>No operational data recorded</span>}
@@ -1213,11 +1220,18 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                         </h5>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                             {dayActivities.filter(a => a.category === 'subconscious').map((a, i) => (
-                                                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 15px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                                                                    <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: a.is_completed ? 'var(--accent)' : 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 15px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                                                    <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: a.is_completed ? 'var(--accent)' : 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
                                                                         {a.is_completed && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                                                     </div>
-                                                                    <span style={{ fontWeight: 800, fontSize: '0.8rem', flex: 1, opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
+                                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                                        <span style={{ fontWeight: 800, fontSize: '0.8rem', opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
+                                                                        {a.description && (
+                                                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, padding: '8px 10px', background: 'rgba(0,0,0,0.08)', borderRadius: 8, lineHeight: 1.4, fontStyle: 'italic' }}>
+                                                                                <span style={{ fontWeight: 700, color: 'var(--text-muted)', marginRight: 4 }}>Response:</span>{a.description}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
 
                                                                     {a.min_tier && a.min_tier !== 'Consultant' && (
                                                                         <span style={{
@@ -1235,7 +1249,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                                         </span>
                                                                     )}
 
-                                                                    <span style={{ fontSize: '0.7rem', fontWeight: 950, color: a.is_completed ? 'var(--accent)' : 'var(--text-muted)' }}>{a.is_completed ? `+${a.points}` : `(${a.points})`}</span>
+                                                                    <span style={{ fontSize: '0.7rem', fontWeight: 950, color: a.is_completed ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0 }}>{a.is_completed ? `+${a.points}` : `(${a.points})`}</span>
                                                                 </div>
                                                             ))}
                                                             {dayActivities.filter(a => a.category === 'subconscious').length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>No identity conditioning protocols detected</span>}

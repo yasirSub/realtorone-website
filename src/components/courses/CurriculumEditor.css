@@ -489,6 +489,129 @@
     margin-bottom: 1.2rem;
 }
 
+/* Momentum day editor: allow sticky save bar inside scroll viewport (overflow:hidden breaks sticky). */
+.editor-card.momentum-day-editor-card {
+    overflow: visible;
+}
+
+/* Momentum / Daily Task Library — fill viewport, responsive split */
+.momentum-page {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0 clamp(4px, 1.5vw, 12px) 4px;
+    display: flex;
+    flex-direction: column;
+    /* Fill main column below app chrome (sidebar padding + header + content padding) */
+    min-height: calc(100vh - 96px);
+}
+
+@supports (height: 100dvh) {
+    .momentum-page {
+        min-height: calc(100dvh - 96px);
+    }
+}
+
+.momentum-collapsible-trigger:hover {
+    background: rgba(102, 126, 234, 0.12) !important;
+    color: var(--text-main) !important;
+}
+
+.momentum-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: clamp(10px, 2vw, 18px);
+    flex: 0 0 auto;
+}
+
+.momentum-page .momentum-curriculum-layout {
+    width: 100%;
+    box-sizing: border-box;
+    flex: 1 1 auto;
+    min-height: clamp(420px, 72vh, 820px);
+    gap: clamp(10px, 2vw, 24px);
+}
+
+@supports (height: 100dvh) {
+    .momentum-page .momentum-curriculum-layout {
+        min-height: clamp(420px, 72dvh, 820px);
+    }
+}
+
+.momentum-page .curriculum-sidebar {
+    width: min(320px, 38vw);
+    flex-shrink: 0;
+    min-height: 0;
+    align-self: stretch;
+}
+
+.momentum-page .curriculum-main {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    align-self: stretch;
+}
+
+@media (max-width: 1100px) {
+    .momentum-page .curriculum-sidebar {
+        width: min(280px, 36vw);
+    }
+}
+
+@media (max-width: 900px) {
+    .momentum-page .momentum-curriculum-layout {
+        flex-direction: column;
+        min-height: max(min(58dvh, 640px), 380px);
+    }
+
+    @supports not (height: 100dvh) {
+        .momentum-page .momentum-curriculum-layout {
+            min-height: max(min(58vh, 640px), 380px);
+        }
+    }
+
+    .momentum-page .curriculum-sidebar {
+        width: 100%;
+        max-height: min(42dvh, 320px);
+    }
+
+    @supports not (height: 100dvh) {
+        .momentum-page .curriculum-sidebar {
+            max-height: min(42vh, 320px);
+        }
+    }
+
+    .momentum-page .curriculum-main {
+        flex: 1 1 auto;
+        min-height: max(min(48dvh, 520px), 320px);
+    }
+
+    @supports not (height: 100dvh) {
+        .momentum-page .curriculum-main {
+            min-height: max(min(48vh, 520px), 320px);
+        }
+    }
+}
+
+@media (max-width: 480px) {
+    .momentum-page {
+        min-height: calc(100vh - 88px);
+    }
+
+    @supports (height: 100dvh) {
+        .momentum-page {
+            min-height: calc(100dvh - 88px);
+        }
+    }
+
+    .momentum-page .momentum-curriculum-layout {
+        gap: 12px;
+    }
+}
+
 .card-header {
     padding: 1rem 1.2rem;
     border-bottom: 1px solid var(--glass-border);

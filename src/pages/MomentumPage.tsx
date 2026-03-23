@@ -14,12 +14,116 @@ interface MomentumPageProps {
 
 type CategoryKey = 'subconscious' | 'conscious';
 type SectionGroup = { title: string; order: number; items: ActivityType[] };
-type DailyLogEntry = { day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null };
-type DailyLogDraft = { task_description: string; script_idea: string; feedback: string };
+type DailyLogEntry = { day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null };
+type DailyLogDraft = { task_description: string; script_idea: string; feedback: string; audio_url: string };
 type UiDialog =
     | null
     | { kind: 'confirm'; title: string; message: string; onConfirm: () => void }
     | { kind: 'prompt'; title: string; label: string; value: string; placeholder?: string; onConfirm: (value: string) => void };
+
+type MomentumSaveToast = { message: string; variant: 'success' | 'error' };
+
+function formatAudioTime(sec: number): string {
+    const m = Math.floor(sec / 60);
+    const s = Math.floor(sec % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+const PremiumAudioPlayer: React.FC<{ src: string }> = ({ src }) => {
+    const audioRef = React.useRef<HTMLAudioElement>(null);
+    const [isPlaying, setIsPlaying] = React.useState(false);
+    const [currentTime, setCurrentTime] = React.useState(0);
+    const [duration, setDuration] = React.useState(0);
+    const [playbackRate, setPlaybackRate] = React.useState(1);
+
+    React.useEffect(() => {
+        const el = audioRef.current;
+        if (!el) return;
+        const onTimeUpdate = () => setCurrentTime(el.currentTime);
+        const onDurationChange = () => setDuration(el.duration);
+        const onPlay = () => setIsPlaying(true);
+        const onPause = () => setIsPlaying(false);
+        el.addEventListener('timeupdate', onTimeUpdate);
+        el.addEventListener('durationchange', onDurationChange);
+        el.addEventListener('play', onPlay);
+        el.addEventListener('pause', onPause);
+        return () => {
+            el.removeEventListener('timeupdate', onTimeUpdate);
+            el.removeEventListener('durationchange', onDurationChange);
+            el.removeEventListener('play', onPlay);
+            el.removeEventListener('pause', onPause);
+        };
+    }, []);
+
+    React.useEffect(() => {
+        const el = audioRef.current;
+        if (!el) return;
+        el.playbackRate = playbackRate;
+    }, [playbackRate]);
+
+    const togglePlay = () => {
+        const el = audioRef.current;
+        if (!el) return;
+        if (el.paused) el.play();
+        else el.pause();
+    };
+
+    const onSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const el = audioRef.current;
+        const v = parseFloat(e.target.value);
+        if (el && !Number.isNaN(v)) {
+            el.currentTime = v;
+            setCurrentTime(v);
+        }
+    };
+
+    const toggle2x = () => setPlaybackRate((r) => (r === 2 ? 1 : 2));
+
+    if (!src) return null;
+
+    const dur = duration > 0 ? duration : 0;
+    const pos = Math.min(currentTime, dur);
+
+    return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <audio ref={audioRef} src={src} preload="metadata" />
+            <button type="button" onClick={togglePlay} className="btn-premium-primary" style={{ margin: 0, padding: '8px 14px', minWidth: 44 }}>
+                {isPlaying ? '⏸ Pause' : '▶ Play'}
+            </button>
+            <button
+                type="button"
+                onClick={toggle2x}
+                style={{
+                    margin: 0,
+                    padding: '8px 12px',
+                    background: playbackRate === 2 ? 'var(--accent)' : 'var(--bg-tertiary)',
+                    color: playbackRate === 2 ? 'white' : 'var(--text-muted)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                }}
+                title="Toggle 2x speed"
+            >
+                2×
+            </button>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', minWidth: 90 }}>
+                {formatAudioTime(pos)} / {dur > 0 ? formatAudioTime(dur) : '--:--'}
+            </span>
+            <input
+                type="range"
+                min={0}
+                max={dur || 100}
+                step={0.1}
+                value={pos}
+                onChange={onSeek}
+                style={{ flex: 1, minWidth: 120, maxWidth: 200, accentColor: 'var(--accent)' }}
+                title="Seek"
+            />
+        </div>
+    );
+};
 
 const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityTypes, searchTerm }) => {
     const [activeCategory, setActiveCategory] = React.useState<CategoryKey>('subconscious');
@@ -43,6 +147,10 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
     const [sectionTitleDraft, setSectionTitleDraft] = React.useState('');
     const [isSavingSectionTitle, setIsSavingSectionTitle] = React.useState(false);
     const [uiDialog, setUiDialog] = React.useState<UiDialog>(null);
+    const [saveToast, setSaveToast] = React.useState<MomentumSaveToast | null>(null);
+    const saveToastTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [taskDescExpandedByDay, setTaskDescExpandedByDay] = React.useState<Record<number, boolean>>({});
+    const [feedbackExpandedByDay, setFeedbackExpandedByDay] = React.useState<Record<number, boolean>>({});
 
     // Edit selected activity (e.g. Visualization item) basics.
     const [isEditingActivity, setIsEditingActivity] = React.useState(false);
@@ -50,6 +158,153 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
     const [activityDraftDescription, setActivityDraftDescription] = React.useState('');
     const [activityDraftScriptIdea, setActivityDraftScriptIdea] = React.useState('');
     const [isSavingActivity, setIsSavingActivity] = React.useState(false);
+    const [audioUploadingDay, setAudioUploadingDay] = React.useState<number | null>(null);
+    const [audioUploadPercent, setAudioUploadPercent] = React.useState(0);
+    const singleAudioInputRef = React.useRef<HTMLInputElement>(null);
+    const pendingUploadDayRef = React.useRef<number | null>(null);
+    const dayDraftsRef = React.useRef(dayDrafts);
+    React.useEffect(() => {
+        dayDraftsRef.current = dayDrafts;
+    }, [dayDrafts]);
+
+    const showSaveToast = React.useCallback((message: string, variant: 'success' | 'error' = 'success') => {
+        if (saveToastTimeoutRef.current) {
+            clearTimeout(saveToastTimeoutRef.current);
+            saveToastTimeoutRef.current = null;
+        }
+        setSaveToast({ message, variant });
+        saveToastTimeoutRef.current = setTimeout(() => {
+            setSaveToast(null);
+            saveToastTimeoutRef.current = null;
+        }, 3800);
+    }, []);
+
+    React.useEffect(
+        () => () => {
+            if (saveToastTimeoutRef.current) clearTimeout(saveToastTimeoutRef.current);
+        },
+        [],
+    );
+
+    const getPreviousDayTaskDescription = (day: number): string => {
+        const prev = savedDayLogs.filter((x) => Number(x.day_number) < day).sort((a, b) => b.day_number - a.day_number)[0];
+        return (prev?.task_description ?? '').toString().trim();
+    };
+
+    const toggleTaskDescExpanded = (day: number) => {
+        setTaskDescExpandedByDay((prev) => ({ ...prev, [day]: !prev[day] }));
+    };
+
+    const toggleFeedbackExpanded = (day: number) => {
+        setFeedbackExpandedByDay((prev) => ({ ...prev, [day]: !prev[day] }));
+    };
+
+    const momentumCollapsibleHeaderStyle: React.CSSProperties = {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        background: 'none',
+        border: 'none',
+        color: 'var(--text-muted)',
+        cursor: 'pointer',
+        padding: '6px 0',
+        fontSize: '10px',
+        fontWeight: 900,
+        letterSpacing: '1px',
+        width: '100%',
+        textAlign: 'left',
+        borderRadius: 8,
+        transition: 'background 0.15s ease, color 0.15s ease',
+    };
+
+    const momentumCollapsiblePreviewStyle: React.CSSProperties = {
+        marginTop: 8,
+        padding: '8px 12px',
+        background: 'var(--bg-tertiary)',
+        borderRadius: 8,
+        fontSize: 13,
+        color: 'var(--text-muted)',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        border: '1px solid rgba(255,255,255,0.06)',
+    };
+
+    const triggerAudioUpload = (day: number) => {
+        pendingUploadDayRef.current = day;
+        singleAudioInputRef.current?.click();
+    };
+
+    const onAudioFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        const day = pendingUploadDayRef.current;
+        e.target.value = '';
+        pendingUploadDayRef.current = null;
+        if (file && day != null) handleAudioUpload(day, file);
+    };
+
+    const resolveAudioPlaybackUrl = (url: string) => {
+        const u = (url ?? '').trim();
+        if (!u) return '';
+        if (u.startsWith('http')) return u;
+        const base = apiClient.getBaseUrl().replace(/\/api\/?$/, '');
+        return base + (u.startsWith('/') ? u : '/' + u);
+    };
+
+    const handleAudioUpload = async (day: number, file: File) => {
+        if (!selectedActivity) return;
+        if (!localStorage.getItem('adminToken')) {
+            alert('Admin session missing. Log in again, then retry the upload.');
+            return;
+        }
+        setAudioUploadingDay(day);
+        setAudioUploadPercent(1);
+        try {
+            const res = await apiClient.uploadFileWithProgress(file, 'Audio', (p) =>
+                setAudioUploadPercent((prev) => Math.max(prev, p)),
+            );
+            if (!res.success || !(res.url ?? '').trim()) {
+                alert(res.message ?? 'Upload finished but the server did not return a file URL.');
+                return;
+            }
+            const raw = (res.url ?? '').trim();
+            const storedUrl = raw.startsWith('http') ? raw : raw.startsWith('/') ? raw : `/${raw}`;
+
+            const defaultDraft: DailyLogDraft = {
+                task_description: '',
+                script_idea: '',
+                feedback: '',
+                audio_url: '',
+            };
+            const base = dayDraftsRef.current[day] ?? defaultDraft;
+            const merged: DailyLogDraft = { ...base, audio_url: storedUrl };
+            setDayDrafts((prev) => ({
+                ...prev,
+                [day]: { ...(prev[day] ?? defaultDraft), audio_url: storedUrl },
+            }));
+
+            const saveRes = await apiClient.upsertActivityTypeDailyLog(selectedActivity.id, day, {
+                task_description: merged.task_description.trim(),
+                script_idea: merged.script_idea.trim(),
+                feedback: merged.feedback.trim(),
+                audio_url: storedUrl,
+            });
+            if (!saveRes.success) {
+                alert(
+                    'File uploaded, but saving this day to the database failed. Your text fields are unchanged; click Save on the day card after checking the network or server.',
+                );
+                return;
+            }
+            await refreshSavedDayLogs();
+        } catch (e) {
+            console.error('Audio upload failed:', e);
+            const msg = e instanceof Error ? e.message : 'Upload failed';
+            alert(`Audio upload failed: ${msg}. Check file size (max 50MB), admin login, Vite proxy / API URL, and try again.`);
+        } finally {
+            setAudioUploadingDay(null);
+            setAudioUploadPercent(0);
+        }
+    };
 
     const categories = [
         { key: 'subconscious' as const, label: 'SUBCONSCIOUS', empty: 'No subconscious activities' },
@@ -148,6 +403,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     task_description: entry.task_description ?? null,
                     script_idea: entry.script_idea ?? null,
                     feedback: entry.feedback ?? null,
+                    audio_url: entry.audio_url ?? null,
                 }))
                 .sort((a, b) => a.day_number - b.day_number);
             setSavedDayLogs(normalized);
@@ -162,6 +418,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
     React.useEffect(() => {
         // Reset expanded panel when switching activity
         setExpandedSavedDay(null);
+        setTaskDescExpandedByDay({});
     }, [selectedActivity?.id]);
 
     const ensureDayDraftLoaded = React.useCallback(async (day: number) => {
@@ -169,15 +426,18 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
         if (dayDrafts[day]) return;
         const res = await apiClient.getActivityTypeDailyLogs(selectedActivity.id, day, day);
         const entry = res.success ? (res.data?.[0] ?? null) : null;
+        const prevTaskDesc = savedDayLogs.filter((x) => Number(x.day_number) < day).sort((a, b) => b.day_number - a.day_number)[0]?.task_description ?? '';
+        const defaultTaskDesc = (prevTaskDesc || (selectedActivity.description ?? '')).toString().trim();
         setDayDrafts((prev) => ({
             ...prev,
             [day]: {
-                task_description: (entry?.task_description ?? selectedActivity.description ?? '').toString(),
+                task_description: (entry?.task_description ?? defaultTaskDesc).toString(),
                 script_idea: (entry?.script_idea ?? selectedActivity.script_idea ?? '').toString(),
                 feedback: (entry?.feedback ?? '').toString(),
+                audio_url: (entry?.audio_url ?? '').toString(),
             },
         }));
-    }, [selectedActivity?.id, dayDrafts]);
+    }, [selectedActivity, dayDrafts, savedDayLogs]);
 
     const updateDayDraft = (day: number, patch: Partial<DailyLogDraft>) => {
         setDayDrafts((prev) => ({
@@ -186,6 +446,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 task_description: prev[day]?.task_description ?? '',
                 script_idea: prev[day]?.script_idea ?? '',
                 feedback: prev[day]?.feedback ?? '',
+                audio_url: prev[day]?.audio_url ?? '',
                 ...patch,
             },
         }));
@@ -193,16 +454,34 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
 
     const saveDailyLogForDay = async (day: number) => {
         if (!selectedActivity) return;
-        const draft = dayDrafts[day] ?? { task_description: '', script_idea: '', feedback: '' };
+        const draft = dayDraftsRef.current[day] ?? {
+            task_description: '',
+            script_idea: '',
+            feedback: '',
+            audio_url: '',
+        };
         setSavingDay(day);
-        const res = await apiClient.upsertActivityTypeDailyLog(selectedActivity.id, day, {
-            task_description: draft.task_description.trim(),
-            script_idea: draft.script_idea.trim(),
-            feedback: draft.feedback.trim(),
-        });
-        setSavingDay(null);
-        if (!res.success) return;
-        await refreshSavedDayLogs();
+        try {
+            const res = await apiClient.upsertActivityTypeDailyLog(selectedActivity.id, day, {
+                task_description: draft.task_description.trim(),
+                script_idea: draft.script_idea.trim(),
+                feedback: draft.feedback.trim(),
+                audio_url:
+                    draft.audio_url.trim() === '' ? null : draft.audio_url.trim(),
+            });
+            if (!res.success) {
+                showSaveToast('Could not save this day. Try again or check the console.', 'error');
+                return;
+            }
+            await refreshSavedDayLogs();
+            showSaveToast(`Day ${day} saved`, 'success');
+        } catch (e) {
+            console.error('Save failed:', e);
+            const msg = e instanceof Error ? e.message : 'Network or server error';
+            showSaveToast(`Save failed: ${msg}`, 'error');
+        } finally {
+            setSavingDay(null);
+        }
     };
 
     const importBulkDayLogs = async () => {
@@ -214,7 +493,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             .map((line) => line.trim())
             .filter(Boolean);
 
-        const entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string }> = [];
+        const entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string }> = [];
         for (const row of rows) {
             const cols = row.split('\t').map((x) => x.trim());
             if (cols.length < 2) continue;
@@ -232,6 +511,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     task_description: selectedActivity?.description || '',
                     script_idea: cols[1],
                     feedback: '',
+                    audio_url: '',
                 });
             } else {
                 entries.push({
@@ -239,6 +519,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     task_description: cols[1] || '',
                     script_idea: cols[2] || '',
                     feedback: cols[3] || '',
+                    audio_url: cols[4] || '',
                 });
             }
         }
@@ -364,12 +645,14 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
         setNewDayNumber(nextDay);
         setIsAddingDay(true);
         if (!dayDrafts[nextDay]) {
+            const prevTaskDesc = getPreviousDayTaskDescription(nextDay);
             setDayDrafts((prev) => ({
                 ...prev,
                 [nextDay]: {
-                    task_description: selectedActivity?.description ?? '',
+                    task_description: prevTaskDesc || (selectedActivity?.description ?? ''),
                     script_idea: selectedActivity?.script_idea ?? '',
                     feedback: '',
+                    audio_url: '',
                 },
             }));
         }
@@ -443,17 +726,24 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
     };
 
     return (
-        <div className="view-container fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+        <div className="view-container fade-in momentum-page">
+            <input
+                ref={singleAudioInputRef}
+                type="file"
+                accept="audio/*"
+                style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }}
+                onChange={onAudioFileSelected}
+            />
+            <div className="momentum-page-header">
                 <div>
-                    <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Daily Task Library</h2>
-                    <p style={{ margin: '6px 0 0 0', color: 'var(--text-muted)' }}>
+                    <h2 style={{ margin: 0, fontSize: 'clamp(1.15rem, 2.5vw, 1.5rem)' }}>Daily Task Library</h2>
+                    <p style={{ margin: '6px 0 0 0', color: 'var(--text-muted)', fontSize: 'clamp(0.8rem, 1.8vw, 0.95rem)' }}>
                         Pick a task, then add day-wise popup content (what user sees before YES/NO).
                     </p>
                 </div>
             </div>
 
-            <div className="curriculum-layout" style={{ height: 'calc(100vh - 220px)' }}>
+            <div className="curriculum-layout momentum-curriculum-layout">
                 <div className="curriculum-sidebar">
                     <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', padding: '15px' }}>
                         <div style={{ display: 'flex', gap: 8, width: '100%' }}>
@@ -537,7 +827,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     ) : (
                         <div className="lesson-editor">
                             <div className="lesson-content-viewport">
-                                <div className="editor-card">
+                                <div className="editor-card momentum-day-editor-card">
                                     <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                             <h3 style={{ margin: 0 }}>{openDayWiseEditor ? '▾' : '▸'} {currentSection.title}</h3>
@@ -703,9 +993,25 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                 >
                                                     {!openBulkImport ? (
                                                         <>
-                                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                                    <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '1px', color: 'var(--text-muted)' }}>
+                                                            <div
+                                                                style={{
+                                                                    position: 'sticky',
+                                                                    top: 0,
+                                                                    zIndex: 5,
+                                                                    margin: '-12px -12px 12px -12px',
+                                                                    padding: '12px 12px 10px',
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center',
+                                                                    gap: 12,
+                                                                    flexWrap: 'wrap',
+                                                                    background: 'linear-gradient(180deg, rgba(15,23,42,0.97) 70%, rgba(15,23,42,0.88) 100%)',
+                                                                    borderBottom: '1px solid rgba(102,126,234,0.4)',
+                                                                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 160px', minWidth: 0 }}>
+                                                                    <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '1px', color: 'var(--text-muted)', flexShrink: 0 }}>
                                                                         NEW DAY
                                                                     </div>
                                                                     <input
@@ -713,16 +1019,29 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                         type="number"
                                                                         value={newDayNumber}
                                                                         onChange={(e) => setNewDayNumber(Math.max(1, Number(e.target.value || 1)))}
-                                                                        style={{ width: 120, height: 36 }}
+                                                                        style={{ width: 120, height: 36, flexShrink: 0 }}
                                                                     />
                                                                 </div>
-                                                                <div style={{ display: 'flex', gap: 8 }}>
-                                                                    <button className="btn-premium-primary" onClick={saveNewDay}>
-                                                                        Save Day
+                                                                <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignItems: 'center' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn-premium-primary"
+                                                                        onClick={saveNewDay}
+                                                                        disabled={savingDay === newDayNumber}
+                                                                        style={{
+                                                                            padding: '12px 22px',
+                                                                            fontSize: '0.82rem',
+                                                                            boxShadow: '0 0 0 1px rgba(255,255,255,0.12), 0 10px 28px var(--primary-shadow)',
+                                                                        }}
+                                                                    >
+                                                                        {savingDay === newDayNumber ? 'Saving…' : 'Save day'}
                                                                     </button>
                                                                     <button
+                                                                        type="button"
                                                                         className="btn-premium-ghost"
                                                                         onClick={() => setIsAddingDay(false)}
+                                                                        disabled={savingDay === newDayNumber}
+                                                                        style={{ padding: '12px 18px', fontSize: '0.82rem' }}
                                                                     >
                                                                         Cancel
                                                                     </button>
@@ -730,17 +1049,34 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                             </div>
 
                                                             <div>
-                                                                <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                                                                <button
+                                                                    type="button"
+                                                                    className="momentum-collapsible-trigger"
+                                                                    onClick={() => toggleTaskDescExpanded(newDayNumber)}
+                                                                    style={momentumCollapsibleHeaderStyle}
+                                                                >
+                                                                    <span style={{ color: 'var(--text-main)' }}>
+                                                                        {taskDescExpandedByDay[newDayNumber] === true ? '▾' : '▸'}
+                                                                    </span>
                                                                     TASK DESCRIPTION
-                                                                </div>
-                                                                <textarea
-                                                                    className="premium-input"
-                                                                    rows={3}
-                                                                    value={(dayDrafts[newDayNumber]?.task_description ?? '').toString()}
-                                                                    onChange={(e) => updateDayDraft(newDayNumber, { task_description: e.target.value })}
-                                                                    placeholder="Write task for this day..."
-                                                                    style={{ marginTop: 8, resize: 'vertical' }}
-                                                                />
+                                                                </button>
+                                                                {taskDescExpandedByDay[newDayNumber] === true ? (
+                                                                    <textarea
+                                                                        className="premium-input"
+                                                                        rows={3}
+                                                                        value={(dayDrafts[newDayNumber]?.task_description ?? '').toString()}
+                                                                        onChange={(e) => updateDayDraft(newDayNumber, { task_description: e.target.value })}
+                                                                        placeholder="Write task for this day..."
+                                                                        style={{ marginTop: 8, resize: 'vertical' }}
+                                                                    />
+                                                                ) : (
+                                                                    <div
+                                                                        style={momentumCollapsiblePreviewStyle}
+                                                                        title={(dayDrafts[newDayNumber]?.task_description ?? '').toString()}
+                                                                    >
+                                                                        {(dayDrafts[newDayNumber]?.task_description ?? '').toString().trim() || '—'}
+                                                                    </div>
+                                                                )}
                                                             </div>
 
                                                             <div>
@@ -758,16 +1094,134 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                             </div>
 
                                                             <div>
-                                                                <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
-                                                                    FEEDBACK (OPTIONAL)
+                                                                <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 8 }}>
+                                                                    AUDIO
                                                                 </div>
-                                                                <input
-                                                                    className="premium-input"
-                                                                    value={(dayDrafts[newDayNumber]?.feedback ?? '').toString()}
-                                                                    onChange={(e) => updateDayDraft(newDayNumber, { feedback: e.target.value })}
-                                                                    placeholder="Optional note"
-                                                                    style={{ marginTop: 8 }}
-                                                                />
+                                                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                                                                    <input
+                                                                        className="premium-input"
+                                                                        type="url"
+                                                                        value={(dayDrafts[newDayNumber]?.audio_url ?? '').toString()}
+                                                                        onChange={(e) => updateDayDraft(newDayNumber, { audio_url: e.target.value })}
+                                                                        placeholder="Paste URL or upload file below"
+                                                                        style={{ flex: 1, minWidth: 200 }}
+                                                                    />
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn-premium-primary"
+                                                                        disabled={audioUploadingDay === newDayNumber}
+                                                                        style={{
+                                                                            margin: 0,
+                                                                            padding: '10px 16px',
+                                                                            opacity: audioUploadingDay === newDayNumber ? 0.7 : 1,
+                                                                        }}
+                                                                        onClick={() => triggerAudioUpload(newDayNumber)}
+                                                                    >
+                                                                        {audioUploadingDay === newDayNumber
+                                                                            ? audioUploadPercent >= 3
+                                                                                ? `UPLOADING ${audioUploadPercent}%`
+                                                                                : 'UPLOADING…'
+                                                                            : 'UPLOAD AUDIO'}
+                                                                    </button>
+                                                                    {(dayDrafts[newDayNumber]?.audio_url ?? '').trim() !== '' && (
+                                                                        <button
+                                                                            type="button"
+                                                                            className="btn-premium-ghost"
+                                                                            disabled={audioUploadingDay === newDayNumber}
+                                                                            title="Clear audio URL from this day (click Save to persist)"
+                                                                            style={{
+                                                                                margin: 0,
+                                                                                padding: '10px 14px',
+                                                                                fontSize: '0.72rem',
+                                                                                fontWeight: 800,
+                                                                                letterSpacing: '0.04em',
+                                                                                opacity: audioUploadingDay === newDayNumber ? 0.5 : 1,
+                                                                            }}
+                                                                            onClick={() => updateDayDraft(newDayNumber, { audio_url: '' })}
+                                                                        >
+                                                                            REMOVE AUDIO
+                                                                        </button>
+                                                                    )}
+                                                                    {audioUploadingDay === newDayNumber && (
+                                                                        <div style={{ width: 120, height: 4, background: 'var(--bg-tertiary)', borderRadius: 2, overflow: 'hidden' }}>
+                                                                            <div style={{ width: `${audioUploadPercent}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.2s' }} />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                                {(dayDrafts[newDayNumber]?.audio_url ?? '').trim() && (
+                                                                    <div style={{ marginTop: 10 }}>
+                                                                        <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 6 }}>PREVIEW</div>
+                                                                        <PremiumAudioPlayer src={resolveAudioPlaybackUrl(dayDrafts[newDayNumber]?.audio_url ?? '')} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div>
+                                                                <button
+                                                                    type="button"
+                                                                    className="momentum-collapsible-trigger"
+                                                                    onClick={() => toggleFeedbackExpanded(newDayNumber)}
+                                                                    style={momentumCollapsibleHeaderStyle}
+                                                                >
+                                                                    <span style={{ color: 'var(--text-main)' }}>
+                                                                        {feedbackExpandedByDay[newDayNumber] === true ? '▾' : '▸'}
+                                                                    </span>
+                                                                    FEEDBACK (OPTIONAL)
+                                                                </button>
+                                                                {feedbackExpandedByDay[newDayNumber] === true ? (
+                                                                    <textarea
+                                                                        className="premium-input"
+                                                                        rows={2}
+                                                                        value={(dayDrafts[newDayNumber]?.feedback ?? '').toString()}
+                                                                        onChange={(e) => updateDayDraft(newDayNumber, { feedback: e.target.value })}
+                                                                        placeholder="Optional note for this day…"
+                                                                        style={{ marginTop: 8, resize: 'vertical' }}
+                                                                    />
+                                                                ) : (
+                                                                    <div
+                                                                        style={momentumCollapsiblePreviewStyle}
+                                                                        title={(dayDrafts[newDayNumber]?.feedback ?? '').toString()}
+                                                                    >
+                                                                        {(dayDrafts[newDayNumber]?.feedback ?? '').toString().trim() || '—'}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div
+                                                                style={{
+                                                                    marginTop: 4,
+                                                                    paddingTop: 16,
+                                                                    borderTop: '1px solid rgba(102,126,234,0.35)',
+                                                                    display: 'flex',
+                                                                    justifyContent: 'flex-end',
+                                                                    alignItems: 'center',
+                                                                    gap: 10,
+                                                                    flexWrap: 'wrap',
+                                                                }}
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn-premium-primary"
+                                                                    onClick={saveNewDay}
+                                                                    disabled={savingDay === newDayNumber}
+                                                                    style={{
+                                                                        padding: '12px 28px',
+                                                                        fontSize: '0.85rem',
+                                                                        minWidth: 160,
+                                                                        boxShadow: '0 0 0 1px rgba(255,255,255,0.12), 0 10px 28px var(--primary-shadow)',
+                                                                    }}
+                                                                >
+                                                                    {savingDay === newDayNumber ? 'Saving…' : 'Save day'}
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    className="btn-premium-ghost"
+                                                                    onClick={() => setIsAddingDay(false)}
+                                                                    disabled={savingDay === newDayNumber}
+                                                                    style={{ padding: '12px 20px', fontSize: '0.82rem' }}
+                                                                >
+                                                                    Cancel
+                                                                </button>
                                                             </div>
                                                         </>
                                                     ) : (
@@ -789,7 +1243,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                 rows={6}
                                                                 value={bulkDayLogText}
                                                                 onChange={(e) => setBulkDayLogText(e.target.value)}
-                                                                placeholder={"Examples:\n1\tTask description\tVideo/Reel script idea\tFeedback(optional)\n2\tTask description\tVideo/Reel script idea"}
+                                                                placeholder={"Examples:\n1\tTask description\tVideo/Reel script idea\tFeedback(optional)\tAudio URL(optional)\n2\tTask description\tVideo/Reel script idea\t\thttps://..."}
                                                                 style={{ resize: 'vertical' }}
                                                             />
                                                             <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
@@ -933,17 +1387,34 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                 {expandedSavedDay === entry.day_number && (
                                                                     <div style={{ marginTop: 10, display: 'grid', gap: 12 }}>
                                                                         <div>
-                                                                            <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="momentum-collapsible-trigger"
+                                                                                onClick={() => toggleTaskDescExpanded(entry.day_number)}
+                                                                                style={momentumCollapsibleHeaderStyle}
+                                                                            >
+                                                                                <span style={{ color: 'var(--text-main)' }}>
+                                                                                    {taskDescExpandedByDay[entry.day_number] === true ? '▾' : '▸'}
+                                                                                </span>
                                                                                 TASK DESCRIPTION
-                                                                            </div>
-                                                                            <textarea
-                                                                                className="premium-input"
-                                                                                rows={3}
-                                                                                value={(dayDrafts[entry.day_number]?.task_description ?? '').toString()}
-                                                                                onChange={(e) => updateDayDraft(entry.day_number, { task_description: e.target.value })}
-                                                                                placeholder="Write task for this day..."
-                                                                                style={{ marginTop: 8, resize: 'vertical' }}
-                                                                            />
+                                                                            </button>
+                                                                            {taskDescExpandedByDay[entry.day_number] === true ? (
+                                                                                <textarea
+                                                                                    className="premium-input"
+                                                                                    rows={3}
+                                                                                    value={(dayDrafts[entry.day_number]?.task_description ?? '').toString()}
+                                                                                    onChange={(e) => updateDayDraft(entry.day_number, { task_description: e.target.value })}
+                                                                                    placeholder="Write task for this day..."
+                                                                                    style={{ marginTop: 8, resize: 'vertical' }}
+                                                                                />
+                                                                            ) : (
+                                                                                <div
+                                                                                    style={momentumCollapsiblePreviewStyle}
+                                                                                    title={(dayDrafts[entry.day_number]?.task_description ?? '').toString()}
+                                                                                >
+                                                                                    {(dayDrafts[entry.day_number]?.task_description ?? '').toString().trim() || '—'}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
 
                                                                         <div>
@@ -961,16 +1432,97 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                         </div>
 
                                                                         <div>
-                                                                            <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
-                                                                                FEEDBACK (OPTIONAL)
+                                                                            <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 8 }}>
+                                                                                AUDIO
                                                                             </div>
-                                                                            <input
-                                                                                className="premium-input"
-                                                                                value={(dayDrafts[entry.day_number]?.feedback ?? '').toString()}
-                                                                                onChange={(e) => updateDayDraft(entry.day_number, { feedback: e.target.value })}
-                                                                                placeholder="Optional note"
-                                                                                style={{ marginTop: 8 }}
-                                                                            />
+                                                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                                                                                <input
+                                                                                    className="premium-input"
+                                                                                    type="url"
+                                                                                    value={(dayDrafts[entry.day_number]?.audio_url ?? '').toString()}
+                                                                                    onChange={(e) => updateDayDraft(entry.day_number, { audio_url: e.target.value })}
+                                                                                    placeholder="Paste URL or upload file below"
+                                                                                    style={{ flex: 1, minWidth: 200 }}
+                                                                                />
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="btn-premium-primary"
+                                                                                    disabled={audioUploadingDay === entry.day_number}
+                                                                                    style={{
+                                                                                        margin: 0,
+                                                                                        padding: '10px 16px',
+                                                                                        opacity: audioUploadingDay === entry.day_number ? 0.7 : 1,
+                                                                                    }}
+                                                                                    onClick={() => triggerAudioUpload(entry.day_number)}
+                                                                                >
+                                                                                    {audioUploadingDay === entry.day_number
+                                                                                        ? audioUploadPercent >= 3
+                                                                                            ? `UPLOADING ${audioUploadPercent}%`
+                                                                                            : 'UPLOADING…'
+                                                                                        : 'UPLOAD AUDIO'}
+                                                                                </button>
+                                                                                {(dayDrafts[entry.day_number]?.audio_url ?? '').trim() !== '' && (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        className="btn-premium-ghost"
+                                                                                        disabled={audioUploadingDay === entry.day_number}
+                                                                                        title="Clear audio URL from this day (click Save to persist)"
+                                                                                        style={{
+                                                                                            margin: 0,
+                                                                                            padding: '10px 14px',
+                                                                                            fontSize: '0.72rem',
+                                                                                            fontWeight: 800,
+                                                                                            letterSpacing: '0.04em',
+                                                                                            opacity: audioUploadingDay === entry.day_number ? 0.5 : 1,
+                                                                                        }}
+                                                                                        onClick={() => updateDayDraft(entry.day_number, { audio_url: '' })}
+                                                                                    >
+                                                                                        REMOVE AUDIO
+                                                                                    </button>
+                                                                                )}
+                                                                                {audioUploadingDay === entry.day_number && (
+                                                                                    <div style={{ width: 120, height: 4, background: 'var(--bg-tertiary)', borderRadius: 2, overflow: 'hidden' }}>
+                                                                                        <div style={{ width: `${audioUploadPercent}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.2s' }} />
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                            {(dayDrafts[entry.day_number]?.audio_url ?? '').trim() && (
+                                                                                <div style={{ marginTop: 10 }}>
+                                                                                    <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 6 }}>PREVIEW</div>
+                                                                                    <PremiumAudioPlayer src={resolveAudioPlaybackUrl(dayDrafts[entry.day_number]?.audio_url ?? '')} />
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="momentum-collapsible-trigger"
+                                                                                onClick={() => toggleFeedbackExpanded(entry.day_number)}
+                                                                                style={momentumCollapsibleHeaderStyle}
+                                                                            >
+                                                                                <span style={{ color: 'var(--text-main)' }}>
+                                                                                    {feedbackExpandedByDay[entry.day_number] === true ? '▾' : '▸'}
+                                                                                </span>
+                                                                                FEEDBACK (OPTIONAL)
+                                                                            </button>
+                                                                            {feedbackExpandedByDay[entry.day_number] === true ? (
+                                                                                <textarea
+                                                                                    className="premium-input"
+                                                                                    rows={2}
+                                                                                    value={(dayDrafts[entry.day_number]?.feedback ?? '').toString()}
+                                                                                    onChange={(e) => updateDayDraft(entry.day_number, { feedback: e.target.value })}
+                                                                                    placeholder="Optional note for this day…"
+                                                                                    style={{ marginTop: 8, resize: 'vertical' }}
+                                                                                />
+                                                                            ) : (
+                                                                                <div
+                                                                                    style={momentumCollapsiblePreviewStyle}
+                                                                                    title={(dayDrafts[entry.day_number]?.feedback ?? '').toString()}
+                                                                                >
+                                                                                    {(dayDrafts[entry.day_number]?.feedback ?? '').toString().trim() || '—'}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
 
                                                                         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -1002,6 +1554,56 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     )}
                 </div>
             </div>
+
+            {saveToast && (
+                <div
+                    className="momentum-save-toast"
+                    role="status"
+                    aria-live="polite"
+                    onClick={() => {
+                        if (saveToastTimeoutRef.current) {
+                            clearTimeout(saveToastTimeoutRef.current);
+                            saveToastTimeoutRef.current = null;
+                        }
+                        setSaveToast(null);
+                    }}
+                    style={{
+                        position: 'fixed',
+                        bottom: 28,
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        zIndex: 10001,
+                        maxWidth: 'min(440px, 92vw)',
+                        padding: '16px 22px',
+                        borderRadius: 14,
+                        fontSize: 14,
+                        fontWeight: 800,
+                        letterSpacing: '0.03em',
+                        lineHeight: 1.35,
+                        boxShadow: '0 14px 44px rgba(0,0,0,0.45)',
+                        border:
+                            saveToast.variant === 'error'
+                                ? '1px solid rgba(248,113,113,0.5)'
+                                : '1px solid rgba(167,139,250,0.55)',
+                        background: 'rgba(15,23,42,0.98)',
+                        color: saveToast.variant === 'error' ? '#fecaca' : '#f1f5f9',
+                        cursor: 'pointer',
+                    }}
+                >
+                    {saveToast.message}
+                    <div
+                        style={{
+                            marginTop: 6,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: 'var(--text-muted)',
+                            letterSpacing: '0.04em',
+                        }}
+                    >
+                        Tap to dismiss
+                    </div>
+                </div>
+            )}
 
             {uiDialog && (
                 <div
