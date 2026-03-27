@@ -833,6 +833,34 @@ export const apiClient = {
             body: JSON.stringify({ tiers })
         });
         return response.json();
+    },
+
+    getBackup: async () => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/system/backup`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (!response.ok) throw new Error('Backup failed');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `realtorone_backup_${new Date().toISOString().split('T')[0]}.zip`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    },
+
+    restoreBackup: async (file: File): Promise<{ success: boolean; message: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const formData = new FormData();
+        formData.append('backup_file', file);
+        const response = await fetch(`${API_BASE_URL}/admin/system/restore`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: formData
+        });
+        return response.json();
     }
 };
 

@@ -64,6 +64,44 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         }
     };
 
+    const handleDownloadBackup = async () => {
+        setMessage('Generating full system backup... please wait.');
+        try {
+            await apiClient.getBackup();
+            setMessage('Backup generated and download started.');
+            setTimeout(() => setMessage(''), 5000);
+        } catch (error) {
+            console.error('Backup failed', error);
+            setMessage('Backup failed. Check console for details.');
+        }
+    };
+
+    const handleRestoreBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+
+        if (!window.confirm('WARNING: This will overwrite ALL current data with the contents of the backup. Continue?')) {
+            return;
+        }
+
+        setMessage('Restoring system... this may take a moment.');
+        setSaving(true);
+        try {
+            const res = await apiClient.restoreBackup(file);
+            if (res.success) {
+                setMessage('System successfully restored! Page will reload.');
+                setTimeout(() => window.location.reload(), 2000);
+            } else {
+                setMessage(`Restore failed: ${res.message}`);
+            }
+        } catch (error) {
+            console.error('Restore failed', error);
+            setMessage('Critical error during restoration.');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     return (
         <div className="view-container fade-in">
             <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '10px' }}>System Infrastructure</h2>
@@ -78,7 +116,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', alignItems: 'flex-start' }}>
                 <div className="glass-panel">
                     <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '25px' }}>Operational Parameters</h3>
-
+                    {/* ... weight and pricing ... */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                         <div>
                             <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>Custom Activity Weight</label>
@@ -128,33 +166,35 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 </div>
 
                 <div className="glass-panel">
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '25px' }}>System Diagnostics</h3>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '25px' }}>Security & Persistence</h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px' }}>CORE API ENDPOINT</label>
-                            <input type="text" value={import.meta.env.VITE_API_BASE_URL || 'DYNAMIC_CLOUD'} readOnly className="form-input" style={{ width: '100%', background: 'var(--bg-app)', border: 'none', fontStyle: 'italic' }} />
+                        <div style={{ padding: '20px', borderRadius: '15px', background: 'var(--bg-app)', border: '1px solid var(--glass-border)' }}>
+                            <div style={{ marginBottom: '15px' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '5px' }}>DISASTER RECOVERY</label>
+                                <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Download a full snapshot of your database and media files.</p>
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    onClick={handleDownloadBackup}
+                                    className="btn-primary"
+                                    style={{ flex: 1, background: 'var(--primary)', color: '#fff', border: 'none' }}
+                                >
+                                    Download Full Backup
+                                </button>
+                                <label className="btn-primary" style={{ flex: 1, background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', textAlign: 'center' }}>
+                                    Restore from ZIP
+                                    <input type="file" accept=".zip" onChange={handleRestoreBackup} style={{ display: 'none' }} />
+                                </label>
+                            </div>
                         </div>
 
-                        <div style={{ padding: '20px', borderRadius: '15px', background: 'var(--bg-app)', border: '1px solid var(--glass-border)' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)' }}>INTEGRITY STATUS</span>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--success)' }}>OPTIMAL</span>
-                            </div>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Activity Types Loaded</span>
-                                    <span style={{ fontWeight: 800 }}>{activityTypes.length} Functions</span>
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                                    <span style={{ color: 'var(--text-secondary)' }}>Admin Status</span>
-                                    <span style={{ fontWeight: 800, color: 'var(--primary)' }}>AUTHORIZED</span>
-                                </div>
-                            </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px' }}>CORE API ENDPOINT</label>
+                            <input type="text" value={apiClient.getBaseUrl()} readOnly className="form-input" style={{ width: '100%', background: 'var(--bg-app)', border: 'none', fontStyle: 'italic' }} />
                         </div>
 
                         <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                             <button onClick={handleSyncActivities} className="btn-primary" style={{ background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }}>Sync Global Registry</button>
-                            <button className="btn-primary" style={{ background: 'var(--error)15', color: 'var(--error)', border: 'none', opacity: 0.5 }}>Purge System Cache</button>
                         </div>
                     </div>
                 </div>
