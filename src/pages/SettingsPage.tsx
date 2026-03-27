@@ -13,8 +13,6 @@ interface SettingsPageProps {
 
 const SettingsPage: React.FC<SettingsPageProps> = ({
     setActivityTypes,
-    packages,
-    setPackages,
     userActivityPoints,
     setUserActivityPoints
 }) => {
@@ -38,16 +36,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         }
     };
 
-    const handlePriceUpdate = async (id: number, newPrice: number) => {
-        try {
-            const res = await apiClient.updatePackage(id, { price_monthly: newPrice });
-            if (res.success) {
-                setPackages(prev => prev.map(p => p.id === id ? res.data : p));
-            }
-        } catch (error) {
-            console.error('Failed to update price', error);
-        }
-    };
 
     const handleSyncActivities = async () => {
         // This triggers the backend seeder logic and returns the full updated list
