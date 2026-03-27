@@ -121,26 +121,21 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
         setIsRestoring(true);
         setRestoreProgress(0);
+        setRestoreStage('Initializing secure upload stream...');
         setMessage('');
 
-        const timer = setInterval(() => {
-            setRestoreProgress(prev => {
-                if (prev >= 98) return prev;
-                const increment = prev < 20 ? 1 : (prev < 60 ? 0.5 : 0.1);
-                const next = prev + increment;
-
-                if (next < 15) setRestoreStage('Unpacking system recovery package...');
-                else if (next < 50) setRestoreStage('Synchronizing database entities (9,000+ objects)...');
-                else if (next < 85) setRestoreStage('Restoring media assets and file permissions...');
-                else setRestoreStage('Verifying system integrity and flushing cache...');
-
-                return next;
-            });
-        }, 150);
-
         try {
-            const res = await apiClient.restoreBackup(file);
-            clearInterval(timer);
+            const res = await apiClient.restoreBackupWithProgress(file, (percent) => {
+                // Map real upload progress to 0-90%
+                const displayPercent = percent * 0.9;
+                setRestoreProgress(displayPercent);
+                if (percent < 100) {
+                    setRestoreStage(`Uploading recovery package (${percent}%)...`);
+                } else {
+                    setRestoreStage('Upload complete! Backend is now restoring data...');
+                }
+            });
+
             if (res.success) {
                 setRestoreProgress(100);
                 setRestoreStage('Restoration successful. Environment is optimized.');
@@ -153,7 +148,6 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 setMessage(`Restore failed: ${res.message}`);
             }
         } catch (error) {
-            clearInterval(timer);
             setIsRestoring(false);
             setRestoreProgress(0);
             setRestoreStage('');
@@ -196,74 +190,73 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                                     </label>
                                 </div>
                             </div>
-                                <div style={{ display: 'flex', gap: '15px' }}>
-                                    <button
-                                        onClick={handleDownloadBackup}
-                                        className="btn-primary"
-                                        disabled={isBackingUp}
-                                        style={{ flex: 1.5, height: '45px', fontSize: '0.85rem', position: 'relative', overflow: 'hidden' }}
-                                    >
-                                        {isBackingUp ? `PROCESSING ${Math.round(backupProgress)}%` : 'GENERATE SELECTED BACKUP'}
-                                        {isBackingUp && (
-                                            <div style={{ 
-                                                position: 'absolute', 
-                                                bottom: 0, 
-                                                left: 0, 
-                                                height: '4px', 
-                                                background: 'rgba(255,255,255,0.5)', 
-                                                width: `${backupProgress}%`,
-                                                transition: 'width 0.3s ease'
-                                            }} />
-                                        )}
-                                    </button>
-                                    <label className={`btn-primary ${isBackingUp ? 'disabled' : ''}`} style={{ flex: 1, height: '45px', background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isBackingUp ? 'not-allowed' : 'pointer', fontSize: '0.85rem', opacity: isBackingUp ? 0.5 : 1 }}>
-                                        RESTORE FROM ZIP
-                                        <input type="file" accept=".zip" onChange={handleRestoreBackup} style={{ display: 'none' }} disabled={isBackingUp} />
-                                    </label>
-                                </div>
-                            </div>
-
-                            {isBackingUp && (
-                                <div style={{ marginTop: '20px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                        <span>{backupStage}</span>
-                                        <span>{Math.round(backupProgress)}%</span>
-                                    </div>
-                                    <div style={{ height: '6px', background: 'var(--bg-app)', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                            <div style={{ display: 'flex', gap: '15px' }}>
+                                <button
+                                    onClick={handleDownloadBackup}
+                                    className="btn-primary"
+                                    disabled={isBackingUp || isRestoring}
+                                    style={{ flex: 1.5, height: '45px', fontSize: '0.85rem', position: 'relative', overflow: 'hidden' }}
+                                >
+                                    {isBackingUp ? `PROCESSING ${Math.round(backupProgress)}%` : 'GENERATE SELECTED BACKUP'}
+                                    {isBackingUp && (
                                         <div style={{ 
-                                            height: '100%', 
-                                            background: 'linear-gradient(90deg, var(--primary), #8B5CF6)', 
+                                            position: 'absolute', 
+                                            bottom: 0, 
+                                            left: 0, 
+                                            height: '4px', 
+                                            background: 'rgba(255,255,255,0.5)', 
                                             width: `${backupProgress}%`,
-                                            transition: 'width 0.2s ease-out',
-                                            boxShadow: '0 0 10px var(--primary)'
+                                            transition: 'width 0.3s ease'
                                         }} />
-                                    </div>
-                                </div>
-                            )}
-
-                            {isRestoring && (
-                                <div style={{ marginTop: '20px' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.7rem', fontWeight: 900, color: '#10B981', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                        <span>{restoreStage}</span>
-                                        <span>{Math.round(restoreProgress)}%</span>
-                                    </div>
-                                    <div style={{ height: '6px', background: 'var(--bg-app)', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
-                                        <div style={{ 
-                                            height: '100%', 
-                                            background: 'linear-gradient(90deg, #10B981, #34D399)', 
-                                            width: `${restoreProgress}%`,
-                                            transition: 'width 0.2s ease-out',
-                                            boxShadow: '0 0 10px #10B981'
-                                        }} />
-                                    </div>
-                                </div>
-                            )}
-
-                            <div style={{ padding: '20px', background: 'rgba(245, 158, 11, 0.05)', border: '1px dashed #F59E0B55', borderRadius: '12px', marginTop: '20px' }}>
-                                <p style={{ fontSize: '0.75rem', color: '#F59E0B', fontWeight: 600 }}>
-                                    <strong>Safety Tip:</strong> Download a backup before making major structural changes to the database or mass-deleting courses.
-                                </p>
+                                    )}
+                                </button>
+                                <label className={`btn-primary ${(isBackingUp || isRestoring) ? 'disabled' : ''}`} style={{ flex: 1, height: '45px', background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: (isBackingUp || isRestoring) ? 'not-allowed' : 'pointer', fontSize: '0.85rem', opacity: (isBackingUp || isRestoring) ? 0.5 : 1 }}>
+                                    RESTORE FROM ZIP
+                                    <input type="file" accept=".zip" onChange={handleRestoreBackup} style={{ display: 'none' }} disabled={isBackingUp || isRestoring} />
+                                </label>
                             </div>
+                        </div>
+
+                        {isBackingUp && (
+                            <div style={{ marginTop: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                    <span>{backupStage}</span>
+                                    <span>{Math.round(backupProgress)}%</span>
+                                </div>
+                                <div style={{ height: '6px', background: 'var(--bg-app)', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                                    <div style={{ 
+                                        height: '100%', 
+                                        background: 'linear-gradient(90deg, var(--primary), #8B5CF6)', 
+                                        width: `${backupProgress}%`,
+                                        transition: 'width 0.2s ease-out',
+                                        boxShadow: '0 0 10px var(--primary)'
+                                    }} />
+                                </div>
+                            </div>
+                        )}
+
+                        {isRestoring && (
+                            <div style={{ marginTop: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.7rem', fontWeight: 900, color: '#10B981', textTransform: 'uppercase', letterSpacing: '1px' }}>
+                                    <span>{restoreStage}</span>
+                                    <span>{Math.round(restoreProgress)}%</span>
+                                </div>
+                                <div style={{ height: '6px', background: 'var(--bg-app)', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                                    <div style={{ 
+                                        height: '100%', 
+                                        background: 'linear-gradient(90deg, #10B981, #34D399)', 
+                                        width: `${restoreProgress}%`,
+                                        transition: 'width 0.2s ease-out',
+                                        boxShadow: '0 0 10px #10B981'
+                                    }} />
+                                </div>
+                            </div>
+                        )}
+
+                        <div style={{ padding: '20px', background: 'rgba(245, 158, 11, 0.05)', border: '1px dashed #F59E0B55', borderRadius: '12px', marginTop: '10px' }}>
+                            <p style={{ fontSize: '0.75rem', color: '#F59E0B', fontWeight: 600 }}>
+                                <strong>Safety Tip:</strong> Download a backup before making major structural changes to the database or mass-deleting courses.
+                            </p>
                         </div>
                     </div>
                 </div>

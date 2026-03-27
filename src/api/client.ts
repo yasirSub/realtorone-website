@@ -866,6 +866,42 @@ export const apiClient = {
             body: formData
         });
         return response.json();
+    },
+
+    restoreBackupWithProgress: (file: File, onProgress: (percent: number) => void): Promise<{ success: boolean; message: string }> => {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            const formData = new FormData();
+            const token = localStorage.getItem('adminToken');
+            formData.append('backup_file', file);
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable) {
+                    const percent = Math.round((e.loaded / e.total) * 100);
+                    onProgress(percent);
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                if (xhr.status >= 400) {
+                    reject(new Error(`Server error (${xhr.status})`));
+                    return;
+                }
+                try {
+                    resolve(JSON.parse(xhr.responseText));
+                } catch {
+                    reject(new Error('Invalid server response'));
+                }
+            });
+
+            xhr.addEventListener('error', () => reject(new Error('Network error during restoration upload')));
+            
+            xhr.open('POST', `${API_BASE_URL}/admin/system/restore`);
+            if (token) {
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            }
+            xhr.send(formData);
+        });
     }
 };
 
