@@ -835,7 +835,40 @@ export const apiClient = {
         return response.json();
     },
 
-    getBackup: async (options: { db: boolean; media: boolean }) => {
+    getBackups: async (): Promise<{ success: boolean; data: any[] }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/system/backups`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    downloadBackup: async (filename: string) => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/system/backups/download/${filename}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (!response.ok) throw new Error('Download failed');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    },
+
+    deleteBackup: async (filename: string): Promise<{ success: boolean }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/system/backups/${filename}`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    getBackup: async (options: { db: boolean; media: boolean }): Promise<{ success: boolean; data: any; message?: string }> => {
         const token = localStorage.getItem('adminToken');
         const query = new URLSearchParams({
             db: options.db ? '1' : '0',
@@ -845,15 +878,7 @@ export const apiClient = {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         if (!response.ok) throw new Error('Backup failed');
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const tag = (options.db && options.media) ? 'full' : (options.db ? 'db' : 'media');
-        a.download = `realtorone_${tag}_backup_${new Date().toISOString().split('T')[0]}.zip`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
+        return response.json();
     },
 
     restoreBackup: async (file: File): Promise<{ success: boolean; message: string }> => {

@@ -1,69 +1,74 @@
-import React, { useState } from 'react';
-import { apiClient } from '../api/client';
-import type { ActivityType, SubscriptionPackage } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import apiClient from '../api/client';
+import '../index.css';
 
-interface SettingsPageProps {
-    activityTypes: ActivityType[];
-    setActivityTypes: React.Dispatch<React.SetStateAction<ActivityType[]>>;
-    packages: SubscriptionPackage[];
-    setPackages: React.Dispatch<React.SetStateAction<SubscriptionPackage[]>>;
-    userActivityPoints: number;
-    setUserActivityPoints: (points: number) => void;
-}
-
-const SettingsPage: React.FC<SettingsPageProps> = ({
-    setActivityTypes,
-    userActivityPoints,
-    setUserActivityPoints
-}) => {
-    const [pointsValue, setPointsValue] = useState(userActivityPoints);
+const SettingsPage: React.FC = () => {
+    const [pointsValue, setPointsValue] = useState(500);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
-
-    const handleSavePoints = async () => {
-        setSaving(true);
-        try {
-            const res = await apiClient.setUserActivityPoints(pointsValue);
-            if (res.success) {
-                setUserActivityPoints(res.points);
-                setMessage('Activity points infrastructure updated successfully.');
-                setTimeout(() => setMessage(''), 3000);
-            }
-        } catch (error) {
-            console.error('Failed to save points', error);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-
-    const handleSyncActivities = async () => {
-        // This triggers the backend seeder logic and returns the full updated list
-        try {
-            const res = await apiClient.getActivityTypes();
-            if (res.success) {
-                setActivityTypes(res.data);
-                setMessage('Global activity registry synchronized.');
-            }
-            setTimeout(() => setMessage(''), 3000);
-        } catch (error) {
-            console.error('Failed to sync', error);
-        }
-    };
-
+    
+    // Backup State
     const [includeDb, setIncludeDb] = useState(true);
     const [includeMedia, setIncludeMedia] = useState(true);
+    const [isBackingUp, setIsBackingUp] = useState(false);
     const [backupProgress, setBackupProgress] = useState(0);
     const [backupStage, setBackupStage] = useState('');
-    const [isBackingUp, setIsBackingUp] = useState(false);
-    
+    const backupTimerRef = useRef<any>(null);
+
+    // Restore State
     const [restoreProgress, setRestoreProgress] = useState(0);
     const [restoreStage, setRestoreStage] = useState('');
     const [isRestoring, setIsRestoring] = useState(false);
 
+    // History State
+    const [backups, setBackups] = useState<any[]>([]);
+    const [showHistory, setShowHistory] = useState(false);
+
+    const fetchBackups = async () => {
+        try {
+            const res = await apiClient.getBackups();
+            if (res.success) setBackups(res.data);
+        } catch (error) {
+            console.error('Failed to fetch backup history', error);
+        }
+    };
+
+    useEffect(() => {
+        fetchBackups();
+        // Load settings
+        apiClient.getPointsPerActivity().then(res => {
+            if (res.success) setPointsValue(res.data.points_per_activity);
+        });
+    }, []);
+
+    const handleSavePoints = async () => {
+        setSaving(true);
+        try {
+            const res = await apiClient.updatePointsPerActivity(pointsValue);
+            if (res.success) setMessage('System configuration updated successfully.');
+            else setMessage('Failed to update Registry.');
+        } catch (error) {
+            setMessage('Network error during configuration sync.');
+        } finally {
+            setSaving(false);
+            setTimeout(() => setMessage(''), 3000);
+        }
+    };
+
+    const handleSyncActivities = async () => {
+        setMessage('Synchronizing database registries...');
+        try {
+            const res = await apiClient.syncActivityTypes();
+            if (res.success) setMessage('Registry synchronization complete.');
+            else setMessage('Registry sync failed.');
+        } catch (error) {
+            setMessage('Critical error during sync.');
+        }
+    };
+
     const handleDownloadBackup = async () => {
         if (!includeDb && !includeMedia) {
-            setMessage('Please select at least one component to backup.');
+            setMessage('Select at least one archive component.');
             return;
         }
 
@@ -71,43 +76,51 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         setBackupProgress(0);
         setMessage('');
 
-        // Progress simulation to reflect "Real" performance
-        const timer = setInterval(() => {
+        // Precise simulation for backend tasks
+        if (backupTimerRef.current) clearInterval(backupTimerRef.current);
+        backupTimerRef.current = setInterval(() => {
             setBackupProgress(prev => {
                 if (prev >= 98) return prev;
-                // Slower at the end, faster at start
-                const increment = prev < 30 ? 2 : (prev < 70 ? 1 : 0.2);
+                const increment = prev < 20 ? 1 : (prev < 60 ? 0.4 : 0.05);
                 const next = prev + increment;
-                
-                // Update stage text based on %
-                if (next < 15) setBackupStage('Initializing background safety protocols...');
-                else if (next < 45) setBackupStage('Generating high-fidelity MySQL dump...');
+
+                if (next < 10) setBackupStage('Handshaking with system kernel...');
+                else if (next < 40) setBackupStage('Generating high-fidelity MySQL dump...');
                 else if (next < 85) setBackupStage('Compressing course media and assets (ZIP)...');
                 else setBackupStage('Finalizing encrypted archive package...');
                 
                 return next;
             });
-        }, 100);
+        }, 150);
 
         try {
-            await apiClient.getBackup({ db: includeDb, media: includeMedia });
-            clearInterval(timer);
-            setBackupProgress(100);
-            setBackupStage('System backup completed successfully.');
-            setMessage('Backup generated and download initiated.');
-            setTimeout(() => {
-                setIsBackingUp(false);
-                setMessage('');
-                setBackupProgress(0);
-                setBackupStage('');
-            }, 5000);
-        } catch (error) {
-            clearInterval(timer);
+            const res = await apiClient.getBackup({ db: includeDb, media: includeMedia });
+            if (backupTimerRef.current) clearInterval(backupTimerRef.current);
+            
+            if (res.success) {
+                setBackupProgress(100);
+                setBackupStage('Archive synchronized and verified.');
+                setMessage('Backup complete! Download initiated.');
+                
+                if (res.data?.name) {
+                    await apiClient.downloadBackup(res.data.name);
+                }
+                
+                fetchBackups();
+                setTimeout(() => {
+                    setIsBackingUp(false);
+                    setBackupProgress(0);
+                    setBackupStage('');
+                }, 3000);
+            } else {
+                throw new Error(res.message || 'Engine failure');
+            }
+        } catch (error: any) {
+            if (backupTimerRef.current) clearInterval(backupTimerRef.current);
             setIsBackingUp(false);
-            console.error('Backup failed', error);
-            setMessage('Backup failed. Check network or server status.');
             setBackupProgress(0);
             setBackupStage('');
+            setMessage(`Protocol error: ${error.message || 'Unknown failure'}`);
         }
     };
 
@@ -115,197 +128,284 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (!window.confirm('WARNING: This will overwrite current data. Continue?')) {
+        if (!window.confirm('WARNING: This will overwrite operational data. Confirm system reset?')) {
             return;
         }
 
         setIsRestoring(true);
         setRestoreProgress(0);
-        setRestoreStage('Initializing secure upload stream...');
+        setRestoreStage('Streaming recovery package to kernel...');
         setMessage('');
 
         try {
             const res = await apiClient.restoreBackupWithProgress(file, (percent) => {
-                // Map real upload progress to 0-90%
                 const displayPercent = percent * 0.9;
                 setRestoreProgress(displayPercent);
-                if (percent < 100) {
-                    setRestoreStage(`Uploading recovery package (${percent}%)...`);
-                } else {
-                    setRestoreStage('Upload complete! Backend is now restoring data...');
-                }
+                if (percent < 100) setRestoreStage(`Data transmission: ${percent}%`);
+                else setRestoreStage('Restoring entities and flushing cache...');
             });
 
             if (res.success) {
                 setRestoreProgress(100);
-                setRestoreStage('Restoration successful. Environment is optimized.');
-                setMessage('System successfully restored! Page will reload.');
+                setRestoreStage('Environment successfully restored.');
+                setMessage('Success! Core systems rebooting.');
                 setTimeout(() => window.location.reload(), 2000);
             } else {
                 setIsRestoring(false);
                 setRestoreProgress(0);
                 setRestoreStage('');
-                setMessage(`Restore failed: ${res.message}`);
+                setMessage(`Restoration aborted: ${res.message}`);
             }
         } catch (error) {
             setIsRestoring(false);
             setRestoreProgress(0);
             setRestoreStage('');
-            console.error('Restore failed', error);
-            setMessage('Critical error: Backup package is corrupt or incompatible.');
+            setMessage('Critical violation: ZIP package is corrupt.');
         }
     };
 
     return (
-        <div className="view-container fade-in">
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '5px' }}>System Admin</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '30px', fontSize: '0.9rem' }}>Core infrastructure, data redundancy, and platform parameters.</p>
-
-            {message && (
-                <div className="glass-panel" style={{ padding: '15px', marginBottom: '20px', border: '1px solid var(--success)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)', fontWeight: 800, fontSize: '0.8rem' }}>
-                    {message}
+        <div className="admin-layout" style={{ 
+            minHeight: '100vh', 
+            background: 'radial-gradient(circle at 0% 0%, #1a1a2e 0%, #0d0d14 100%)',
+            padding: '50px',
+            color: '#fff',
+            fontFamily: "'Inter', sans-serif"
+        }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                <div style={{ marginBottom: '60px' }}>
+                    <h1 style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '15px', letterSpacing: '-2px', textShadow: '0 0 30px rgba(139, 92, 246, 0.3)' }}>System Admin</h1>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                        <div style={{ padding: '4px 12px', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800, color: '#A78BFA' }}>
+                            INFRASTRUCTURE v4.2
+                        </div>
+                        <div style={{ width: '1px', height: '15px', background: 'rgba(255,255,255,0.1)' }} />
+                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', margin: 0 }}>Advanced cluster controls and terminal parameters.</p>
+                    </div>
                 </div>
-            )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px', alignItems: 'flex-start' }}>
-                {/* Left Column: Disaster Recovery */}
-                <div className="glass-panel">
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{ color: 'var(--primary)' }}>●</span> Disaster Recovery & Redundancy
-                    </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '40px' }}>
                     
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div style={{ padding: '25px', borderRadius: '15px', background: 'var(--bg-app)', border: '1px solid var(--glass-border)' }}>
-                            <div style={{ marginBottom: '20px' }}>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '15px', textTransform: 'uppercase' }}>Select Components to Backup</label>
-                                
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                                        <input type="checkbox" checked={includeDb} onChange={e => setIncludeDb(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }} />
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>MySQL Database (Users, Progress, Logs)</span>
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
-                                        <input type="checkbox" checked={includeMedia} onChange={e => setIncludeMedia(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }} />
-                                        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Media Assets (Course Videos & PDFs)</span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div style={{ display: 'flex', gap: '15px' }}>
-                                <button
-                                    onClick={handleDownloadBackup}
-                                    className="btn-primary"
-                                    disabled={isBackingUp || isRestoring}
-                                    style={{ flex: 1.5, height: '45px', fontSize: '0.85rem', position: 'relative', overflow: 'hidden' }}
-                                >
-                                    {isBackingUp ? `PROCESSING ${Math.round(backupProgress)}%` : 'GENERATE SELECTED BACKUP'}
-                                    {isBackingUp && (
-                                        <div style={{ 
-                                            position: 'absolute', 
-                                            bottom: 0, 
-                                            left: 0, 
-                                            height: '4px', 
-                                            background: 'rgba(255,255,255,0.5)', 
-                                            width: `${backupProgress}%`,
-                                            transition: 'width 0.3s ease'
-                                        }} />
-                                    )}
-                                </button>
-                                <label className={`btn-primary ${(isBackingUp || isRestoring) ? 'disabled' : ''}`} style={{ flex: 1, height: '45px', background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: (isBackingUp || isRestoring) ? 'not-allowed' : 'pointer', fontSize: '0.85rem', opacity: (isBackingUp || isRestoring) ? 0.5 : 1 }}>
-                                    RESTORE FROM ZIP
-                                    <input type="file" accept=".zip" onChange={handleRestoreBackup} style={{ display: 'none' }} disabled={isBackingUp || isRestoring} />
+                    {/* DISASTER RECOVERY PANEL */}
+                    <div style={{ 
+                        background: 'rgba(255, 255, 255, 0.02)', 
+                        backdropFilter: 'blur(15px)',
+                        borderRadius: '30px',
+                        padding: '40px',
+                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                        boxShadow: '0 40px 100px -20px rgba(0,0,0,0.6)',
+                        position: 'relative'
+                    }}>
+                        <div style={{ position: 'absolute', top: '40px', right: '40px' }}>
+                            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#EF4444', boxShadow: '0 0 15px #EF4444' }} />
+                        </div>
+
+                        <h2 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '35px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            <span style={{ fontSize: '1.2rem' }}>💎</span> Disaster Recovery
+                        </h2>
+
+                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '25px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.03)', marginBottom: '30px' }}>
+                            <p style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', marginBottom: '20px' }}>ARCHIVE SPECIFICATIONS</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                                <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '15px', cursor: 'pointer', padding: '15px', borderRadius: '12px', background: includeDb ? 'rgba(139, 92, 246, 0.05)' : 'transparent', border: `1px solid ${includeDb ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.05)'}`, transition: 'all 0.2s' }}>
+                                    <input type="checkbox" checked={includeDb} onChange={e => setIncludeDb(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#8B5CF6' }} />
+                                    <div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Database Set</div>
+                                        <div style={{ fontSize: '0.65rem', opacity: 0.4 }}>MySQL Nodes</div>
+                                    </div>
+                                </label>
+                                <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '15px', cursor: 'pointer', padding: '15px', borderRadius: '12px', background: includeMedia ? 'rgba(139, 92, 246, 0.05)' : 'transparent', border: `1px solid ${includeMedia ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.05)'}`, transition: 'all 0.2s' }}>
+                                    <input type="checkbox" checked={includeMedia} onChange={e => setIncludeMedia(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#8B5CF6' }} />
+                                    <div>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Media Assets</div>
+                                        <div style={{ fontSize: '0.65rem', opacity: 0.4 }}>public/* storage</div>
+                                    </div>
                                 </label>
                             </div>
                         </div>
 
-                        {isBackingUp && (
-                            <div style={{ marginTop: '20px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.7rem', fontWeight: 900, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                    <span>{backupStage}</span>
-                                    <span>{Math.round(backupProgress)}%</span>
+                        <div style={{ display: 'flex', gap: '20px', marginBottom: '40px' }}>
+                            <button 
+                                onClick={handleDownloadBackup}
+                                disabled={isBackingUp || isRestoring}
+                                style={{ 
+                                    flex: 1.5, height: '60px', borderRadius: '18px', border: 'none',
+                                    background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
+                                    color: '#fff', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer',
+                                    boxShadow: '0 20px 40px -10px rgba(139, 92, 246, 0.4)',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    opacity: (isBackingUp || isRestoring) ? 0.6 : 1,
+                                    textTransform: 'uppercase', letterSpacing: '1px'
+                                }}
+                            >
+                                {isBackingUp ? 'Compiling Archive...' : 'Generate New Backup'}
+                            </button>
+                            <label style={{ 
+                                flex: 1, height: '60px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.1)',
+                                background: 'rgba(255,255,255,0.03)', color: '#fff', fontWeight: 800, fontSize: '0.8rem',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                transition: 'all 0.2s ease', opacity: (isBackingUp || isRestoring) ? 0.5 : 1
+                            }}>
+                                Restore Sync
+                                <input type="file" accept=".zip" onChange={handleRestoreBackup} style={{ display: 'none' }} disabled={isBackingUp || isRestoring} />
+                            </label>
+                        </div>
+
+                        {/* PROGRESS HUD */}
+                        {(isBackingUp || isRestoring) && (
+                            <div style={{ 
+                                padding: '30px', background: 'rgba(0,0,0,0.3)', borderRadius: '24px', 
+                                border: `1px solid ${isBackingUp ? 'rgba(139, 92, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                                marginBottom: '40px', position: 'relative', overflow: 'hidden'
+                            }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '15px' }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: isBackingUp ? '#8B5CF6' : '#10B981', letterSpacing: '2px', marginBottom: '5px' }}>
+                                            {isBackingUp ? 'ENCRYPTION STAGE' : 'DECRYPTION STAGE'}
+                                        </div>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{isBackingUp ? backupStage : restoreStage}</div>
+                                    </div>
+                                    <div style={{ fontSize: '1.5rem', fontWeight: 900, fontVariantNumeric: 'tabular-nums' }}>
+                                        {Math.round(isBackingUp ? backupProgress : restoreProgress)}%
+                                    </div>
                                 </div>
-                                <div style={{ height: '6px', background: 'var(--bg-app)', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
+                                <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
                                     <div style={{ 
-                                        height: '100%', 
-                                        background: 'linear-gradient(90deg, var(--primary), #8B5CF6)', 
-                                        width: `${backupProgress}%`,
-                                        transition: 'width 0.2s ease-out',
-                                        boxShadow: '0 0 10px var(--primary)'
+                                        height: '100%', width: `${isBackingUp ? backupProgress : restoreProgress}%`, 
+                                        background: isBackingUp ? 'linear-gradient(90deg, #8B5CF6, #6D28D9)' : 'linear-gradient(90deg, #10B981, #059669)',
+                                        transition: 'width 0.4s ease-out',
+                                        boxShadow: `0 0 20px ${isBackingUp ? 'rgba(139, 92, 246, 0.5)' : 'rgba(16, 185, 129, 0.5)'}`
                                     }} />
                                 </div>
                             </div>
                         )}
 
-                        {isRestoring && (
-                            <div style={{ marginTop: '20px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.7rem', fontWeight: 900, color: '#10B981', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                    <span>{restoreStage}</span>
-                                    <span>{Math.round(restoreProgress)}%</span>
-                                </div>
-                                <div style={{ height: '6px', background: 'var(--bg-app)', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--glass-border)' }}>
-                                    <div style={{ 
-                                        height: '100%', 
-                                        background: 'linear-gradient(90deg, #10B981, #34D399)', 
-                                        width: `${restoreProgress}%`,
-                                        transition: 'width 0.2s ease-out',
-                                        boxShadow: '0 0 10px #10B981'
-                                    }} />
-                                </div>
-                            </div>
-                        )}
+                        {/* HISTORY LOGS */}
+                        <div>
+                            <button 
+                                onClick={() => setShowHistory(!showHistory)}
+                                style={{ 
+                                    background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', 
+                                    fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px'
+                                }}
+                            >
+                                {showHistory ? '▼ CLOSE ARCHIVE VAULT' : '▶ OPEN ARCHIVE VAULT'}
+                            </button>
 
-                        <div style={{ padding: '20px', background: 'rgba(245, 158, 11, 0.05)', border: '1px dashed #F59E0B55', borderRadius: '12px', marginTop: '10px' }}>
-                            <p style={{ fontSize: '0.75rem', color: '#F59E0B', fontWeight: 600 }}>
-                                <strong>Safety Tip:</strong> Download a backup before making major structural changes to the database or mass-deleting courses.
-                            </p>
+                            {showHistory && (
+                                <div style={{ marginTop: '25px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {backups.length === 0 ? (
+                                        <div style={{ padding: '30px', textAlign: 'center', opacity: 0.3, fontSize: '0.8rem' }}>Vault is empty.</div>
+                                    ) : (
+                                        backups.map((bak, idx) => (
+                                            <div key={idx} style={{ 
+                                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                                padding: '15px 20px', background: 'rgba(255,255,255,0.01)', borderRadius: '15px',
+                                                border: '1px solid rgba(255,255,255,0.03)', transition: 'all 0.2s'
+                                            }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                                                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#8B5CF6' }} />
+                                                    <div>
+                                                        <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bak.name}</div>
+                                                        <div style={{ fontSize: '0.6rem', opacity: 0.4 }}>{(bak.size / (1024*1024)).toFixed(2)} MB • {new Date(bak.created_at * 1000).toLocaleDateString()}</div>
+                                                    </div>
+                                                </div>
+                                                <div style={{ display: 'flex', gap: '10px' }}>
+                                                    <button onClick={() => apiClient.downloadBackup(bak.name)} style={{ padding: '8px 15px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', color: '#fff', fontSize: '0.6rem', fontWeight: 900, cursor: 'pointer' }}>DNLD</button>
+                                                    <button onClick={async () => { if(window.confirm('Erase?')) { await apiClient.deleteBackup(bak.name); fetchBackups(); } }} style={{ padding: '8px 15px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#EF4444', fontSize: '0.6rem', fontWeight: 900, cursor: 'pointer' }}>DEL</button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
                         </div>
                     </div>
-                </div>
 
-                {/* Right Column: Parameters & Maintenance */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                    <div className="glass-panel">
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '25px' }}>System Maintenance</h3>
+                    {/* RIGHT COLUMN: MAINTENANCE & TERMINAL */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                         
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase' }}>Global Activity Weight</label>
-                                <div style={{ display: 'flex', gap: '10px' }}>
-                                    <input
-                                        type="number"
-                                        value={pointsValue}
-                                        onChange={(e) => setPointsValue(parseInt(e.target.value))}
-                                        className="form-input"
-                                        style={{ width: '80px' }}
-                                    />
-                                    <button
-                                        onClick={handleSavePoints}
-                                        className="btn-primary"
-                                        disabled={saving}
-                                        style={{ background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', flex: 1 }}
+                        {/* MAINTENANCE CARD */}
+                        <div style={{ 
+                            background: 'rgba(255, 255, 255, 0.02)', 
+                            backdropFilter: 'blur(15px)',
+                            borderRadius: '30px',
+                            padding: '40px',
+                            border: '1px solid rgba(255, 255, 255, 0.05)',
+                        }}>
+                             <h2 style={{ fontSize: '1.2rem', fontWeight: 900, marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <span style={{ fontSize: '1rem' }}>⚙️</span> Terminal Control
+                            </h2>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '12px' }}>GLOBAL ACTIVITY WEIGHT</label>
+                                    <div style={{ display: 'flex', gap: '15px' }}>
+                                        <input 
+                                            type="number" 
+                                            value={pointsValue} 
+                                            onChange={e => setPointsValue(parseInt(e.target.value))}
+                                            style={{ 
+                                                width: '100px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '12px', padding: '12px', color: '#fff', fontWeight: 800, textAlign: 'center'
+                                            }}
+                                        />
+                                        <button 
+                                            onClick={handleSavePoints}
+                                            disabled={saving}
+                                            style={{ 
+                                                flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '12px', color: '#fff', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer'
+                                            }}
+                                        >
+                                            {saving ? 'SYNCING...' : 'UPDATE REGISTRY'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <button 
+                                        onClick={handleSyncActivities}
+                                        style={{ 
+                                            width: '100%', padding: '18px', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.1)',
+                                            borderRadius: '15px', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer'
+                                        }}
                                     >
-                                        {saving ? 'SAVING...' : 'SYNC POINTS'}
+                                        FORCE REGISTRY RE-SYNC (SEEDER)
                                     </button>
                                 </div>
-                                <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Base rewards for identity conditioning tasks.</p>
-                            </div>
 
-                            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
-                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase' }}>Sync Database Registry</label>
-                                <button onClick={handleSyncActivities} className="btn-primary" style={{ width: '100%', background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }}>
-                                    RUN GLOBAL SEEDER SYNC
-                                </button>
-                                <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Forces a refresh of all mission types from the source code.</p>
-                            </div>
-
-                            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
-                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase' }}>API Integration</label>
-                                <input type="text" value={apiClient.getBaseUrl()} readOnly className="form-input" style={{ width: '100%', background: 'var(--bg-app)', border: 'none', fontStyle: 'italic', fontSize: '0.8rem' }} />
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 800 }}>● CONNECTED TO CLOUD</span>
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>v1.4.2-PRIME</span>
+                                <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                                    <div style={{ padding: '20px', background: 'rgba(234, 179, 8, 0.05)', border: '1px dashed rgba(234, 179, 8, 0.2)', borderRadius: '15px' }}>
+                                        <div style={{ fontSize: '0.75rem', color: '#EAB308', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                                            <span>⚠️</span> System Advisory
+                                        </div>
+                                        <p style={{ fontSize: '0.7rem', color: '#EAB308', opacity: 0.8, margin: 0, lineHeight: 1.5 }}>
+                                            Always verify ZIP integrity before restoration. Large archives may require extended server allocation.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
+
+                        {/* STATUS NOTIFICATION */}
+                        {message && (
+                            <div style={{ 
+                                padding: '20px 25px',
+                                background: 'linear-gradient(90deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.1))',
+                                border: '1px solid rgba(139, 92, 246, 0.3)',
+                                borderRadius: '20px',
+                                fontSize: '0.8rem',
+                                fontWeight: 600,
+                                color: '#A78BFA',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '15px'
+                            }}>
+                                <span style={{ fontSize: '1rem' }}>🔔</span>
+                                {message}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
