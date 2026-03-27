@@ -920,7 +920,7 @@ export const apiClient = {
             });
 
             xhr.addEventListener('error', () => reject(new Error('Network error during restoration upload')));
-            
+
             xhr.open('POST', `${API_BASE_URL}/admin/system/restore`);
             if (token) {
                 xhr.setRequestHeader('Authorization', `Bearer ${token}`);
