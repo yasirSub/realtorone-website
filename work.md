@@ -603,3 +603,18 @@ Website:
   - Fixed Leaderboard admin sync with app data shape (`data.leaderboard`) and aligned default category to `Top Realtor` for matching live rankings.
 Application (Mobile):
   - Replaced hardcoded diagnosis questionnaire with API-driven questions loaded at runtime; if API returns none, the screen now shows empty-state instead of fallback hardcoded questions.
+
+### Day 58: Mar 27 - Disaster Recovery & Advanced System Backup
+Backend:
+  - Implemented `BackupController` with granular component selection: administrators can now generate `Database only`, `Media only`, or `Full` system backups via the API.
+  - Added support for `--ssl=0` in database commands (MariaDB compatible) to resolve "self-signed certificate" connection errors during export/import on the live VPS.
+  - Hardened backup security: restricted access to admin-only routes and implemented automatic temporary file cleanup to prevent server storage bloat.
+  - Enhanced `Dockerfile` with essential recovery tools: `zip` for asset compression and `default-mysql-client` for high-fidelity database dumps.
+Website:
+  - Redesigned "Admin System Settings" with a premium **Disaster Recovery & Redundancy** panel featuring a modern glassmorphism aesthetic and interactive state feedback.
+  - Integrated granular checkboxes for selective component backup, allowing admins to download specific data segments (e.g., just Database or just Media Assets).
+  - Added a "Restore from ZIP" workflow with a secure file-upload interface and safety confirmation dialogs to prevent accidental data overwrites.
+  - Polished the Settings UI: removed legacy subscription/pricing fields and unified all system maintenance and recovery controls into a single dashboard.
+Infrastructure:
+  - Performed a deep-clean recovery of the VPS deployment pipeline: resolved local/remote Git branch desynchronization and recovered host-level terminal access.
+  - Rebuilt the live production environment on the VPS (`187.77.184.129`) to apply the new backup utilities and ensure full end-to-end data persistence.
