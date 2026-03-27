@@ -12,7 +12,6 @@ interface SettingsPageProps {
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({
-    activityTypes,
     setActivityTypes,
     packages,
     setPackages,
