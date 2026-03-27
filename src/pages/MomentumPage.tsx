@@ -14,8 +14,8 @@ interface MomentumPageProps {
 
 type CategoryKey = 'subconscious' | 'conscious';
 type SectionGroup = { title: string; order: number; items: ActivityType[] };
-type DailyLogEntry = { day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null };
-type DailyLogDraft = { task_description: string; script_idea: string; feedback: string; audio_url: string };
+type DailyLogEntry = { day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null; required_listen_percent: number | null; require_user_response: boolean | null };
+type DailyLogDraft = { task_description: string; script_idea: string; feedback: string; audio_url: string; required_listen_percent: number; require_user_response: boolean };
 type UiDialog =
     | null
     | { kind: 'confirm'; title: string; message: string; onConfirm: () => void }
@@ -139,6 +139,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
     const [expandedSavedDay, setExpandedSavedDay] = React.useState<number | null>(null);
     const [dayDrafts, setDayDrafts] = React.useState<Record<number, DailyLogDraft>>({});
     const [savingDay, setSavingDay] = React.useState<number | null>(null);
+    const [deletingDay, setDeletingDay] = React.useState<number | null>(null);
     const [isAddingDay, setIsAddingDay] = React.useState(false);
     const [newDayNumber, setNewDayNumber] = React.useState<number>(1);
     const [dayFilterMode, setDayFilterMode] = React.useState<'all' | 'week' | 'month'>('all');
@@ -150,6 +151,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
     const [saveToast, setSaveToast] = React.useState<MomentumSaveToast | null>(null);
     const saveToastTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const [taskDescExpandedByDay, setTaskDescExpandedByDay] = React.useState<Record<number, boolean>>({});
+    const [scriptIdeaExpandedByDay, setScriptIdeaExpandedByDay] = React.useState<Record<number, boolean>>({});
     const [feedbackExpandedByDay, setFeedbackExpandedByDay] = React.useState<Record<number, boolean>>({});
 
     // Edit selected activity (e.g. Visualization item) basics.
@@ -197,6 +199,10 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
 
     const toggleFeedbackExpanded = (day: number) => {
         setFeedbackExpandedByDay((prev) => ({ ...prev, [day]: !prev[day] }));
+    };
+
+    const toggleScriptIdeaExpanded = (day: number) => {
+        setScriptIdeaExpandedByDay((prev) => ({ ...prev, [day]: !prev[day] }));
     };
 
     const momentumCollapsibleHeaderStyle: React.CSSProperties = {
@@ -275,6 +281,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 script_idea: '',
                 feedback: '',
                 audio_url: '',
+                required_listen_percent: 0,
+                require_user_response: false,
             };
             const base = dayDraftsRef.current[day] ?? defaultDraft;
             const merged: DailyLogDraft = { ...base, audio_url: storedUrl };
@@ -288,6 +296,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 script_idea: merged.script_idea.trim(),
                 feedback: merged.feedback.trim(),
                 audio_url: storedUrl,
+                required_listen_percent: Math.max(0, Math.min(100, Number(merged.required_listen_percent || 0))),
+                require_user_response: Boolean(merged.require_user_response),
             });
             if (!saveRes.success) {
                 alert(
@@ -404,6 +414,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     script_idea: entry.script_idea ?? null,
                     feedback: entry.feedback ?? null,
                     audio_url: entry.audio_url ?? null,
+                    required_listen_percent: Number(entry.required_listen_percent ?? 0),
+                    require_user_response: Boolean(entry.require_user_response ?? false),
                 }))
                 .sort((a, b) => a.day_number - b.day_number);
             setSavedDayLogs(normalized);
@@ -435,6 +447,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 script_idea: (entry?.script_idea ?? selectedActivity.script_idea ?? '').toString(),
                 feedback: (entry?.feedback ?? '').toString(),
                 audio_url: (entry?.audio_url ?? '').toString(),
+                required_listen_percent: Number(entry?.required_listen_percent ?? 0),
+                require_user_response: Boolean(entry?.require_user_response ?? false),
             },
         }));
     }, [selectedActivity, dayDrafts, savedDayLogs]);
@@ -447,6 +461,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 script_idea: prev[day]?.script_idea ?? '',
                 feedback: prev[day]?.feedback ?? '',
                 audio_url: prev[day]?.audio_url ?? '',
+                required_listen_percent: prev[day]?.required_listen_percent ?? 0,
+                require_user_response: prev[day]?.require_user_response ?? false,
                 ...patch,
             },
         }));
@@ -459,6 +475,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             script_idea: '',
             feedback: '',
             audio_url: '',
+            required_listen_percent: 0,
+            require_user_response: false,
         };
         setSavingDay(day);
         try {
@@ -468,6 +486,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 feedback: draft.feedback.trim(),
                 audio_url:
                     draft.audio_url.trim() === '' ? null : draft.audio_url.trim(),
+                required_listen_percent: Math.max(0, Math.min(100, Number(draft.required_listen_percent || 0))),
+                require_user_response: Boolean(draft.require_user_response),
             });
             if (!res.success) {
                 showSaveToast('Could not save this day. Try again or check the console.', 'error');
@@ -493,7 +513,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             .map((line) => line.trim())
             .filter(Boolean);
 
-        const entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string }> = [];
+        const entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string; required_listen_percent?: number; require_user_response?: boolean }> = [];
         for (const row of rows) {
             const cols = row.split('\t').map((x) => x.trim());
             if (cols.length < 2) continue;
@@ -512,6 +532,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     script_idea: cols[1],
                     feedback: '',
                     audio_url: '',
+                    required_listen_percent: 0,
+                    require_user_response: false,
                 });
             } else {
                 entries.push({
@@ -520,12 +542,14 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     script_idea: cols[2] || '',
                     feedback: cols[3] || '',
                     audio_url: cols[4] || '',
+                    required_listen_percent: Math.max(0, Math.min(100, Number(cols[5] || 0))),
+                    require_user_response: /^(1|true|yes|y)$/i.test((cols[6] || '').trim()),
                 });
             }
         }
 
         if (!entries.length) {
-            alert('No valid rows found. Use tab-separated rows: day, task(optional), script, feedback(optional).');
+            alert('No valid rows found. Use tab-separated rows: day, task(optional), script, feedback(optional), audio_url(optional), required_listen_percent(optional 0-100), require_user_response(optional true/false).');
             return;
         }
 
@@ -653,6 +677,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     script_idea: selectedActivity?.script_idea ?? '',
                     feedback: '',
                     audio_url: '',
+                    required_listen_percent: 0,
+                    require_user_response: false,
                 },
             }));
         }
@@ -665,6 +691,56 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
         setSelectedDayNumber(day);
         setExpandedSavedDay(day);
         setIsAddingDay(false);
+    };
+
+    const deleteDailyLogForDay = (day: number) => {
+        if (!selectedActivity) return;
+        setUiDialog({
+            kind: 'confirm',
+            title: `Delete Day ${day}`,
+            message: `Delete saved content for Day ${day}? This cannot be undone.`,
+            onConfirm: async () => {
+                setUiDialog(null);
+                setDeletingDay(day);
+                try {
+                    const res = await apiClient.deleteActivityTypeDailyLog(selectedActivity.id, day);
+                    if (!res.success) {
+                        showSaveToast(`Could not delete Day ${day}. ${res.message ? res.message : 'Try again.'}`, 'error');
+                        return;
+                    }
+                    await refreshSavedDayLogs();
+                    setDayDrafts((prev) => {
+                        const next = { ...prev };
+                        delete next[day];
+                        return next;
+                    });
+                    setTaskDescExpandedByDay((prev) => {
+                        const next = { ...prev };
+                        delete next[day];
+                        return next;
+                    });
+                    setScriptIdeaExpandedByDay((prev) => {
+                        const next = { ...prev };
+                        delete next[day];
+                        return next;
+                    });
+                    setFeedbackExpandedByDay((prev) => {
+                        const next = { ...prev };
+                        delete next[day];
+                        return next;
+                    });
+                    if (selectedDayNumber === day) setSelectedDayNumber(1);
+                    if (expandedSavedDay === day) setExpandedSavedDay(null);
+                    showSaveToast(`Day ${day} deleted`, 'success');
+                } catch (e) {
+                    console.error('Delete day failed:', e);
+                    const msg = e instanceof Error ? e.message : 'Network or server error';
+                    showSaveToast(`Delete failed: ${msg}`, 'error');
+                } finally {
+                    setDeletingDay(null);
+                }
+            },
+        });
     };
 
     React.useEffect(() => {
@@ -1080,22 +1156,51 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                             </div>
 
                                                             <div>
-                                                                <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                                                                <button
+                                                                    type="button"
+                                                                    className="momentum-collapsible-trigger"
+                                                                    onClick={() => toggleScriptIdeaExpanded(newDayNumber)}
+                                                                    style={momentumCollapsibleHeaderStyle}
+                                                                >
+                                                                    <span style={{ color: 'var(--text-main)' }}>
+                                                                        {scriptIdeaExpandedByDay[newDayNumber] === true ? '▾' : '▸'}
+                                                                    </span>
                                                                     VIDEO/REEL SCRIPT IDEA
-                                                                </div>
-                                                                <textarea
-                                                                    className="premium-input"
-                                                                    rows={3}
-                                                                    value={(dayDrafts[newDayNumber]?.script_idea ?? '').toString()}
-                                                                    onChange={(e) => updateDayDraft(newDayNumber, { script_idea: e.target.value })}
-                                                                    placeholder="Write script idea for this day..."
-                                                                    style={{ marginTop: 8, resize: 'vertical' }}
-                                                                />
+                                                                </button>
+                                                                {scriptIdeaExpandedByDay[newDayNumber] === true ? (
+                                                                    <textarea
+                                                                        className="premium-input"
+                                                                        rows={3}
+                                                                        value={(dayDrafts[newDayNumber]?.script_idea ?? '').toString()}
+                                                                        onChange={(e) => updateDayDraft(newDayNumber, { script_idea: e.target.value })}
+                                                                        placeholder="Write script idea for this day..."
+                                                                        style={{ marginTop: 8, resize: 'vertical' }}
+                                                                    />
+                                                                ) : (
+                                                                    <div
+                                                                        style={momentumCollapsiblePreviewStyle}
+                                                                        title={(dayDrafts[newDayNumber]?.script_idea ?? '').toString()}
+                                                                    >
+                                                                        {(dayDrafts[newDayNumber]?.script_idea ?? '').toString().trim() || '—'}
+                                                                    </div>
+                                                                )}
                                                             </div>
 
-                                                            <div>
-                                                                <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 8 }}>
-                                                                    AUDIO
+                                                            <div
+                                                                style={{
+                                                                    background: 'rgba(15,23,42,0.35)',
+                                                                    border: '1px solid rgba(148,163,184,0.22)',
+                                                                    borderRadius: 12,
+                                                                    padding: '12px',
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+                                                                    <div style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '0.08em' }}>
+                                                                        AUDIO SETTINGS
+                                                                    </div>
+                                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                                        Upload + listen rules
+                                                                    </div>
                                                                 </div>
                                                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                                                                     <input
@@ -1148,8 +1253,86 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                         </div>
                                                                     )}
                                                                 </div>
+                                                                {(dayDrafts[newDayNumber]?.audio_url ?? '').trim() !== '' && (
+                                                                    <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+                                                                        <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                                                                            REQUIRED LISTEN %: {Number(dayDrafts[newDayNumber]?.required_listen_percent ?? 0)}%
+                                                                        </div>
+                                                                        <input
+                                                                            type="range"
+                                                                            min={0}
+                                                                            max={100}
+                                                                            step={1}
+                                                                            value={Number(dayDrafts[newDayNumber]?.required_listen_percent ?? 0)}
+                                                                            onChange={(e) => {
+                                                                                const next = Math.max(0, Math.min(100, Number(e.target.value || 0)));
+                                                                                updateDayDraft(newDayNumber, { required_listen_percent: next });
+                                                                            }}
+                                                                            style={{ width: '100%', accentColor: 'var(--accent)' }}
+                                                                        />
+                                                                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                                                            0 = no minimum
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                                <div
+                                                                    style={{
+                                                                        marginTop: 10,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'space-between',
+                                                                        gap: 12,
+                                                                        background: 'rgba(255,255,255,0.02)',
+                                                                        border: '1px solid var(--glass-border)',
+                                                                        borderRadius: 10,
+                                                                        padding: '10px 12px',
+                                                                    }}
+                                                                >
+                                                                    <div style={{ minWidth: 0 }}>
+                                                                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
+                                                                            Require user response
+                                                                        </div>
+                                                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
+                                                                            User must type response before submit
+                                                                        </div>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => updateDayDraft(newDayNumber, { require_user_response: !dayDrafts[newDayNumber]?.require_user_response })}
+                                                                        aria-label="Toggle require user response"
+                                                                        style={{
+                                                                            width: 54,
+                                                                            height: 30,
+                                                                            borderRadius: 999,
+                                                                            border: dayDrafts[newDayNumber]?.require_user_response
+                                                                                ? '1px solid rgba(16,185,129,0.55)'
+                                                                                : '1px solid var(--glass-border)',
+                                                                            background: dayDrafts[newDayNumber]?.require_user_response
+                                                                                ? 'linear-gradient(135deg, rgba(16,185,129,0.35), rgba(52,211,153,0.28))'
+                                                                                : 'rgba(255,255,255,0.05)',
+                                                                            position: 'relative',
+                                                                            cursor: 'pointer',
+                                                                            transition: 'all 0.2s ease',
+                                                                            flexShrink: 0,
+                                                                        }}
+                                                                    >
+                                                                        <span
+                                                                            style={{
+                                                                                position: 'absolute',
+                                                                                top: 3,
+                                                                                left: dayDrafts[newDayNumber]?.require_user_response ? 27 : 3,
+                                                                                width: 22,
+                                                                                height: 22,
+                                                                                borderRadius: '50%',
+                                                                                background: dayDrafts[newDayNumber]?.require_user_response ? '#10b981' : 'rgba(255,255,255,0.75)',
+                                                                                boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                                                                                transition: 'all 0.2s ease',
+                                                                            }}
+                                                                        />
+                                                                    </button>
+                                                                </div>
                                                                 {(dayDrafts[newDayNumber]?.audio_url ?? '').trim() && (
-                                                                    <div style={{ marginTop: 10 }}>
+                                                                    <div style={{ marginTop: 12 }}>
                                                                         <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 6 }}>PREVIEW</div>
                                                                         <PremiumAudioPlayer src={resolveAudioPlaybackUrl(dayDrafts[newDayNumber]?.audio_url ?? '')} />
                                                                     </div>
@@ -1418,22 +1601,51 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                         </div>
 
                                                                         <div>
-                                                                            <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="momentum-collapsible-trigger"
+                                                                                onClick={() => toggleScriptIdeaExpanded(entry.day_number)}
+                                                                                style={momentumCollapsibleHeaderStyle}
+                                                                            >
+                                                                                <span style={{ color: 'var(--text-main)' }}>
+                                                                                    {scriptIdeaExpandedByDay[entry.day_number] === true ? '▾' : '▸'}
+                                                                                </span>
                                                                                 VIDEO/REEL SCRIPT IDEA
-                                                                            </div>
-                                                                            <textarea
-                                                                                className="premium-input"
-                                                                                rows={3}
-                                                                                value={(dayDrafts[entry.day_number]?.script_idea ?? '').toString()}
-                                                                                onChange={(e) => updateDayDraft(entry.day_number, { script_idea: e.target.value })}
-                                                                                placeholder="Write script idea for this day..."
-                                                                                style={{ marginTop: 8, resize: 'vertical' }}
-                                                                            />
+                                                                            </button>
+                                                                            {scriptIdeaExpandedByDay[entry.day_number] === true ? (
+                                                                                <textarea
+                                                                                    className="premium-input"
+                                                                                    rows={3}
+                                                                                    value={(dayDrafts[entry.day_number]?.script_idea ?? '').toString()}
+                                                                                    onChange={(e) => updateDayDraft(entry.day_number, { script_idea: e.target.value })}
+                                                                                    placeholder="Write script idea for this day..."
+                                                                                    style={{ marginTop: 8, resize: 'vertical' }}
+                                                                                />
+                                                                            ) : (
+                                                                                <div
+                                                                                    style={momentumCollapsiblePreviewStyle}
+                                                                                    title={(dayDrafts[entry.day_number]?.script_idea ?? '').toString()}
+                                                                                >
+                                                                                    {(dayDrafts[entry.day_number]?.script_idea ?? '').toString().trim() || '—'}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
 
-                                                                        <div>
-                                                                            <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 8 }}>
-                                                                                AUDIO
+                                                                        <div
+                                                                            style={{
+                                                                                background: 'rgba(15,23,42,0.35)',
+                                                                                border: '1px solid rgba(148,163,184,0.22)',
+                                                                                borderRadius: 12,
+                                                                                padding: '12px',
+                                                                            }}
+                                                                        >
+                                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
+                                                                                <div style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '0.08em' }}>
+                                                                                    AUDIO SETTINGS
+                                                                                </div>
+                                                                                <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                                                    Upload + listen rules
+                                                                                </div>
                                                                             </div>
                                                                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                                                                                 <input
@@ -1486,8 +1698,86 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                                     </div>
                                                                                 )}
                                                                             </div>
+                                                                            {(dayDrafts[entry.day_number]?.audio_url ?? '').trim() !== '' && (
+                                                                                <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+                                                                                    <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                                                                                        REQUIRED LISTEN %: {Number(dayDrafts[entry.day_number]?.required_listen_percent ?? 0)}%
+                                                                                    </div>
+                                                                                    <input
+                                                                                        type="range"
+                                                                                        min={0}
+                                                                                        max={100}
+                                                                                        step={1}
+                                                                                        value={Number(dayDrafts[entry.day_number]?.required_listen_percent ?? 0)}
+                                                                                        onChange={(e) => {
+                                                                                            const next = Math.max(0, Math.min(100, Number(e.target.value || 0)));
+                                                                                            updateDayDraft(entry.day_number, { required_listen_percent: next });
+                                                                                        }}
+                                                                                        style={{ width: '100%', accentColor: 'var(--accent)' }}
+                                                                                    />
+                                                                                    <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                                                                        0 = no minimum
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
+                                                                            <div
+                                                                                style={{
+                                                                                    marginTop: 10,
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'space-between',
+                                                                                    gap: 12,
+                                                                                    background: 'rgba(255,255,255,0.02)',
+                                                                                    border: '1px solid var(--glass-border)',
+                                                                                    borderRadius: 10,
+                                                                                    padding: '10px 12px',
+                                                                                }}
+                                                                            >
+                                                                                <div style={{ minWidth: 0 }}>
+                                                                                    <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
+                                                                                        Require user response
+                                                                                    </div>
+                                                                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
+                                                                                        User must type response before submit
+                                                                                    </div>
+                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => updateDayDraft(entry.day_number, { require_user_response: !dayDrafts[entry.day_number]?.require_user_response })}
+                                                                                    aria-label="Toggle require user response"
+                                                                                    style={{
+                                                                                        width: 54,
+                                                                                        height: 30,
+                                                                                        borderRadius: 999,
+                                                                                        border: dayDrafts[entry.day_number]?.require_user_response
+                                                                                            ? '1px solid rgba(16,185,129,0.55)'
+                                                                                            : '1px solid var(--glass-border)',
+                                                                                        background: dayDrafts[entry.day_number]?.require_user_response
+                                                                                            ? 'linear-gradient(135deg, rgba(16,185,129,0.35), rgba(52,211,153,0.28))'
+                                                                                            : 'rgba(255,255,255,0.05)',
+                                                                                        position: 'relative',
+                                                                                        cursor: 'pointer',
+                                                                                        transition: 'all 0.2s ease',
+                                                                                        flexShrink: 0,
+                                                                                    }}
+                                                                                >
+                                                                                    <span
+                                                                                        style={{
+                                                                                            position: 'absolute',
+                                                                                            top: 3,
+                                                                                            left: dayDrafts[entry.day_number]?.require_user_response ? 27 : 3,
+                                                                                            width: 22,
+                                                                                            height: 22,
+                                                                                            borderRadius: '50%',
+                                                                                            background: dayDrafts[entry.day_number]?.require_user_response ? '#10b981' : 'rgba(255,255,255,0.75)',
+                                                                                            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                                                                                            transition: 'all 0.2s ease',
+                                                                                        }}
+                                                                                    />
+                                                                                </button>
+                                                                            </div>
                                                                             {(dayDrafts[entry.day_number]?.audio_url ?? '').trim() && (
-                                                                                <div style={{ marginTop: 10 }}>
+                                                                                <div style={{ marginTop: 12 }}>
                                                                                     <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 6 }}>PREVIEW</div>
                                                                                     <PremiumAudioPlayer src={resolveAudioPlaybackUrl(dayDrafts[entry.day_number]?.audio_url ?? '')} />
                                                                                 </div>
@@ -1525,11 +1815,20 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                             )}
                                                                         </div>
 
-                                                                        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                                                                            <button
+                                                                                className="btn-premium-ghost"
+                                                                                onClick={() => deleteDailyLogForDay(entry.day_number)}
+                                                                                disabled={deletingDay === entry.day_number || savingDay === entry.day_number}
+                                                                                title="Delete this day"
+                                                                                style={{ color: 'rgba(248,113,113,0.95)', borderColor: 'rgba(248,113,113,0.35)' }}
+                                                                            >
+                                                                                {deletingDay === entry.day_number ? 'Deleting...' : 'Delete'}
+                                                                            </button>
                                                                             <button
                                                                                 className="btn-premium-primary"
                                                                                 onClick={() => saveDailyLogForDay(entry.day_number)}
-                                                                                disabled={savingDay === entry.day_number}
+                                                                                disabled={savingDay === entry.day_number || deletingDay === entry.day_number}
                                                                             >
                                                                                 {savingDay === entry.day_number ? 'Saving...' : 'Save'}
                                                                             </button>

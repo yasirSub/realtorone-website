@@ -2,9 +2,18 @@ import React, { useState, useEffect } from 'react';
 import type { LeaderboardEntry, LeaderboardCategory } from '../types';
 import { apiClient } from '../api/client';
 
+type ApiLeaderboardItem = {
+    rank: number;
+    user_id: number;
+    user_name: string;
+    score: number;
+    streak?: number;
+    metadata?: Record<string, unknown> | null;
+};
+
 const LeaderboardPage: React.FC = () => {
     const [categories, setCategories] = useState<LeaderboardCategory[]>([]);
-    const [selectedCategory, setSelectedCategory] = useState<string>('consistency');
+    const [selectedCategory, setSelectedCategory] = useState<string>('top_realtor');
     const [selectedPeriod, setSelectedPeriod] = useState<string>('weekly');
     const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -14,24 +23,43 @@ const LeaderboardPage: React.FC = () => {
             if (res.success) {
                 setCategories(res.data);
                 if (res.data.length > 0) {
-                    setSelectedCategory('consistency');
-                    setSelectedPeriod(res.data.find(c => c.key === 'consistency')?.period || 'weekly');
+                    setIsLoading(true);
+                    const defaultKey = res.data.find(c => c.key === 'top_realtor')?.key || res.data[0].key;
+                    setSelectedCategory(defaultKey);
+                    setSelectedPeriod(res.data.find(c => c.key === defaultKey)?.period || 'weekly');
                 }
             }
         });
     }, []);
 
     useEffect(() => {
-        setIsLoading(true);
         apiClient.getLeaderboard(selectedCategory, selectedPeriod).then(res => {
             if (res.success) {
-                setEntries(res.data);
+                const raw = (res.data as { leaderboard?: ApiLeaderboardItem[] } | undefined)?.leaderboard || [];
+                const mapped: LeaderboardEntry[] = raw.map((item, index) => ({
+                    user_id: item.user_id,
+                    user: {
+                        id: item.user_id,
+                        name: item.user_name || 'Agent',
+                        email: 'unknown@realtorone.local',
+                        membership_tier: 'Consultant',
+                        current_streak: item.streak || 0,
+                    },
+                    score: Number(item.score || 0),
+                    rank: Number(item.rank || (index + 1)),
+                    metadata: item.metadata || undefined,
+                    is_me: false,
+                }));
+                setEntries(mapped);
+            } else {
+                setEntries([]);
             }
             setIsLoading(false);
         });
     }, [selectedCategory, selectedPeriod]);
 
     const handleCategoryChange = (key: string) => {
+        setIsLoading(true);
         setSelectedCategory(key);
         const category = categories.find(c => c.key === key);
         if (category) {
@@ -143,11 +171,11 @@ const LeaderboardPage: React.FC = () => {
                                                     fontSize: '1rem', fontWeight: 950, color: 'var(--primary)',
                                                     border: '1px solid var(--glass-border)'
                                                 }}>
-                                                    {entry.user.name.charAt(0)}
+                                                    {(entry.user.name || 'A').charAt(0)}
                                                 </div>
                                                 <div>
                                                     <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>
-                                                        {entry.user.name} {entry.is_me && <span style={{ fontSize: '0.6rem', background: 'var(--primary)', color: 'white', padding: '2px 6px', borderRadius: '4px', marginLeft: '5px' }}>YOU</span>}
+                                                        {(entry.user.name || 'Agent')} {entry.is_me && <span style={{ fontSize: '0.6rem', background: 'var(--primary)', color: 'white', padding: '2px 6px', borderRadius: '4px', marginLeft: '5px' }}>YOU</span>}
                                                     </div>
                                                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{entry.user.city || 'Global Network'}</div>
                                                 </div>

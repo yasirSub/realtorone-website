@@ -1184,6 +1184,38 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                                     </div>
                                                                     <div style={{ flex: 1, minWidth: 0 }}>
                                                                         <span style={{ fontWeight: 800, fontSize: '0.8rem', opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
+                                                                        {(() => {
+                                                                            let notes: Record<string, unknown> = {};
+                                                                            try {
+                                                                                notes = typeof a.notes === 'string'
+                                                                                    ? JSON.parse(a.notes || '{}')
+                                                                                    : (a.notes || {});
+                                                                            } catch {
+                                                                                notes = {};
+                                                                            }
+                                                                            const listened = Number(notes.audio_listened_percent ?? NaN);
+                                                                            const required = Number(notes.audio_required_percent ?? NaN);
+                                                                            const hasListenData = (Number.isFinite(listened) && listened > 0) || (Number.isFinite(required) && required > 0);
+                                                                            const met = Boolean(notes.audio_requirement_met);
+                                                                            if (!hasListenData) return null;
+                                                                            return (
+                                                                                <div style={{
+                                                                                    marginTop: 6,
+                                                                                    fontSize: '0.68rem',
+                                                                                    fontWeight: 800,
+                                                                                    color: met ? '#10b981' : '#f59e0b',
+                                                                                    padding: '6px 8px',
+                                                                                    background: met ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+                                                                                    border: met ? '1px solid rgba(16,185,129,0.28)' : '1px solid rgba(245,158,11,0.28)',
+                                                                                    borderRadius: 8,
+                                                                                    display: 'inline-block',
+                                                                                }}>
+                                                                                    Audio: {Number.isFinite(listened) ? `${Math.max(0, Math.min(100, Math.round(listened)))}%` : '--'}
+                                                                                    {' / '}required {Number.isFinite(required) ? `${Math.max(0, Math.min(100, Math.round(required)))}%` : '--'}
+                                                                                    {Number.isFinite(required) && required > 0 ? (met ? '  (met)' : '  (below)') : ''}
+                                                                                </div>
+                                                                            );
+                                                                        })()}
                                                                         {a.description && (
                                                                             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, padding: '8px 10px', background: 'rgba(0,0,0,0.08)', borderRadius: 8, lineHeight: 1.4, fontStyle: 'italic' }}>
                                                                                 <span style={{ fontWeight: 700, color: 'var(--text-muted)', marginRight: 4 }}>Response:</span>{a.description}
@@ -1226,6 +1258,38 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                                     </div>
                                                                     <div style={{ flex: 1, minWidth: 0 }}>
                                                                         <span style={{ fontWeight: 800, fontSize: '0.8rem', opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
+                                                                        {(() => {
+                                                                            let notes: Record<string, unknown> = {};
+                                                                            try {
+                                                                                notes = typeof a.notes === 'string'
+                                                                                    ? JSON.parse(a.notes || '{}')
+                                                                                    : (a.notes || {});
+                                                                            } catch {
+                                                                                notes = {};
+                                                                            }
+                                                                            const listened = Number(notes.audio_listened_percent ?? NaN);
+                                                                            const required = Number(notes.audio_required_percent ?? NaN);
+                                                                            const hasListenData = (Number.isFinite(listened) && listened > 0) || (Number.isFinite(required) && required > 0);
+                                                                            const met = Boolean(notes.audio_requirement_met);
+                                                                            if (!hasListenData) return null;
+                                                                            return (
+                                                                                <div style={{
+                                                                                    marginTop: 6,
+                                                                                    fontSize: '0.68rem',
+                                                                                    fontWeight: 800,
+                                                                                    color: met ? '#10b981' : '#f59e0b',
+                                                                                    padding: '6px 8px',
+                                                                                    background: met ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+                                                                                    border: met ? '1px solid rgba(16,185,129,0.28)' : '1px solid rgba(245,158,11,0.28)',
+                                                                                    borderRadius: 8,
+                                                                                    display: 'inline-block',
+                                                                                }}>
+                                                                                    Audio: {Number.isFinite(listened) ? `${Math.max(0, Math.min(100, Math.round(listened)))}%` : '--'}
+                                                                                    {' / '}required {Number.isFinite(required) ? `${Math.max(0, Math.min(100, Math.round(required)))}%` : '--'}
+                                                                                    {Number.isFinite(required) && required > 0 ? (met ? '  (met)' : '  (below)') : ''}
+                                                                                </div>
+                                                                            );
+                                                                        })()}
                                                                         {a.description && (
                                                                             <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, padding: '8px 10px', background: 'rgba(0,0,0,0.08)', borderRadius: 8, lineHeight: 1.4, fontStyle: 'italic' }}>
                                                                                 <span style={{ fontWeight: 700, color: 'var(--text-muted)', marginRight: 4 }}>Response:</span>{a.description}

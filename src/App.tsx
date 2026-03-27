@@ -16,6 +16,8 @@ import { CoursesPage } from './pages/CoursesPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import BadgesPage from './pages/BadgesPage'
 import NotificationsPage from './pages/NotificationsPage'
+import AdminAiInboxPage from './pages/AdminAiInboxPage'
+import SignupQuestionsPage from './pages/SignupQuestionsPage'
 
 // Modals
 import ConfirmModal from './components/modals/ConfirmModal'
@@ -39,7 +41,7 @@ function App() {
   // Initialize from URL or default
   const getInitialTab = (): Tab => {
     const path = window.location.pathname.replace('/', '') as Tab;
-    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'subscriptions', 'courses', 'leaderboard', 'badges', 'notifications'];
+    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'subscriptions', 'courses', 'leaderboard', 'badges', 'notifications', 'ai-agent', 'signup-questions'];
     return validTabs.includes(path) ? path : 'dashboard';
   };
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab())
@@ -304,6 +306,8 @@ function App() {
           {activeTab === 'leaderboard' && <LeaderboardPage />}
           {activeTab === 'badges' && <BadgesPage />}
           {activeTab === 'notifications' && <NotificationsPage users={users} />}
+          {activeTab === 'ai-agent' && <AdminAiInboxPage />}
+          {activeTab === 'signup-questions' && <SignupQuestionsPage />}
           {activeTab === 'user-profile' && !selectedUser && (
             <div className="app-page-loader">
               <div className="loader" style={{ width: 48, height: 48, borderWidth: 4 }} />

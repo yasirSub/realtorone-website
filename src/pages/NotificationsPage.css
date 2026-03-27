@@ -9,6 +9,13 @@
 
 .notifications-hero {
     margin-bottom: 28px;
+    padding: 18px 20px;
+    border-radius: 16px;
+    border: 1px solid rgba(99, 102, 241, 0.22);
+    background:
+        radial-gradient(120% 140% at 100% 0%, rgba(124, 58, 237, 0.16), transparent 55%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+    box-shadow: 0 14px 32px rgba(2, 6, 23, 0.35);
 }
 
 .notifications-hero h1 {
@@ -59,10 +66,12 @@
     border-radius: 16px 16px 0 0;
     overflow: hidden;
     background: var(--glass-bg, rgba(255, 255, 255, 0.02));
+    box-shadow: 0 16px 36px rgba(2, 6, 23, 0.38);
 }
 
 .notifications-section {
     padding: 22px 24px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.005));
 }
 
 .notifications-section + .notifications-section {
@@ -136,6 +145,16 @@
     color: var(--text-main);
     font-size: 0.9rem;
     font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+
+.notifications-input:focus,
+.notifications-select:focus,
+.notifications-textarea:focus {
+    outline: none;
+    border-color: rgba(124, 58, 237, 0.62);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.18);
+    background: rgba(0, 0, 0, 0.3);
 }
 
 .notifications-textarea {
@@ -188,7 +207,7 @@
     border: 2px solid var(--glass-border);
     background: rgba(0, 0, 0, 0.15);
     cursor: pointer;
-    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
     color: inherit;
     font: inherit;
 }
@@ -196,12 +215,13 @@
 .notifications-display-card:hover {
     border-color: rgba(99, 102, 241, 0.45);
     background: rgba(99, 102, 241, 0.06);
+    transform: translateY(-2px);
 }
 
 .notifications-display-card.is-active {
     border-color: rgba(99, 102, 241, 0.85);
     background: rgba(99, 102, 241, 0.1);
-    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.2), 0 10px 22px rgba(79, 70, 229, 0.22);
 }
 
 .notifications-display-card .title {
@@ -225,6 +245,7 @@
     border-radius: 14px;
     border: 1px dashed rgba(99, 102, 241, 0.35);
     background: rgba(99, 102, 241, 0.05);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .notifications-banner-panel .panel-title {
@@ -309,7 +330,9 @@
     padding: 20px 24px;
     border: 1px solid var(--glass-border);
     border-radius: 0 0 16px 16px;
-    background: rgba(0, 0, 0, 0.14);
+    background:
+        linear-gradient(180deg, rgba(99, 102, 241, 0.08), rgba(0, 0, 0, 0.14)),
+        rgba(0, 0, 0, 0.14);
     margin-bottom: 40px;
 }
 
@@ -323,12 +346,14 @@
     cursor: pointer;
     background: linear-gradient(135deg, #4f46e5, #7c3aed);
     color: #fff;
-    transition: opacity 0.2s, transform 0.15s;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 12px 26px rgba(92, 72, 245, 0.35);
 }
 
 .notifications-submit-btn:hover:not(:disabled) {
     opacity: 0.95;
     transform: translateY(-1px);
+    box-shadow: 0 14px 30px rgba(92, 72, 245, 0.42);
 }
 
 .notifications-submit-btn:disabled {
@@ -345,11 +370,19 @@
     letter-spacing: 0.04em;
 }
 
+.notifications-history {
+    padding: 16px;
+    border: 1px solid var(--glass-border);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.01));
+}
+
 .notifications-table-wrap {
     overflow-x: auto;
     border: 1px solid var(--glass-border);
     border-radius: 14px;
     background: var(--glass-bg, rgba(255, 255, 255, 0.02));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .notifications-table {
@@ -367,6 +400,7 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     border-bottom: 1px solid var(--glass-border);
+    background: rgba(99, 102, 241, 0.08);
     white-space: nowrap;
 }
 
@@ -378,6 +412,10 @@
 
 .notifications-table tr:last-child td {
     border-bottom: none;
+}
+
+.notifications-table tbody tr:hover td {
+    background: rgba(99, 102, 241, 0.06);
 }
 
 .notifications-badge {
@@ -436,16 +474,19 @@
     padding: 7px 12px;
     border-radius: 8px;
     border: 1px solid var(--glass-border);
-    background: transparent;
+    background: rgba(255, 255, 255, 0.01);
     color: var(--text-main);
     cursor: pointer;
     font-size: 0.72rem;
     font-weight: 600;
     font-family: inherit;
+    transition: background 0.2s, border-color 0.2s, transform 0.15s;
 }
 
 .notifications-btn-ghost:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.35);
+    transform: translateY(-1px);
 }
 
 .notifications-user-chips {
@@ -454,6 +495,7 @@
     border: 1px solid var(--glass-border);
     border-radius: 12px;
     padding: 8px;
+    background: rgba(0, 0, 0, 0.15);
 }
 
 .notifications-user-row {

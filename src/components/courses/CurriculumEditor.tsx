@@ -168,7 +168,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                     >
                         ←
                     </button>
-                    <h1 style={{ margin: 0, fontSize: '1.8rem' }}>{course?.title}</h1>
+                    <h1 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2vw, 1.8rem)', lineHeight: 1.2, overflowWrap: 'anywhere' }}>{course?.title}</h1>
                 </div>
             </div>
 
@@ -292,7 +292,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                         </div>
                     ) : activeLesson ? (
                         <div className="lesson-editor">
-                            <div className="editor-card" style={{ marginBottom: '20px' }}>
+                            <div className="editor-card" style={{ marginBottom: '8px' }}>
                                 <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                     <div style={{ flex: 1 }}>
                                         {editingTitle ? (
@@ -379,9 +379,9 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                 const materials = activeLesson.materials || [];
                                 const videoMaterial = materials.find((m: any) => (m.type || '').toString().toLowerCase() === 'video');
                                 return videoMaterial ? (
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '25px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '10px', marginBottom: '10px' }}>
                                     {/* Card 1: Main Video */}
-                                    <div className="editor-card" style={{ padding: '0', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', overflow: 'hidden', height: '280px', display: 'flex', flexDirection: 'column' }}>
+                                    <div className="editor-card" style={{ padding: '0', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', overflow: 'hidden', height: 'clamp(150px, 22vh, 210px)', display: 'flex', flexDirection: 'column' }}>
                                         <div className="card-header" style={{ border: 'none', background: 'transparent', padding: '15px 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <h3 style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2.5px' }}>VIDEO CONTENT</h3>
                                             <button className="btn-sidebar-delete" onClick={() => {
@@ -399,7 +399,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                     </div>
 
                                     {/* Card 2: Poster/Thumbnail */}
-                                    <div className="editor-card" style={{ padding: '0', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', overflow: 'hidden', height: '280px', display: 'flex', flexDirection: 'column' }}>
+                                    <div className="editor-card" style={{ padding: '0', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', overflow: 'hidden', height: 'clamp(150px, 22vh, 210px)', display: 'flex', flexDirection: 'column' }}>
                                         <div className="card-header" style={{ border: 'none', background: 'transparent', padding: '15px 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <h3 style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2.5px' }}>THUMBNAIL PREVIEW</h3>
                                             {videoMaterial.thumbnail_url && (
@@ -435,7 +435,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                 ) : null;
                             })()}
                             {!((activeLesson.materials || []).find((m: any) => (m.type || '').toString().toLowerCase() === 'video')) && (
-                                <div style={{ marginBottom: '25px', textAlign: 'center', padding: '50px', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '2px dashed var(--glass-border)' }}>
+                                <div style={{ marginBottom: '10px', textAlign: 'center', padding: '22px', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '2px dashed var(--glass-border)' }}>
                                     <div style={{ fontSize: '40px', marginBottom: '15px', opacity: 0.4 }}>🎬</div>
                                     <h4 style={{ margin: '0 0 10px', color: 'var(--text-main)', fontSize: '15px', fontWeight: 800 }}>No main video detected</h4>
                                     <p style={{ color: 'var(--text-secondary)', fontSize: '13px', maxWidth: '300px', margin: '0 auto 25px' }}>Attach a video resource to start building this lesson.</p>
@@ -445,7 +445,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                             )}
 
                             {/* Section Divider */}
-                            <div style={{ position: 'relative', margin: '60px 0 40px', display: 'flex', alignItems: 'center', gap: '25px', justifyContent: 'center' }}>
+                            <div style={{ position: 'relative', margin: '14px 0 10px', display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center' }}>
                                 <div style={{ flex: 1, height: '1px', background: 'linear-gradient(270deg, var(--glass-border), transparent)', opacity: 0.3 }} />
                                 <h4 style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '4px', textTransform: 'uppercase', whiteSpace: 'nowrap', margin: 0, opacity: 0.6 }}>
                                     Supplementary Materials
@@ -467,7 +467,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                 </div>
 
                                 {((activeLesson.materials || []).filter((m: any) => (m.type || '').toString().toLowerCase() === 'pdf').length > 0) && (
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '25px', alignItems: 'start' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '12px', alignItems: 'start' }}>
                                         {/* Left Side: List of Documents */}
                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                             {(activeLesson.materials || []).filter((m: any) => (m.type || '').toString().toLowerCase() === 'pdf').map((pdf: any) => (
@@ -541,7 +541,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                         </div>
 
                                         {/* Right Side: Shared Preview Area */}
-                                        <div className="editor-card" style={{ padding: '0', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 12px 40px rgba(0,0,0,0.15)', overflow: 'hidden', height: '100%', minHeight: '400px', position: 'sticky', top: '20px' }}>
+                                        <div className="editor-card" style={{ padding: '0', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 12px 40px rgba(0,0,0,0.15)', overflow: 'hidden', height: '100%', minHeight: '220px', position: 'relative', top: 'auto' }}>
                                             <div className="card-header" style={{ border: 'none', background: 'transparent', padding: '15px 20px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                 <h3 style={{ fontSize: '9px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2px' }}>DOCUMENT PREVIEW</h3>
                                                 {previewPdfId && (
@@ -557,7 +557,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                             </div>
                                             <div style={{ padding: '0 20px 20px', height: 'calc(100% - 60px)' }}>
                                                 {previewPdfId ? (
-                                                    <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)', background: '#fff', height: '100%', minHeight: '350px' }}>
+                                                    <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--glass-border)', background: '#fff', height: '100%', minHeight: '200px' }}>
                                                         <iframe
                                                             src={resolveAssetUrl((activeLesson.materials || []).find((m: any) => m.id === previewPdfId)?.url) || ''}
                                                             style={{ width: '100%', height: '100%', border: 'none' }}
@@ -565,7 +565,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                         />
                                                     </div>
                                                 ) : (
-                                                    <div style={{ height: '350px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '15px' }}>
+                                                    <div style={{ height: '200px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', gap: '15px' }}>
                                                         <div style={{ fontSize: '40px', opacity: 0.2 }}>📑</div>
                                                         <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.5px' }}>SELECT A DOCUMENT TO PREVIEW</span>
                                                     </div>
@@ -576,7 +576,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                 )}
 
                                 {((activeLesson.materials || []).filter((m: any) => (m.type || '').toString().toLowerCase() === 'pdf').length === 0) && (
-                                    <div style={{ textAlign: 'center', padding: '60px', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 8px 30px rgba(0,0,0,0.1)' }}>
+                                    <div style={{ textAlign: 'center', padding: '20px', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 8px 30px rgba(0,0,0,0.1)' }}>
                                         <div style={{ fontSize: '40px', marginBottom: '15px', opacity: 0.4 }}>📄</div>
                                         <h4 style={{ margin: '0 0 10px', color: 'var(--text-main)', fontSize: '15px', fontWeight: 800 }}>No documents detected</h4>
                                         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', maxWidth: '300px', margin: '0 auto 25px' }}>Attach a supplementary PDF document to this lesson.</p>

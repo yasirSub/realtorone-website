@@ -1,7 +1,20 @@
-import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge, NotificationBroadcast } from '../types';
+import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge, NotificationBroadcast, ChatSession, ChatMessage, AdminAiUserSummary, AiHumanTicket, DiagnosisQuestion, DiagnosisQuestionOption } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://127.0.0.1:8000/api' : '/api');
 console.log('API Base URL:', API_BASE_URL);
+
+const parseJsonSafely = async <T>(response: Response, fallbackMessage: string): Promise<T> => {
+    const text = await response.text();
+    try {
+        return JSON.parse(text) as T;
+    } catch {
+        const shortBody = text.slice(0, 160).replace(/\s+/g, ' ').trim();
+        return {
+            success: false,
+            message: `${fallbackMessage} (HTTP ${response.status}). Response: ${shortBody || 'empty'}`
+        } as T;
+    }
+};
 
 export const apiClient = {
     getBaseUrl: () => API_BASE_URL,
@@ -267,14 +280,14 @@ export const apiClient = {
         });
         return response.json();
     },
-    getActivityTypeDailyLogs: async (id: number, fromDay = 1, toDay = 60): Promise<{ success: boolean; data: Array<{ day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null }> }> => {
+    getActivityTypeDailyLogs: async (id: number, fromDay = 1, toDay = 60): Promise<{ success: boolean; data: Array<{ day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null; required_listen_percent: number | null; require_user_response: boolean | null }> }> => {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs?from_day=${fromDay}&to_day=${toDay}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         return response.json();
     },
-    upsertActivityTypeDailyLog: async (id: number, day: number, data: { task_description?: string; script_idea?: string; feedback?: string; audio_url?: string | null }): Promise<{ success: boolean; data: any }> => {
+    upsertActivityTypeDailyLog: async (id: number, day: number, data: { task_description?: string; script_idea?: string; feedback?: string; audio_url?: string | null; required_listen_percent?: number; require_user_response?: boolean }): Promise<{ success: boolean; data: any }> => {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/${day}`, {
             method: 'PUT',
@@ -283,7 +296,27 @@ export const apiClient = {
         });
         return response.json();
     },
-    bulkUpsertActivityTypeDailyLogs: async (id: number, entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string }>): Promise<{ success: boolean; count: number }> => {
+    deleteActivityTypeDailyLog: async (
+        id: number,
+        day: number
+    ): Promise<{ success: boolean; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/${day}`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+
+        const text = await response.text();
+        try {
+            return JSON.parse(text);
+        } catch {
+            return {
+                success: false,
+                message: `Delete endpoint returned non-JSON (HTTP ${response.status}). ${text.slice(0, 140)}`
+            };
+        }
+    },
+    bulkUpsertActivityTypeDailyLogs: async (id: number, entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string; required_listen_percent?: number; require_user_response?: boolean }>): Promise<{ success: boolean; count: number }> => {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/bulk`, {
             method: 'POST',
@@ -483,7 +516,7 @@ export const apiClient = {
                     const data = JSON.parse(xhr.responseText);
                     onProgress(100);
                     resolve(data);
-                } catch (e) {
+                } catch {
                     console.error('SERVER RESPONSE ERROR:', xhr.responseText);
                     const snippet = xhr.responseText.substring(0, 150).replace(/<[^>]*>/g, '').trim();
                     reject(new Error(`Server sent non-JSON response: "${snippet || 'Empty or Binary'}"`));
@@ -596,6 +629,211 @@ export const apiClient = {
         });
         return response.json();
     },
+
+    // Admin: signup diagnosis questions
+    getAdminDiagnosisQuestions: async (): Promise<{ success: boolean; data: DiagnosisQuestion[]; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/diagnosis/questions`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return parseJsonSafely(response, 'Unable to load signup questions');
+    },
+
+    createAdminDiagnosisQuestion: async (payload: {
+        question_text: string;
+        display_order: number;
+        is_active?: boolean;
+        options: DiagnosisQuestionOption[];
+    }): Promise<{ success: boolean; data?: { id: number }; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/diagnosis/questions`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload)
+        });
+        return parseJsonSafely(response, 'Unable to create signup question');
+    },
+
+    updateAdminDiagnosisQuestion: async (id: number, payload: {
+        question_text: string;
+        display_order: number;
+        is_active: boolean;
+        options: DiagnosisQuestionOption[];
+    }): Promise<{ success: boolean; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/diagnosis/questions/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload)
+        });
+        return parseJsonSafely(response, 'Unable to update signup question');
+    },
+
+    deleteAdminDiagnosisQuestion: async (id: number): Promise<{ success: boolean; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/diagnosis/questions/${id}`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return parseJsonSafely(response, 'Unable to delete signup question');
+    },
+
+    // Reven AI Agent (chat + history)
+    getAiChatSessions: async (): Promise<{ success: boolean; sessions?: ChatSession[]; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/chat/history`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    getAiChatMessages: async (sessionId: number): Promise<{ success: boolean; session_id?: number; messages?: ChatMessage[]; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    sendAiChatMessage: async (payload: { message: string; session_id?: number | null }): Promise<{
+        success: boolean;
+        reply?: string;
+        session_id?: number;
+        courses?: unknown[] | null;
+        commands?: unknown[] | null;
+        message?: string;
+    }> => {
+        const token = localStorage.getItem('adminToken');
+        const body = {
+            message: payload.message,
+            session_id: payload.session_id ?? null
+        };
+
+        const response = await fetch(`${API_BASE_URL}/chat`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(body)
+        });
+
+        return response.json();
+    },
+
+    deleteAiChatSession: async (sessionId: number): Promise<{ success: boolean; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/chat/history/${sessionId}`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    // Admin: AI Inbox monitoring
+    getAdminAiUsers: async (): Promise<{ success: boolean; data?: AdminAiUserSummary[]; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/users`, {
+            method: 'GET',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    getAdminAiUserSessions: async (userId: number): Promise<{ success: boolean; data?: ChatSession[]; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/users/${userId}/sessions`, {
+            method: 'GET',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    getAdminAiSessionMessages: async (sessionId: number): Promise<{ success: boolean; data?: ChatMessage[]; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/sessions/${sessionId}/messages`, {
+            method: 'GET',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    getAdminAiUserKb: async (userId: number): Promise<{ success: boolean; data?: { tier: string; courses: Course[] }; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/users/${userId}/kb`, {
+            method: 'GET',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    // Admin: human handoff tickets
+    createAdminAiTicket: async (payload: { user_id: number; chat_session_id?: number | null; request_message: string }): Promise<{ success: boolean; data?: AiHumanTicket; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/tickets`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload)
+        });
+        return response.json();
+    },
+
+    resolveAdminAiTicket: async (ticketId: number, admin_resolution: string): Promise<{ success: boolean; data?: AiHumanTicket; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/tickets/${ticketId}/resolve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ admin_resolution })
+        });
+        return response.json();
+    },
+
+    getAdminAiTickets: async (): Promise<{ success: boolean; data?: AiHumanTicket[]; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/tickets`, {
+            method: 'GET',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    // AI Knowledge Base course visibility (admin)
+    getAiCourseVisibility: async (courseId: number): Promise<{ success: boolean; data?: Record<string, boolean>; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/courses/${courseId}/ai-visibility`, {
+            method: 'GET',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    setAiCourseVisibility: async (
+        courseId: number,
+        tiers: { Consultant: boolean; Rainmaker: boolean; Titan: boolean }
+    ): Promise<{ success: boolean; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/courses/${courseId}/ai-visibility`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ tiers })
+        });
+        return response.json();
+    }
 };
 
 

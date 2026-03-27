@@ -26,6 +26,7 @@ const Header: React.FC<HeaderProps> = ({
             case 'user-profile': return 'PRACTITIONER DOSSIER';
             case 'courses': return 'COURSE LIBRARY';
             case 'notifications': return 'PUSH NOTIFICATIONS';
+            case 'ai-agent': return 'AI INBOX';
             default: return activeTab.toUpperCase();
         }
     };

@@ -565,6 +565,13 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                             </select>
                                         </div>
                                     )}
+
+                                    {recurrenceType === 'daily' && (
+                                        <p className="hint" style={{ marginTop: 10, marginBottom: 0 }}>
+                                            Daily messages auto-surface based on device local time: morning = Banner, afternoon =
+                                            Snackbar, evening = Banner.
+                                        </p>
+                                    )}
                                 </>
                             )}
                         </div>

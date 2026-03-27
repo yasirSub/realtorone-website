@@ -481,3 +481,125 @@ Backend:
   - Added Firebase environment passthrough to Docker `app` service (`FIREBASE_PROJECT_ID`, `FIREBASE_CREDENTIALS_PATH`, `FIREBASE_CREDENTIALS_JSON`) and rebuilt the app image so runtime config is consistent.
   - Fixed `SendPushBroadcastJob` retry guard to allow re-processing broadcasts already in `processing` state after a failed first attempt, preventing permanent stuck states.
   - Ran live admin API notification send tests; current blocker is still runtime FCM auth/class loading in the active backend worker process, which keeps recent broadcasts in `processing`.
+
+### Day 38: Mar 23 - Better inbox UX + deep link + daily greeting
+Backend:
+  - `SendPushBroadcastJob` now includes `recurrence_type` / `recurrence_time` / `timezone` in the FCM data payload for better in-app UX.
+Application (Mobile):
+  - Daily recurring notifications automatically get a local-time greeting prefix (Good morning/afternoon/evening) in both banner and snackbar flows.
+  - Notifications inbox UI is cleaner: split into `Active` (unread) and `History` (read), and tapping a notification opens the stored `deep_link` when available.
+
+### Day 39: Mar 23 - Daily notification surface polish
+Application (Mobile):
+  - For `recurrence_type=daily`, the app auto-switches in-app presentation by time (morning banner, afternoon snackbar, evening banner).
+  - Snackbar now includes an `Open` action when `deep_link` is present.
+Website:
+  - Added a small hint on the notifications page explaining the daily auto-surface behavior.
+
+### Day 40: Mar 23 - Admin AI agent chat UI
+Website:
+  - Added an `AI Agent` tab with a session-based chat UI connected to backend `POST /api/chat` and `GET /api/chat/history`, including quick knowledge/support prompt chips.
+Backend:
+  - Added `ai_course_knowledge_base` table and admin endpoints to toggle course AI knowledge base visibility per tier.
+  - Updated `ChatController` so course-related AI replies use only tier-enabled courses.
+Website:
+  - Added per-tier “AI Knowledge Base” ON/OFF toggles inside the course edit modal, saved via admin API.
+
+### Day 41: Mar 23 - Admin AI Inbox + monitoring
+Backend:
+  - Added admin AI inbox endpoints to monitor all users’ chat sessions/messages plus enabled KB for a user.
+  - Added token usage tracking (OpenAI `usage.total_tokens`) on chat messages so admin can see “AI tokens too much”.
+  - Added initial `ai_human_tickets` table and admin APIs to create/resolve human handoff tickets.
+Website:
+  - Replaced the `AI Agent` tab UI with a multi-column admin inbox (Users → Sessions → Messages + KB + Human handoff).
+
+### Day 42: Mar 24 - Curriculum viewport fit fix
+Website:
+  - Made Curriculum Editor layout responsive so modules sidebar and content panel fit medium laptop widths without clipping.
+  - Replaced fixed two-column media/document grids with auto-fit responsive grids for video, thumbnail, PDF list, and PDF preview blocks.
+  - Improved main editor scrolling behavior and tightened paddings/title wrapping to keep lesson content visible inside the viewport.
+  - Added a compact 100%-zoom pass: reduced media card heights, sidebar/item spacing, settings card density, and section margins so the default browser zoom fits more content on screen.
+  - Added an extra compact pass for low-height laptops: further reduced media/PDF preview heights, tightened card paddings and section gaps, and compressed module/lesson spacing.
+
+### Day 43: Mar 25 - Website lint/build fixes
+Website:
+  - Unblocked ESLint by relaxing `@typescript-eslint/no-explicit-any` and fixed the React `setState`-in-effect issue in `LeaderboardPage`.
+  - Removed an unused catch variable in `src/api/client.ts` and confirmed `npm run lint` + `npm run build` both succeed.
+
+### Day 44: Mar 25 - Mobile app switched to live API
+Application (Mobile):
+  - Updated `lib/api/app_config.dart` to use the live backend base URL (`https://api.aanantbishthealing.com/api`) across platforms.
+  - Re-ran the Android app on emulator and verified runtime API calls are now targeting the live domain.
+
+### Day 45: Mar 25 - Mobile base switched to VPS IP
+Application (Mobile):
+  - Updated `lib/api/app_config.dart` base URL to `http://187.77.184.129/api` as requested for app API calls.
+
+### Day 46: Mar 25 - Reverted to full local run mode
+Application (Mobile):
+  - Switched `lib/api/app_config.dart` back to local API routing (`10.0.2.2:8000` for Android emulator, `127.0.0.1:8000` for web/desktop).
+Website:
+  - Restarted local Vite server on `http://localhost:5173`.
+
+### Day 47: Mar 25 - Day delete in Momentum editor
+Backend:
+  - Added `DELETE /admin/activity-types/{id}/daily-logs/{day}` to remove a single saved day log for an activity.
+Website:
+  - Added per-day `Delete` action in Momentum day cards with confirmation dialog, loading state, and post-delete refresh/cleanup.
+
+### Day 48: Mar 25 - Better delete error handling
+Website:
+  - Updated `deleteActivityTypeDailyLog()` to safely handle non-JSON (HTML) backend responses and show clearer toast messages when delete fails.
+
+### Day 49: Mar 25 - Audio target % + listen tracking
+Backend:
+  - Added `required_listen_percent` support for day-wise activity logs (validation + GET/PUT/bulk APIs) and exposed `daily_required_listen_percent` in `/activity-types`.
+Website:
+  - Momentum day editor now includes `REQUIRED LISTEN %` (0-100) for each day and saves it with day content.
+Application (Mobile):
+  - Activity task popup tracks max listened audio progress %, shows progress vs required %, and sends this metadata on submit for daily tracking visibility.
+
+### Day 50: Mar 25 - Hide listen target without audio
+Website:
+  - Momentum editor now shows `REQUIRED LISTEN %` slider only when a day has an audio URL set.
+
+### Day 51: Mar 25 - Show listened % in Activity Log
+Website:
+  - User Activity Log cards now parse activity `notes` and display audio listen metrics (`listened %`, `required %`, `met/below`) when present.
+
+### Day 52: Mar 25 - Admin-controlled response requirement
+Backend:
+  - Added `require_user_response` for day-wise logs and exposed `daily_require_user_response` in activity types API.
+Website:
+  - Added per-day toggle in Momentum editor: `Require user response before submit`.
+Application (Mobile):
+  - Submit now follows admin rules: response required toggle and required listen % threshold both gate submit enablement.
+
+### Day 53: Mar 25 - Audio badge display filter
+Website:
+  - Activity Log now shows audio progress badge only for entries with meaningful audio tracking (`listened > 0` or `required > 0`), hiding `0% / 0%` noise.
+
+### Day 54: Mar 25 - Momentum toggle visual polish
+Website:
+  - Replaced raw response-required checkbox/pill with a cleaner switch-style settings row (label + helper text + animated knob) in both new and saved day editors.
+
+### Day 55: Mar 25 - Audio settings card polish
+Website:
+  - Reworked Momentum day audio area into a compact `Audio Settings` card with clearer grouping for URL/upload actions, listen % slider, response rule toggle, and preview.
+
+### Day 56: Mar 25 - Script idea collapsible UI
+Website:
+  - Made `VIDEO/REEL SCRIPT IDEA` collapsible with expand/collapse + preview text (same interaction pattern as Task Description) in both new and saved day editors.
+
+### Day 57: Mar 25 - Dynamic signup diagnosis questions
+Backend:
+  - Added `diagnosis_questions` storage + APIs for admin CRUD and mobile fetch (`/admin/diagnosis/questions`, `/diagnosis/questions`), with validation for options/blocker/score.
+  - Seeded DB with the 7 provided signup questions/options and removed backend hardcoded fallback generation.
+Website:
+  - Added new admin section `Signup Questions` in sidebar with full add/edit/delete controls for question text, order, active toggle, and option mapping.
+  - Polished Signup Questions UI with cleaner card hierarchy, labels, option rows, and improved error state styling for easier editing.
+  - Upgraded Signup Questions action buttons (Delete/Save) with improved sizing, rounded styling, and stronger visual hierarchy.
+  - Refined Push Notifications page UI: elevated hero card, richer section depth, improved input focus states, enhanced display-card interactions, and cleaner history table/actions styling.
+  - Fixed Leaderboard admin sync with app data shape (`data.leaderboard`) and aligned default category to `Top Realtor` for matching live rankings.
+Application (Mobile):
+  - Replaced hardcoded diagnosis questionnaire with API-driven questions loaded at runtime; if API returns none, the screen now shows empty-state instead of fallback hardcoded questions.

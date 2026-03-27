@@ -49,6 +49,14 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
         min_tier: 'Consultant',
         thumbnail_url: undefined,
     });
+
+    type AiTier = 'Consultant' | 'Rainmaker' | 'Titan';
+    const [aiKbVisibility, setAiKbVisibility] = useState<Record<AiTier, boolean>>({
+        Consultant: false,
+        Rainmaker: false,
+        Titan: false,
+    });
+
     const [uploading, setUploading] = useState(false);
     const [selectedCourseForCurriculum, setSelectedCourseForCurriculum] = useState<number | null>(null);
 
@@ -66,8 +74,13 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
         try {
             if (editingCourse) {
                 await apiClient.updateCourse(editingCourse.id, formData);
+                await apiClient.setAiCourseVisibility(editingCourse.id, aiKbVisibility);
             } else {
-                await apiClient.createCourse(formData);
+                const created = await apiClient.createCourse(formData);
+                const createdId = created?.data?.id;
+                if (createdId) {
+                    await apiClient.setAiCourseVisibility(createdId, aiKbVisibility);
+                }
             }
             setShowModal(false);
             setEditingCourse(null);
@@ -93,9 +106,10 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
 
     const resetForm = () => {
         setFormData({ title: '', description: '', url: '', min_tier: 'Consultant', thumbnail_url: undefined });
+        setAiKbVisibility({ Consultant: false, Rainmaker: false, Titan: false });
     };
 
-    const openModal = (tier: string, course?: Course) => {
+    const openModal = async (tier: string, course?: Course) => {
         if (course) {
             setEditingCourse(course);
             setFormData({
@@ -105,10 +119,36 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
                 min_tier: course.min_tier,
                 thumbnail_url: (course as any).thumbnail_url,
             });
+
+            // Default: enable AI KB only for the tier this course starts at.
+            setAiKbVisibility({
+                Consultant: course.min_tier === 'Consultant',
+                Rainmaker: course.min_tier === 'Rainmaker',
+                Titan: course.min_tier === 'Titan',
+            });
+
+            try {
+                const res = await apiClient.getAiCourseVisibility(course.id);
+                if (res.success && res.data) {
+                    setAiKbVisibility({
+                        Consultant: !!res.data.Consultant,
+                        Rainmaker: !!res.data.Rainmaker,
+                        Titan: !!res.data.Titan,
+                    });
+                }
+            } catch (e) {
+                console.error('Failed to load AI KB visibility', e);
+            }
         } else {
             setEditingCourse(null);
             resetForm();
             setFormData(prev => ({ ...prev, min_tier: tier as any }));
+
+            setAiKbVisibility({
+                Consultant: tier === 'Consultant',
+                Rainmaker: tier === 'Rainmaker',
+                Titan: tier === 'Titan',
+            });
         }
         setShowModal(true);
     };
@@ -204,7 +244,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
                                     </div>
                                 </div>
                                 <button
-                                    onClick={() => openModal(tier.key)}
+                                    onClick={() => void openModal(tier.key)}
                                     title={`Add ${tier.label} course`}
                                     style={{
                                         width: '34px', height: '34px',
@@ -245,7 +285,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
                                             No {tier.label} courses yet
                                         </p>
                                         <button
-                                            onClick={() => openModal(tier.key)}
+                                            onClick={() => void openModal(tier.key)}
                                             style={{
                                                 marginTop: '6px',
                                                 padding: '8px 18px',
@@ -269,7 +309,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
                                             key={course.id}
                                             course={course}
                                             tierColor={tier.color}
-                                            onEdit={() => openModal(tier.key, course)}
+                                            onEdit={() => void openModal(tier.key, course)}
                                             onDelete={() => handleDelete(course.id)}
                                             onCurriculum={() => setSelectedCourseForCurriculum(course.id)}
                                         />
@@ -503,6 +543,68 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses })
                                             {t.label}
                                         </div>
                                     ))}
+                                </div>
+                            </div>
+
+                            {/* AI Knowledge Base visibility per tier */}
+                            <div>
+                                <label style={{ fontSize: '12px', fontWeight: 700, color: '#8F9BBA', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '10px' }}>
+                                    AI Knowledge Base (per tier)
+                                </label>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                                    {TIERS.map(t => {
+                                        const key = t.key as AiTier;
+                                        const enabled = aiKbVisibility[key];
+                                        return (
+                                            <div
+                                                key={t.key}
+                                                onClick={() => setAiKbVisibility(prev => ({ ...prev, [key]: !enabled }))}
+                                                style={{
+                                                    borderRadius: '12px',
+                                                    cursor: 'pointer',
+                                                    padding: '12px 10px',
+                                                    border: enabled ? `1.5px solid ${t.color}` : '1px solid rgba(255,255,255,0.08)',
+                                                    background: enabled ? `${t.color}22` : '#0B1437',
+                                                    transition: 'all 0.18s ease',
+                                                    userSelect: 'none',
+                                                }}
+                                                title={`AI knowledge ${enabled ? 'ON' : 'OFF'} for ${t.label}`}
+                                            >
+                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                        <div style={{ fontSize: '18px' }}>{t.icon}</div>
+                                                        <div style={{ fontWeight: 950, color: enabled ? t.color : '#8F9BBA' }}>{t.label}</div>
+                                                    </div>
+
+                                                    <div
+                                                        style={{
+                                                            width: 40,
+                                                            height: 22,
+                                                            borderRadius: 999,
+                                                            background: enabled ? t.color : 'rgba(255,255,255,0.12)',
+                                                            border: enabled ? `1px solid ${t.color}` : '1px solid rgba(255,255,255,0.12)',
+                                                            position: 'relative',
+                                                            flexShrink: 0,
+                                                        }}
+                                                    >
+                                                        <div
+                                                            style={{
+                                                                width: 18,
+                                                                height: 18,
+                                                                borderRadius: 999,
+                                                                background: enabled ? 'white' : '#CBD5E1',
+                                                                position: 'absolute',
+                                                                top: 2,
+                                                                left: enabled ? 20 : 2,
+                                                                transition: 'all 0.18s ease',
+                                                            }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

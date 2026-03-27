@@ -51,6 +51,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline><polyline points="16 7 22 7 22 13"></polyline></svg>
                         </span> <span>Tasks / Activities</span>
                     </button>
+                    <button className={`nav-item ${activeTab === 'ai-agent' ? 'active' : ''}`} onClick={() => { setActiveTab('ai-agent'); setMobileMenuOpen(false); }}>
+                        <span className="icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="4" y="4" width="16" height="16" rx="2"></rect>
+                                <path d="M8 9h8"></path>
+                                <path d="M8 13h6"></path>
+                            </svg>
+                        </span> <span>AI Inbox</span>
+                    </button>
                 </div>
 
                 <div style={{ marginBottom: '10px' }}>
@@ -79,6 +88,15 @@ const Sidebar: React.FC<SidebarProps> = ({
                         <span className="icon">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
                         </span> <span>Notifications</span>
+                    </button>
+                    <button className={`nav-item ${activeTab === 'signup-questions' ? 'active' : ''}`} onClick={() => { setActiveTab('signup-questions'); setMobileMenuOpen(false); }}>
+                        <span className="icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <path d="M9.09 9a3 3 0 0 1 5.82 1c0 2-3 2-3 4"></path>
+                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            </svg>
+                        </span> <span>Signup Questions</span>
                     </button>
                 </div>
 

@@ -1,4 +1,18 @@
-export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges' | 'notifications';
+export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges' | 'notifications' | 'ai-agent' | 'signup-questions';
+
+export interface DiagnosisQuestionOption {
+    text: string;
+    blocker_type: 'leadGeneration' | 'confidence' | 'closing' | 'discipline';
+    score: number;
+}
+
+export interface DiagnosisQuestion {
+    id: number;
+    question_text: string;
+    display_order: number;
+    is_active: boolean;
+    options: DiagnosisQuestionOption[];
+}
 
 export interface NotificationBroadcast {
     id: number;
@@ -25,6 +39,49 @@ export interface NotificationBroadcast {
 }
 
 // ... (existing interfaces)
+
+export interface ChatSession {
+    id: number;
+    title: string;
+    created_at?: string;
+    updated_at?: string;
+}
+
+export interface AdminAiUserSummary {
+    id: number;
+    name?: string;
+    email: string;
+    membership_tier?: 'Consultant' | 'Rainmaker' | 'Titan' | string;
+    is_premium?: boolean;
+    status?: string;
+    ai_tokens_today: number;
+    ai_calls_today: number;
+    ai_tokens_total: number;
+    ai_calls_total: number;
+}
+
+export interface ChatMessage {
+    id: number;
+    role: 'user' | 'assistant';
+    content: string;
+    created_at?: string;
+    prompt_tokens?: number | null;
+    completion_tokens?: number | null;
+    total_tokens?: number | null;
+    model?: string | null;
+}
+
+export interface AiHumanTicket {
+    id: number;
+    user_id: number;
+    chat_session_id?: number | null;
+    request_message?: string | null;
+    admin_resolution?: string | null;
+    resolved_at?: string | null;
+    status: string;
+    created_at?: string;
+    updated_at?: string;
+}
 
 export interface Course {
     id: number;
