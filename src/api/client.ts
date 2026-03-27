@@ -835,9 +835,13 @@ export const apiClient = {
         return response.json();
     },
 
-    getBackup: async () => {
+    getBackup: async (options: { db: boolean; media: boolean }) => {
         const token = localStorage.getItem('adminToken');
-        const response = await fetch(`${API_BASE_URL}/admin/system/backup`, {
+        const query = new URLSearchParams({
+            db: options.db ? '1' : '0',
+            media: options.media ? '1' : '0'
+        });
+        const response = await fetch(`${API_BASE_URL}/admin/system/backup?${query}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         if (!response.ok) throw new Error('Backup failed');
@@ -845,7 +849,8 @@ export const apiClient = {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `realtorone_backup_${new Date().toISOString().split('T')[0]}.zip`;
+        const tag = (options.db && options.media) ? 'full' : (options.db ? 'db' : 'media');
+        a.download = `realtorone_${tag}_backup_${new Date().toISOString().split('T')[0]}.zip`;
         document.body.appendChild(a);
         a.click();
         a.remove();

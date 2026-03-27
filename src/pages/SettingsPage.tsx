@@ -63,11 +63,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         }
     };
 
+    const [includeDb, setIncludeDb] = useState(true);
+    const [includeMedia, setIncludeMedia] = useState(true);
+
     const handleDownloadBackup = async () => {
-        setMessage('Generating full system backup... please wait.');
+        if (!includeDb && !includeMedia) {
+            setMessage('Please select at least one component to backup.');
+            return;
+        }
+        setMessage('Generating backup... please wait.');
         try {
-            await apiClient.getBackup();
-            setMessage('Backup generated and download started.');
+            await apiClient.getBackup({ db: includeDb, media: includeMedia });
+            setMessage('Backup generated successfully.');
             setTimeout(() => setMessage(''), 5000);
         } catch (error) {
             console.error('Backup failed', error);
@@ -79,7 +86,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
         const file = event.target.files?.[0];
         if (!file) return;
 
-        if (!window.confirm('WARNING: This will overwrite ALL current data with the contents of the backup. Continue?')) {
+        if (!window.confirm('WARNING: This will overwrite current data. Continue?')) {
             return;
         }
 
@@ -122,12 +129,18 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                         <div style={{ padding: '25px', borderRadius: '15px', background: 'var(--bg-app)', border: '1px solid var(--glass-border)' }}>
                             <div style={{ marginBottom: '20px' }}>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '5px', textTransform: 'uppercase' }}>Full System Snapshot</label>
-                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-                                    Generates a complete ZIP archive which includes:
-                                    <br />• 100% of the MySQL Database
-                                    <br />• All uploaded Course Videos & Documents
-                                </p>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '15px', textTransform: 'uppercase' }}>Select Components to Backup</label>
+                                
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '20px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                                        <input type="checkbox" checked={includeDb} onChange={e => setIncludeDb(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }} />
+                                        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>MySQL Database (Users, Progress, Logs)</span>
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }}>
+                                        <input type="checkbox" checked={includeMedia} onChange={e => setIncludeMedia(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: 'var(--primary)' }} />
+                                        <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Media Assets (Course Videos & PDFs)</span>
+                                    </label>
+                                </div>
                             </div>
                             
                             <div style={{ display: 'flex', gap: '15px' }}>
@@ -136,7 +149,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                                     className="btn-primary"
                                     style={{ flex: 1.5, height: '45px', fontSize: '0.85rem' }}
                                 >
-                                    GET COLD STORAGE BACKUP
+                                    GENERATE SELECTED BACKUP
                                 </button>
                                 <label className="btn-primary" style={{ flex: 1, height: '45px', background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.85rem' }}>
                                     RESTORE FROM ZIP
