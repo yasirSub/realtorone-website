@@ -927,6 +927,28 @@ export const apiClient = {
             }
             xhr.send(formData);
         });
+    },
+
+    getPointsPerActivity: async (): Promise<{ success: boolean; data: { points_per_activity: number } }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/settings/user-activity-points`);
+        const data = await response.json();
+        return { success: true, data: { points_per_activity: data.points } };
+    },
+
+    updatePointsPerActivity: async (points: number): Promise<{ success: boolean }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/settings/user-activity-points`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ points })
+        });
+        return response.json();
+    },
+
+    syncActivityTypes: async (): Promise<{ success: boolean }> => {
+        const response = await fetch(`${API_BASE_URL}/admin/activity-types/sync`, {
+            method: 'POST'
+        });
+        return response.json();
     }
 };
 

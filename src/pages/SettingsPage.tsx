@@ -1,8 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import apiClient from '../api/client';
+import { apiClient } from '../api/client';
+import type { ActivityType, SubscriptionPackage } from '../types';
 import '../index.css';
 
-const SettingsPage: React.FC = () => {
+interface SettingsPageProps {
+    activityTypes: ActivityType[];
+    setActivityTypes: React.Dispatch<React.SetStateAction<ActivityType[]>>;
+    packages: SubscriptionPackage[];
+    setPackages: React.Dispatch<React.SetStateAction<SubscriptionPackage[]>>;
+    userActivityPoints: number;
+    setUserActivityPoints: React.Dispatch<React.SetStateAction<number>>;
+}
+
+const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
     const [pointsValue, setPointsValue] = useState(500);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
@@ -36,7 +46,7 @@ const SettingsPage: React.FC = () => {
     useEffect(() => {
         fetchBackups();
         // Load settings
-        apiClient.getPointsPerActivity().then(res => {
+        apiClient.getPointsPerActivity().then((res: any) => {
             if (res.success) setPointsValue(res.data.points_per_activity);
         });
     }, []);
@@ -138,7 +148,7 @@ const SettingsPage: React.FC = () => {
         setMessage('');
 
         try {
-            const res = await apiClient.restoreBackupWithProgress(file, (percent) => {
+            const res = await apiClient.restoreBackupWithProgress(file, (percent: number) => {
                 const displayPercent = percent * 0.9;
                 setRestoreProgress(displayPercent);
                 if (percent < 100) setRestoreStage(`Data transmission: ${percent}%`);
