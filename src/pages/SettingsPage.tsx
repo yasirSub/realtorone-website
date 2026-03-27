@@ -103,8 +103,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
 
     return (
         <div className="view-container fade-in">
-            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '10px' }}>System Infrastructure</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '30px' }}>Management Plane for Platform Logic & Monetization.</p>
+            <h2 style={{ fontSize: '1.8rem', fontWeight: 800, marginBottom: '5px' }}>System Admin</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '30px', fontSize: '0.9rem' }}>Core infrastructure, data redundancy, and platform parameters.</p>
 
             {message && (
                 <div className="glass-panel" style={{ padding: '15px', marginBottom: '20px', border: '1px solid var(--success)', background: 'rgba(16, 185, 129, 0.1)', color: 'var(--success)', fontWeight: 800, fontSize: '0.8rem' }}>
@@ -112,88 +112,91 @@ const SettingsPage: React.FC<SettingsPageProps> = ({
                 </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px', alignItems: 'flex-start' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px', alignItems: 'flex-start' }}>
+                {/* Left Column: Disaster Recovery */}
                 <div className="glass-panel">
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '25px' }}>Operational Parameters</h3>
-                    {/* ... weight and pricing ... */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '1px' }}>Custom Activity Weight</label>
-                            <div style={{ display: 'flex', gap: '10px' }}>
-                                <input
-                                    type="number"
-                                    value={pointsValue}
-                                    onChange={(e) => setPointsValue(parseInt(e.target.value))}
-                                    className="form-input"
-                                    style={{ flex: 1 }}
-                                />
-                                <button
-                                    onClick={handleSavePoints}
-                                    className="btn-primary"
-                                    disabled={saving}
-                                >
-                                    {saving ? 'SYNCING...' : 'UPDATE WEIGHT'}
-                                </button>
-                            </div>
-                            <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Global points awarded to operators for custom identity conditioning rituals.</p>
-                        </div>
-
-                        <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '25px' }}>
-                            <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '15px', textTransform: 'uppercase', letterSpacing: '1px' }}>Subscription Fleet Pricing</label>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                                {packages.map(pkg => (
-                                    <div key={pkg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-app)', padding: '12px 15px', borderRadius: '12px' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: pkg.name === 'Titan' ? '#F59E0B' : pkg.name === 'Rainmaker' ? '#94A3B8' : 'var(--primary)' }}></div>
-                                            <span style={{ fontWeight: 800, fontSize: '0.85rem' }}>{pkg.name} TIER</span>
-                                        </div>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>$</span>
-                                            <input
-                                                type="number"
-                                                defaultValue={pkg.price_monthly}
-                                                onBlur={(e) => handlePriceUpdate(pkg.id, parseFloat(e.target.value))}
-                                                style={{ width: '60px', background: 'transparent', border: '1px solid var(--glass-border)', color: 'var(--text-main)', fontWeight: 900, fontSize: '0.9rem', borderRadius: '4px', padding: '2px 5px', textAlign: 'right' }}
-                                            />
-                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>/mo</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="glass-panel">
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '25px' }}>Security & Persistence</h3>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ color: 'var(--primary)' }}>●</span> Disaster Recovery & Redundancy
+                    </h3>
+                    
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        <div style={{ padding: '20px', borderRadius: '15px', background: 'var(--bg-app)', border: '1px solid var(--glass-border)' }}>
-                            <div style={{ marginBottom: '15px' }}>
-                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '5px' }}>DISASTER RECOVERY</label>
-                                <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Download a full snapshot of your database and media files.</p>
+                        <div style={{ padding: '25px', borderRadius: '15px', background: 'var(--bg-app)', border: '1px solid var(--glass-border)' }}>
+                            <div style={{ marginBottom: '20px' }}>
+                                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '5px', textTransform: 'uppercase' }}>Full System Snapshot</label>
+                                <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
+                                    Generates a complete ZIP archive which includes:
+                                    <br />• 100% of the MySQL Database
+                                    <br />• All uploaded Course Videos & Documents
+                                </p>
                             </div>
-                            <div style={{ display: 'flex', gap: '10px' }}>
+                            
+                            <div style={{ display: 'flex', gap: '15px' }}>
                                 <button
                                     onClick={handleDownloadBackup}
                                     className="btn-primary"
-                                    style={{ flex: 1, background: 'var(--primary)', color: '#fff', border: 'none' }}
+                                    style={{ flex: 1.5, height: '45px', fontSize: '0.85rem' }}
                                 >
-                                    Download Full Backup
+                                    GET COLD STORAGE BACKUP
                                 </button>
-                                <label className="btn-primary" style={{ flex: 1, background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', textAlign: 'center' }}>
-                                    Restore from ZIP
+                                <label className="btn-primary" style={{ flex: 1, height: '45px', background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', fontSize: '0.85rem' }}>
+                                    RESTORE FROM ZIP
                                     <input type="file" accept=".zip" onChange={handleRestoreBackup} style={{ display: 'none' }} />
                                 </label>
                             </div>
                         </div>
 
-                        <div>
-                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px' }}>CORE API ENDPOINT</label>
-                            <input type="text" value={apiClient.getBaseUrl()} readOnly className="form-input" style={{ width: '100%', background: 'var(--bg-app)', border: 'none', fontStyle: 'italic' }} />
+                        <div style={{ padding: '20px', background: 'rgba(245, 158, 11, 0.05)', border: '1px dashed #F59E0B55', borderRadius: '12px' }}>
+                            <p style={{ fontSize: '0.75rem', color: '#F59E0B', fontWeight: 600 }}>
+                                <strong>Safety Tip:</strong> Download a backup before making major structural changes to the database or mass-deleting courses.
+                            </p>
                         </div>
+                    </div>
+                </div>
 
-                        <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                            <button onClick={handleSyncActivities} className="btn-primary" style={{ background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }}>Sync Global Registry</button>
+                {/* Right Column: Parameters & Maintenance */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                    <div className="glass-panel">
+                        <h3 style={{ fontSize: '1.1rem', fontWeight: 900, marginBottom: '25px' }}>System Maintenance</h3>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase' }}>Global Activity Weight</label>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <input
+                                        type="number"
+                                        value={pointsValue}
+                                        onChange={(e) => setPointsValue(parseInt(e.target.value))}
+                                        className="form-input"
+                                        style={{ width: '80px' }}
+                                    />
+                                    <button
+                                        onClick={handleSavePoints}
+                                        className="btn-primary"
+                                        disabled={saving}
+                                        style={{ background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)', flex: 1 }}
+                                    >
+                                        {saving ? 'SAVING...' : 'SYNC POINTS'}
+                                    </button>
+                                </div>
+                                <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Base rewards for identity conditioning tasks.</p>
+                            </div>
+
+                            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
+                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase' }}>Sync Database Registry</label>
+                                <button onClick={handleSyncActivities} className="btn-primary" style={{ width: '100%', background: 'var(--bg-app)', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }}>
+                                    RUN GLOBAL SEEDER SYNC
+                                </button>
+                                <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '8px' }}>Forces a refresh of all mission types from the source code.</p>
+                            </div>
+
+                            <div style={{ borderTop: '1px solid var(--glass-border)', paddingTop: '20px' }}>
+                                <label style={{ display: 'block', fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '10px', textTransform: 'uppercase' }}>API Integration</label>
+                                <input type="text" value={apiClient.getBaseUrl()} readOnly className="form-input" style={{ width: '100%', background: 'var(--bg-app)', border: 'none', fontStyle: 'italic', fontSize: '0.8rem' }} />
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '10px' }}>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--success)', fontWeight: 800 }}>● CONNECTED TO CLOUD</span>
+                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>v1.4.2-PRIME</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
