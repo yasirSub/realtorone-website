@@ -14,198 +14,231 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ stats }) => {
     const [momentumData, setMomentumData] = useState<any>(null);
     const [weeklyReview, setWeeklyReview] = useState<any>(null);
     const [recentBadges, setRecentBadges] = useState<any[]>([]);
+    const [revenueStats, setRevenueStats] = useState<any>(null);
 
     useEffect(() => {
-        // Fetch real dashboard stats
         apiClient.getDashboardStats().then(res => {
-            if (res.success) {
-                setMomentumData(res.data);
-            }
+            if (res.success) setMomentumData(res.data);
         });
 
-        // Fetch weekly review data
         apiClient.getWeeklyReview().then(res => {
-            if (res.success) {
-                setWeeklyReview(res.data);
-            }
+            if (res.success) setWeeklyReview(res.data);
         });
 
-        // Fetch recent badges
         apiClient.getRecentBadges().then(res => {
-            if (res.success) {
-                setRecentBadges(res.data);
-            }
+            if (res.success) setRecentBadges(res.data);
+        });
+
+        apiClient.getUserRevenueMetrics(1).then(res => {
+            if (res.success) setRevenueStats(res.data);
         });
     }, []);
 
     const momentumScore = momentumData?.growth_score || 0;
-    const subcoScore = momentumData?.mindset_index || 0;
+    const mindsetScore = momentumData?.mindset_index || 0;
     const execScore = momentumData?.execution_rate || 0;
-    const resultsScore = weeklyReview?.deals || 0;
+    const consistencyScore = momentumData?.results_score || 0;
 
-    const getScoreColor = (score: number) => {
-        if (score <= 40) return '#ef4444'; // Red
-        if (score <= 70) return '#f59e0b'; // Orange
-        return '#10b981'; // Green
+    const getStatusColor = (score: number) => {
+        if (score <= 40) return '#ee5d50';
+        if (score <= 70) return '#ffb547';
+        return '#00e096';
     };
 
-    const currentScoreColor = getScoreColor(momentumScore);
+    const accentColor = getStatusColor(momentumScore);
 
     return (
-        <div className="view-container fade-in" style={{ padding: '0 20px 60px 20px' }}>
-            {/* System Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '40px' }}>
+        <div className="view-container fade-in" style={{ padding: '0 40px 60px 40px' }}>
+            
+            {/* Header: Adaptive Operational Context */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', paddingTop: '20px' }}>
                 <div>
-                    <h1 style={{ fontSize: '2.2rem', fontWeight: 950, margin: 0, letterSpacing: '-1.5px' }}>GLOBAL OPERATIONS HUB</h1>
-                    <p style={{ color: 'var(--text-muted)', fontWeight: 700, marginTop: '5px', fontSize: '0.9rem', letterSpacing: '0.5px' }}>
-                        SYSTEM_STATUS: <span style={{ color: stats.db_connected ? 'var(--success)' : 'var(--error)' }}>{stats.db_connected ? 'OPERATIONAL' : 'DEGRADED'}</span> |
-                        LIVE_AGENTS: {stats.active_today}
-                    </p>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <div className={`status-pulse ${stats.db_connected ? '' : 'error'}`}></div>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                            {stats.db_connected ? 'Systems Verified' : 'System Anomaly Detected'}
+                        </span>
+                    </div>
+                    <h1 className="text-outfit" style={{ fontSize: '2.5rem', fontWeight: 900, margin: 0, letterSpacing: '-1.5px', textTransform: 'uppercase' }}>
+                        Operational <span style={{ color: 'var(--primary)', fontWeight: 600 }}>Command</span>
+                    </h1>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.7rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '2px' }}>Operational Cycle</div>
-                    <div style={{ fontSize: '1.2rem', fontWeight: 900 }}>{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase()}</div>
+                
+                <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'right' }}>
+                        <div className="card-heading" style={{ marginBottom: '4px' }}>Strategic Cycle</div>
+                        <div className="text-outfit" style={{ fontSize: '1.2rem', fontWeight: 700 }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}</div>
+                    </div>
+                    <div style={{ width: '1px', height: '40px', background: 'var(--glass-border)' }}></div>
+                    <button className="btn-command primary">GENERATE STRATEGIC REPORT</button>
                 </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '40px', alignItems: 'flex-start' }}>
+            {/* Top Metrics Bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px', marginBottom: '40px' }}>
+                <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(245, 158, 11, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>🔥</div>
+                    <div>
+                        <div className="card-heading" style={{ marginBottom: '2px' }}>Streak</div>
+                        <div className="metric-value" style={{ fontSize: '1.5rem' }}>{momentumData?.current_streak || 0} Days</div>
+                    </div>
+                </div>
+                <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(0, 224, 150, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>💰</div>
+                    <div>
+                        <div className="card-heading" style={{ marginBottom: '2px' }}>Net Revenue</div>
+                        <div className="metric-value" style={{ fontSize: '1.5rem' }}>AED {(revenueStats?.total_commission || 0).toLocaleString()}</div>
+                    </div>
+                </div>
+                <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(109, 40, 217, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>👥</div>
+                    <div>
+                        <div className="card-heading" style={{ marginBottom: '2px' }}>Network</div>
+                        <div className="metric-value" style={{ fontSize: '1.5rem' }}>{stats.total_users} Agents</div>
+                    </div>
+                </div>
+                <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
+                    <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(217, 70, 239, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>📡</div>
+                    <div>
+                        <div className="card-heading" style={{ marginBottom: '2px' }}>Throughput</div>
+                        <div className="metric-value" style={{ fontSize: '1.5rem' }}>{(stats.total_activities / 1000).toFixed(1)}k <span style={{ fontSize: '0.8rem', opacity: 0.5 }}>Events</span></div>
+                    </div>
+                </div>
+            </div>
 
-                {/* PRIMARY MOMENTUM SECTOR */}
-                <div className="glass-panel" style={{ padding: '50px 40px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-                    <div style={{ position: 'absolute', inset: 0, background: `radial-gradient(circle at center, ${currentScoreColor}10, transparent)`, pointerEvents: 'none' }}></div>
+            {/* Main Interactive Zone */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '40px' }}>
+                
+                {/* Performance Analytics Column */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+                    <div className="glass-panel" style={{ padding: '40px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
+                            <div>
+                                <h3 className="text-outfit" style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>Growth Protocol Analysis</h3>
+                                <p className="metric-subtext">Real-time behavioral synthesis & engagement telemetry</p>
+                            </div>
+                            <div style={{ padding: '6px 14px', background: 'rgba(255,255,255,0.04)', borderRadius: '10px', fontSize: '0.7rem', fontWeight: 800, color: accentColor, border: `1px solid ${accentColor}30` }}>
+                                {momentumData?.rank?.toUpperCase() || 'EVALUATING'}
+                            </div>
+                        </div>
 
-                    <h3 style={{ fontSize: '0.75rem', fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '2.5px', marginBottom: '40px', textTransform: 'uppercase' }}>Growth Score Protocol</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '60px' }}>
+                            {/* High-Fidelity Tactical Arc Gauge (Research-Inspired) */}
+                            <div style={{ position: 'relative', width: '220px', height: '140px', overflow: 'hidden' }}>
+                                <svg width="220" height="220" viewBox="0 0 100 100">
+                                    <path 
+                                        d="M10,50 A40,40 0 1,1 90,50" 
+                                        fill="none" 
+                                        stroke="rgba(255,255,255,0.03)" 
+                                        strokeWidth="8" 
+                                        strokeLinecap="round" 
+                                    />
+                                    <path 
+                                        d="M10,50 A40,40 0 1,1 90,50" 
+                                        fill="none" 
+                                        stroke={accentColor} 
+                                        strokeWidth="8" 
+                                        strokeDasharray="126" 
+                                        strokeDashoffset={126 - (126 * momentumScore) / 100} 
+                                        strokeLinecap="round" 
+                                        style={{ transition: 'stroke-dashoffset 2.5s cubic-bezier(0.19, 1, 0.22, 1)' }}
+                                    />
+                                </svg>
+                                <div style={{ position: 'absolute', bottom: '15%', left: 0, right: 0, textAlign: 'center' }}>
+                                    <div className="text-outfit" style={{ fontSize: '3.8rem', fontWeight: 900, color: 'var(--text-main)', lineHeight: 1 }}>{momentumScore}</div>
+                                    <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-secondary)', letterSpacing: '2px', marginTop: '5px' }}>NET MOMENTUM</div>
+                                </div>
+                            </div>
 
-                    {/* Ring Container */}
-                    <div style={{ position: 'relative', width: '280px', height: '280px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="280" height="280" viewBox="0 0 100 100">
-                            {/* Background Track */}
-                            <circle cx="50" cy="50" r="45" fill="none" stroke="var(--bg-app)" strokeWidth="8" />
-                            {/* Progress Ring */}
-                            <circle
-                                cx="50" cy="50" r="45"
-                                fill="none"
-                                stroke={currentScoreColor}
-                                strokeWidth="8"
-                                strokeDasharray="283"
-                                strokeDashoffset={283 - (283 * momentumScore) / 100}
-                                strokeLinecap="round"
-                                style={{ transition: 'stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s' }}
-                            />
-                        </svg>
-                        <div style={{ position: 'absolute', textAlign: 'center' }}>
-                            <div style={{ fontSize: '5rem', fontWeight: 950, lineHeight: 1, color: currentScoreColor, letterSpacing: '-3px' }}>{momentumScore}</div>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 900, color: 'var(--text-muted)', marginTop: '5px' }}>{momentumData?.rank || 'STARTER'}</div>
+                            {/* Detailed Indicators */}
+                            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span className="card-heading" style={{ margin: 0, fontSize: '0.65rem' }}>Mindset Index</span>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent)' }}>{mindsetScore}%</span>
+                                    </div>
+                                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                                        <div style={{ height: '100%', width: `${mindsetScore}%`, background: 'linear-gradient(90deg, var(--accent) 0%, #ff7bed 100%)', borderRadius: '10px' }}></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span className="card-heading" style={{ margin: 0, fontSize: '0.65rem' }}>Execution Rate</span>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)' }}>{execScore}%</span>
+                                    </div>
+                                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                                        <div style={{ height: '100%', width: `${execScore}%`, background: 'linear-gradient(90deg, var(--primary) 0%, #9e7aff 100%)', borderRadius: '10px' }}></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span className="card-heading" style={{ margin: 0, fontSize: '0.65rem' }}>Consistency Pool</span>
+                                        <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#00e096' }}>{consistencyScore}%</span>
+                                    </div>
+                                    <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '10px', overflow: 'hidden' }}>
+                                        <div style={{ height: '100%', width: `${consistencyScore}%`, background: 'linear-gradient(90deg, #00e096 0%, #00ffd0 100%)', borderRadius: '10px' }}></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px', width: '100%', marginTop: '50px' }}>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', marginBottom: '8px' }}>MINDSET</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 950 }}>{subcoScore}<span style={{ fontSize: '0.8rem', opacity: 0.4 }}>/100</span></div>
-                            <div style={{ height: '4px', background: 'var(--bg-app)', borderRadius: '10px', marginTop: '10px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${subcoScore}%`, background: '#d946ef' }}></div>
-                            </div>
+                    {/* Operational Capacities (Bottom Row) */}
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '40px' }}>
+                        <div className="glass-panel" style={{ padding: '24px' }}>
+                            <div className="card-heading">Hot Leads</div>
+                            <div className="metric-value">{revenueStats?.hot_leads || 0}</div>
+                            <div className="metric-subtext">Active Negotiations</div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', marginBottom: '8px' }}>EXECUTION</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 950 }}>{execScore}<span style={{ fontSize: '0.8rem', opacity: 0.4 }}>/100</span></div>
-                            <div style={{ height: '4px', background: 'var(--bg-app)', borderRadius: '10px', marginTop: '10px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${execScore}%`, background: '#a855f7' }}></div>
-                            </div>
+                        <div className="glass-panel" style={{ padding: '24px' }}>
+                            <div className="card-heading">Deals Converted</div>
+                            <div className="metric-value">{revenueStats?.deals_closed || 0}</div>
+                            <div className="metric-subtext">Verified Transactions</div>
                         </div>
-                        <div style={{ textAlign: 'center' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', marginBottom: '8px' }}>WEEK_DEALS</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 950 }}>{resultsScore}<span style={{ fontSize: '0.8rem', opacity: 0.4 }}></span></div>
-                            <div style={{ height: '4px', background: 'var(--bg-app)', borderRadius: '10px', marginTop: '10px', overflow: 'hidden' }}>
-                                <div style={{ height: '100%', width: `${Math.min(100, resultsScore * 20)}%`, background: 'var(--primary)' }}></div>
-                            </div>
+                        <div className="glass-panel" style={{ padding: '24px' }}>
+                            <div className="card-heading">System Load</div>
+                            <div className="metric-value" style={{ color: 'var(--success)' }}>Optimal</div>
+                            <div className="metric-subtext">0.12ms Latency</div>
                         </div>
                     </div>
                 </div>
 
-                {/* SIDE STATS & LOGS */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-
-                    {/* DOPAMINE HUD */}
-                    <div className="glass-panel" style={{ padding: '30px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <div style={{ fontSize: '2rem' }}>🔥</div>
-                                    <div>
-                                        <div style={{ fontSize: '1.4rem', fontWeight: 950 }}>{momentumData?.current_streak || 0} DAYS</div>
-                                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>CURRENT_STREAK</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                                    <div style={{ fontSize: '2rem' }}>💰</div>
-                                    <div>
-                                        <div style={{ fontSize: '1.4rem', fontWeight: 950 }}>AED {weeklyReview?.commission?.toLocaleString() || 0}</div>
-                                        <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>WEEKLY_COMMISSION</div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div style={{ padding: '15px', borderRadius: '12px', background: 'rgba(var(--primary-rgb), 0.05)', border: '1px solid var(--glass-border)' }}>
-                                <div style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', marginBottom: '10px' }}>WEEKLY REVIEW INSIGHT</div>
-                                <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', lineHeight: '1.4' }}>
-                                    {weeklyReview?.message || "Continue behavioral execution to generate weekly insights."}
-                                </div>
-                            </div>
+                {/* Tactical Feed Column */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
+                    <div className="glass-panel" style={{ padding: '30px', borderLeft: '4px solid var(--primary)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
+                            <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: 'var(--primary)' }}></div>
+                            <h4 className="card-heading" style={{ margin: 0 }}>Strategic Protocol Insight</h4>
                         </div>
+                        <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)', lineHeight: '1.6', margin: 0, opacity: 0.9 }}>
+                            {weeklyReview?.message || "Synthesizing operational history to generate behavioral directives. Maintain baseline execution velocity."}
+                        </p>
                     </div>
 
-                    {/* RECENT BADGES */}
-                    <div className="glass-panel" style={{ padding: '30px', flex: 1 }}>
-                        <h4 style={{ fontSize: '0.7rem', fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '2px', textTransform: 'uppercase', marginBottom: '25px' }}>Recent Achievements</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                    <div className="glass-panel" style={{ padding: '32px', flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+                            <h4 className="card-heading" style={{ margin: 0 }}>Protocol Clearances</h4>
+                            <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)' }}>VIEW ALL HISTORY</span>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             {recentBadges.length === 0 ? (
-                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>No badges earned yet this period.</div>
+                                <div style={{ textAlign: 'center', padding: '60px 20px', border: '1px dashed rgba(255,255,255,0.06)', borderRadius: '20px' }}>
+                                    <div style={{ fontSize: '1.6rem', marginBottom: '10px', opacity: 0.3 }}>🛡️</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700 }}>No elite badges authorized for this cycle.</div>
+                                </div>
                             ) : (
                                 recentBadges.map((badge, i) => (
-                                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '12px', borderBottom: i < recentBadges.length - 1 ? '1px solid var(--glass-border)' : 'none' }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                            <div style={{ fontSize: '1.2rem', background: 'var(--bg-app)', width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{badge.icon}</div>
-                                            <div>
-                                                <div style={{ fontSize: '0.85rem', fontWeight: 800 }}>{badge.name}</div>
-                                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 600 }}>{badge.type.toUpperCase()} PROTOCOL</div>
-                                            </div>
+                                    <div key={i} className="premium-stat-card" style={{ display: 'flex', alignItems: 'center', gap: '16px', border: 'none', background: 'rgba(255,255,255,0.02)' }}>
+                                        <div style={{ fontSize: '1.4rem' }}>{badge.icon}</div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '0.9rem', fontWeight: 800 }}>{badge.name}</div>
+                                            <div style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{badge.type} Protocol Verified</div>
                                         </div>
-                                        <div style={{ fontWeight: 950, color: 'var(--primary)', fontSize: '0.7rem' }}>{new Date(badge.earned_at).toLocaleDateString()}</div>
+                                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800 }}>{new Date(badge.earned_at).toLocaleDateString()}</div>
                                     </div>
                                 ))
                             )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* LOWER HUD - ACTIVITY LOGS */}
-            <div style={{ marginTop: '40px' }} className="glass-panel">
-                <div style={{ padding: '40px' }}>
-                    <h3 style={{ fontSize: '1.2rem', fontWeight: 950, marginBottom: '5px' }}>Operational Capacity Audit</h3>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600, marginBottom: '30px' }}>Global activity distribution for the current cycle.</p>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-                        <div style={{ padding: '20px', borderRadius: '15px', background: 'var(--bg-app)' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', marginBottom: '10px' }}>TOTAL_USERS</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 950 }}>{stats.total_users}</div>
-                        </div>
-                        <div style={{ padding: '20px', borderRadius: '15px', background: 'var(--bg-app)' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', marginBottom: '10px' }}>IDLE_AGENTS</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 950 }}>{stats.total_users - stats.active_today}</div>
-                        </div>
-                        <div style={{ padding: '20px', borderRadius: '15px', background: 'var(--bg-app)' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', marginBottom: '10px' }}>SYSTEM_THROUGHPUT</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 950 }}>{stats.total_activities}</div>
-                        </div>
-                        <div style={{ padding: '20px', borderRadius: '15px', background: 'var(--bg-app)' }}>
-                            <div style={{ fontSize: '0.65rem', fontWeight: 950, color: 'var(--text-muted)', marginBottom: '10px' }}>DB_LATENCY</div>
-                            <div style={{ fontSize: '1.5rem', fontWeight: 950, color: 'var(--success)' }}>OPTIMAL</div>
                         </div>
                     </div>
                 </div>

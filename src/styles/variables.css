@@ -5,49 +5,67 @@
     --primary-glow: rgba(109, 40, 217, 0.3);
     --accent: #d946ef;
 
-    /* Always dark by default (Root) */
-    --bg-app: #080b2a;
-    --bg-app-rgb: 8, 11, 42;
-    --bg-sidebar: #0f123b;
-    --bg-card: #151947;
-    --bg-card-rgb: 21, 25, 71;
-    --bg-modal: #0f123b;
+    /* Obsidian Elite II - Deep Space Protocol */
+    --bg-app: #030303;
+    --bg-app-rgb: 3, 3, 3;
+    --bg-sidebar: #080808;
+    --bg-card: #0c0c0e;
+    --bg-card-rgb: 12, 12, 14;
+    --bg-modal: #0a0a0a;
 
-    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.05);
 
     --text-main: #ffffff;
     --text-main-rgb: 255, 255, 255;
-    --text-secondary: #8b96c2;
-    --text-muted: #6e79a8;
+    --text-secondary: #a1a1aa;
+    --text-muted: #52525b;
+
+    /* Hyper-Saturated Tactical Accents (from Research) */
+    --neon-blue: #3b82f6;
+    --neon-cyan: #06b6d4;
+    --neon-purple: #8b5cf6;
+    --neon-yellow: #eab308;
+    --neon-red: #ef4444;
+    --neon-green: #22c55e;
 
     --success: #01b574;
     --error: #ee5d50;
     --warning: #ffb547;
 
     --primary-shadow: rgba(109, 40, 217, 0.55);
-    --card-radius: 20px;
-    --sidebar-radius: 30px;
-    --sidebar-width: 290px;
-    --sidebar-collapsed-width: 100px;
+    --card-radius: 16px;
+    --modal-radius: 24px;
+
+    /* Micro-Animation Timings */
+    --anim-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --anim-mid: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    --anim-slow: 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    --anim-bounce: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+
+    --sidebar-width: 280px;
+    --sidebar-collapsed-width: 75px;
     --header-height: 70px;
 }
 
 [data-theme='light'] {
-    --bg-app: #f4f7fe;
-    --bg-app-rgb: 244, 247, 254;
+    --bg-app: #f7fafc;
+    --bg-app-rgb: 247, 250, 252;
     --bg-sidebar: #ffffff;
     --bg-card: #ffffff;
     --bg-card-rgb: 255, 255, 255;
     --bg-modal: #ffffff;
 
-    --glass-border: rgba(27, 37, 75, 0.08);
+    --glass-border: #e2e8f0;
 
     --text-main: #1b254b;
     --text-main-rgb: 27, 37, 75;
-    --text-secondary: #707eae;
-    --text-muted: #a3aed0;
+    --text-secondary: #4a5568;
+    --text-muted: #718096;
 
-    --primary-shadow: rgba(109, 40, 217, 0.15);
+    --primary-shadow: rgba(109, 40, 217, 0.08);
+    
+    /* Light Mode Specific: Sophisticated Horizon Shadows */
+    --horizon-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -3px rgba(0, 0, 0, 0.02);
 }
 
 

@@ -31,7 +31,7 @@ const Layout: React.FC<LayoutProps> = ({
     toggleTheme
 }) => {
     return (
-        <div className="app-layout">
+        <div className={`app-layout ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
             <Sidebar
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
@@ -46,6 +46,7 @@ const Layout: React.FC<LayoutProps> = ({
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
                     activeTab={activeTab}
+                    setActiveTab={setActiveTab}
                     theme={theme}
                     toggleTheme={toggleTheme}
                 />

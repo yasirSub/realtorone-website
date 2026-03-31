@@ -1,4 +1,4 @@
-export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges' | 'notifications' | 'ai-agent' | 'signup-questions';
+export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges' | 'notifications' | 'ai-agent' | 'signup-questions' | 'admin-notifications';
 
 export interface DiagnosisQuestionOption {
     text: string;

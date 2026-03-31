@@ -1,496 +1,330 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiClient } from '../api/client';
 import type { AdminAiUserSummary, AiHumanTicket, ChatMessage, ChatSession, Course } from '../types';
-import './AdminAiInboxPage.css';
 
-type ChatCommand = {
-    keyword: string;
-    label?: string;
-    description?: string;
-};
-
-type CoursePreview = {
-    id?: number;
-    title?: string;
-};
-
-function getErrorMessage(e: unknown): string {
-    if (e instanceof Error) return e.message;
-    return typeof e === 'string' ? e : 'Request failed.';
-}
-
-function safeParseStoredAssistantContent(content: string): { text: string; courses?: CoursePreview[]; commands?: ChatCommand[] } {
+function safeParseStoredAssistantContent(content: string): { text: string; courses?: any[]; commands?: any[] } {
     if (!content || (content[0] ?? '') !== '{') return { text: content };
     try {
-        const decoded: unknown = JSON.parse(content);
+        const decoded = JSON.parse(content);
         if (decoded && typeof decoded === 'object' && 'text' in decoded) {
-            const record = decoded as Record<string, unknown>;
-            const textVal = record.text;
-            const text = typeof textVal === 'string' ? textVal : String(textVal);
-
-            const rawCourses = record.courses;
-            const courses = Array.isArray(rawCourses)
-                ? rawCourses
-                    .map((c: unknown): CoursePreview | null => {
-                        if (!c || typeof c !== 'object') return null;
-                        const obj = c as Record<string, unknown>;
-                        const id = typeof obj.id === 'number' ? obj.id : undefined;
-                        const title = typeof obj.title === 'string' ? obj.title : undefined;
-                        return { id, title };
-                    })
-                    .filter(Boolean) as CoursePreview[]
-                : undefined;
-
-            const rawCommands = record.commands;
-            const commands = Array.isArray(rawCommands)
-                ? rawCommands
-                    .map((cmd: unknown): ChatCommand | null => {
-                        if (!cmd || typeof cmd !== 'object') return null;
-                        const obj = cmd as Record<string, unknown>;
-                        const keyword = typeof obj.keyword === 'string' ? obj.keyword : '';
-                        if (!keyword) return null;
-                        const label = typeof obj.label === 'string' ? obj.label : undefined;
-                        const description = typeof obj.description === 'string' ? obj.description : undefined;
-                        return { keyword, label, description };
-                    })
-                    .filter(Boolean) as ChatCommand[]
-                : undefined;
-
-            return { text, courses, commands };
+            return { 
+                text: decoded.text, 
+                courses: Array.isArray(decoded.courses) ? decoded.courses : undefined,
+                commands: Array.isArray(decoded.commands) ? decoded.commands : undefined
+            };
         }
-        return { text: content };
-    } catch {
-        return { text: content };
-    }
+    } catch { /* skip */ }
+    return { text: content };
 }
 
 const AdminAiInboxPage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
-
     const [adminUsers, setAdminUsers] = useState<AdminAiUserSummary[]>([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-
     const [sessions, setSessions] = useState<ChatSession[]>([]);
     const [loadingSessions, setLoadingSessions] = useState(false);
     const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
-
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
-
     const [kb, setKb] = useState<{ tier: string; courses: Course[] } | null>(null);
     const [loadingKb, setLoadingKb] = useState(false);
-
     const [tickets, setTickets] = useState<AiHumanTicket[]>([]);
     const [loadingTickets, setLoadingTickets] = useState(false);
-
     const [ticketRequest, setTicketRequest] = useState('');
     const [ticketCreateLoading, setTicketCreateLoading] = useState(false);
-
     const [resolutionByTicketId, setResolutionByTicketId] = useState<Record<number, string>>({});
-
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
-
-    const selectedUser = useMemo(() => {
-        if (selectedUserId === null) return null;
-        return adminUsers.find(u => u.id === selectedUserId) ?? null;
-    }, [adminUsers, selectedUserId]);
-
-    const filteredTickets = useMemo(() => {
-        if (selectedUserId === null) return [];
-        return tickets.filter(t => t.user_id === selectedUserId);
-    }, [tickets, selectedUserId]);
 
     const loadUsers = useCallback(async () => {
         setLoadingUsers(true);
-        setError(null);
         try {
             const res = await apiClient.getAdminAiUsers();
-            if (res.success && Array.isArray(res.data)) {
+            if (res.success) {
                 setAdminUsers(res.data);
                 if (res.data.length > 0) setSelectedUserId(res.data[0].id);
-            } else {
-                setError(res.message || 'Failed to load users for AI inbox.');
             }
-        } catch (e: unknown) {
-            setError(getErrorMessage(e));
-        } finally {
-            setLoadingUsers(false);
-        }
+        } finally { setLoadingUsers(false); }
     }, []);
 
     const loadSessions = useCallback(async (userId: number) => {
         setLoadingSessions(true);
-        setError(null);
         try {
             const res = await apiClient.getAdminAiUserSessions(userId);
-            if (res.success && Array.isArray(res.data)) {
+            if (res.success) {
                 setSessions(res.data);
                 setSelectedSessionId(res.data.length > 0 ? res.data[0].id : null);
-            } else {
-                setSessions([]);
-                setSelectedSessionId(null);
-                setError(res.message || 'Failed to load chat sessions.');
             }
-        } catch (e: unknown) {
-            setSessions([]);
-            setSelectedSessionId(null);
-            setError(getErrorMessage(e));
-        } finally {
-            setLoadingSessions(false);
-        }
+        } finally { setLoadingSessions(false); }
     }, []);
 
     const loadMessages = useCallback(async (sessionId: number) => {
         setLoadingMessages(true);
-        setError(null);
         try {
             const res = await apiClient.getAdminAiSessionMessages(sessionId);
-            if (res.success && Array.isArray(res.data)) {
-                setMessages(res.data);
-            } else {
-                setMessages([]);
-                setError(res.message || 'Failed to load chat messages.');
-            }
-        } catch (e: unknown) {
-            setMessages([]);
-            setError(getErrorMessage(e));
-        } finally {
-            setLoadingMessages(false);
-        }
+            if (res.success) setMessages(res.data);
+        } finally { setLoadingMessages(false); }
     }, []);
 
     const loadKb = useCallback(async (userId: number) => {
         setLoadingKb(true);
-        setError(null);
         try {
             const res = await apiClient.getAdminAiUserKb(userId);
-            if (res.success && res.data) {
-                setKb(res.data);
-            } else {
-                setKb(null);
-            }
-        } catch (e: unknown) {
-            setKb(null);
-            setError(getErrorMessage(e));
-        } finally {
-            setLoadingKb(false);
-        }
+            if (res.success) setKb(res.data);
+        } finally { setLoadingKb(false); }
     }, []);
 
     const loadTickets = useCallback(async () => {
         setLoadingTickets(true);
-        setError(null);
         try {
             const res = await apiClient.getAdminAiTickets();
-            if (res.success && Array.isArray(res.data)) {
-                setTickets(res.data);
-            } else {
-                setTickets([]);
-            }
-        } catch (e: unknown) {
-            setTickets([]);
-            setError(getErrorMessage(e));
-        } finally {
-            setLoadingTickets(false);
-        }
+            if (res.success) setTickets(res.data);
+        } finally { setLoadingTickets(false); }
     }, []);
 
-    useEffect(() => {
-        void loadUsers();
-    }, [loadUsers]);
-
+    useEffect(() => { void loadUsers(); }, [loadUsers]);
     useEffect(() => {
         if (selectedUserId === null) return;
         void loadSessions(selectedUserId);
         void loadKb(selectedUserId);
         void loadTickets();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [selectedUserId]);
-
+    }, [selectedUserId, loadSessions, loadKb, loadTickets]);
     useEffect(() => {
-        if (selectedSessionId === null) {
-            setMessages([]);
-            return;
-        }
+        if (selectedSessionId === null) { setMessages([]); return; }
         void loadMessages(selectedSessionId);
     }, [selectedSessionId, loadMessages]);
-
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, [messages, loadingMessages]);
 
-    const assistantMessageFooter = (m: ChatMessage) => {
-        const parsed = safeParseStoredAssistantContent(m.content);
-        if (parsed.commands && parsed.commands.length > 0) return null;
-        if (parsed.courses && parsed.courses.length > 0) return null;
-        return null;
-    };
-
     const handleCreateTicket = async () => {
-        if (selectedUserId === null) return;
-        const trimmed = ticketRequest.trim();
-        if (!trimmed) return;
+        if (selectedUserId === null || !ticketRequest.trim()) return;
         setTicketCreateLoading(true);
-        setError(null);
         try {
             const res = await apiClient.createAdminAiTicket({
                 user_id: selectedUserId,
                 chat_session_id: selectedSessionId ?? null,
-                request_message: trimmed,
+                request_message: ticketRequest.trim(),
             });
-            if (!res.success) {
-                setError(res.message || 'Failed to create ticket.');
-                return;
-            }
-            setTicketRequest('');
-            await loadTickets();
-        } catch (e: unknown) {
-            setError(getErrorMessage(e));
-        } finally {
-            setTicketCreateLoading(false);
-        }
+            if (res.success) { setTicketRequest(''); await loadTickets(); }
+        } finally { setTicketCreateLoading(false); }
     };
 
     const handleResolveTicket = async (ticket: AiHumanTicket) => {
-        if (!ticket.id) return;
-        const resolution = (resolutionByTicketId[ticket.id] ?? '').trim();
+        const resolution = (resolutionByTicketId[ticket.id!] ?? '').trim();
         if (!resolution) return;
-        setError(null);
-        try {
-            const res = await apiClient.resolveAdminAiTicket(ticket.id, resolution);
-            if (!res.success) {
-                setError(res.message || 'Failed to resolve ticket.');
-                return;
-            }
-            setResolutionByTicketId(prev => ({ ...prev, [ticket.id]: '' }));
+        const res = await apiClient.resolveAdminAiTicket(ticket.id!, resolution);
+        if (res.success) {
+            setResolutionByTicketId(prev => ({ ...prev, [ticket.id!]: '' }));
             await loadTickets();
-        } catch (e: unknown) {
-            setError(getErrorMessage(e));
         }
     };
 
+    const selectedUser = useMemo(() => adminUsers.find(u => u.id === selectedUserId), [adminUsers, selectedUserId]);
+    const filteredTickets = useMemo(() => tickets.filter(t => t.user_id === selectedUserId), [tickets, selectedUserId]);
+
     return (
-        <div className="admin-ai-inbox-page fade-in">
-            <div className="glass-panel admin-ai-inbox-shell">
-                <div className="admin-ai-inbox-topbar">
-                    <div>
-                        <div className="admin-ai-inbox-title">AI INBOX</div>
-                        <div className="admin-ai-inbox-subtitle">
-                            Monitor user AI chats, token usage, enabled knowledge base, and human handoff tickets.
-                        </div>
+        <div className="view-container fade-in" style={{ padding: '0 40px 60px 40px' }}>
+            
+            {/* Neural Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', paddingTop: '20px' }}>
+                <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                        <div className="status-pulse"></div>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2px', textTransform: 'uppercase' }}>
+                            Neural Intelligence Core Online
+                        </span>
                     </div>
+                    <h1 className="text-outfit" style={{ fontSize: '2.2rem', fontWeight: 800, margin: 0, letterSpacing: '-1.2px' }}>
+                        AI Intelligence <span style={{ color: 'var(--primary)', fontWeight: 600 }}>Center</span>
+                    </h1>
+                </div>
+
+                <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
                     <div style={{ textAlign: 'right' }}>
-                        <div className="admin-ai-inbox-label">Selected</div>
-                        <div style={{ fontWeight: 950, color: 'var(--text-main)' }}>
-                            {selectedUser ? (selectedUser.name || selectedUser.email) : '—'}
+                        <div className="card-heading" style={{ marginBottom: '4px' }}>System Velocity</div>
+                        <div className="text-outfit" style={{ fontSize: '1.2rem', fontWeight: 700 }}>{adminUsers.reduce((acc, u) => acc + u.ai_tokens_today, 0).toLocaleString()} <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>TOKENS today</span></div>
+                    </div>
+                    <div style={{ width: '1px', height: '40px', background: 'rgba(255,255,255,0.06)' }}></div>
+                    <div style={{ textAlign: 'right' }}>
+                        <div className="card-heading" style={{ marginBottom: '4px' }}>Neural Streams</div>
+                        <div className="text-outfit" style={{ fontSize: '1.2rem', fontWeight: 700 }}>{sessions.length} ACTIVE</div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Neural Matrix Layout */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1.2fr) 3.5fr minmax(320px, 1.3fr)', gap: '30px', height: 'calc(100vh - 280px)' }}>
+                
+                {/* Operator Registry (Left) */}
+                <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: '0' }}>
+                    <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div className="card-heading">Operator Registry</div>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {adminUsers.map(u => (
+                                <button
+                                    key={u.id}
+                                    onClick={() => setSelectedUserId(u.id)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '14px',
+                                        padding: '16px',
+                                        background: u.id === selectedUserId ? 'rgba(109, 40, 217, 0.1)' : 'rgba(255,255,255,0.02)',
+                                        border: u.id === selectedUserId ? '1px solid rgba(109, 40, 217, 0.2)' : '1px solid transparent',
+                                        borderRadius: '16px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s',
+                                        textAlign: 'left'
+                                    }}
+                                >
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, color: 'var(--text-main)' }}>
+                                        {(u.name || u.email)[0].toUpperCase()}
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '2px' }}>{u.name || u.email}</div>
+                                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{u.membership_tier || 'Consultant'} • {u.ai_tokens_today} TK</div>
+                                    </div>
+                                    {u.id === selectedUserId && <div style={{ width: '4px', height: '20px', background: 'var(--primary)', borderRadius: '10px' }}></div>}
+                                </button>
+                            ))}
                         </div>
-                        {selectedUser ? (
-                            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 800, marginTop: 6 }}>
-                                Tier: {selectedUser.membership_tier || 'Consultant'} • tokens today: {selectedUser.ai_tokens_today}
-                            </div>
-                        ) : null}
                     </div>
                 </div>
 
-                {error ? (
-                    <div className="ai-agent-error" role="alert">
-                        {error}
-                    </div>
-                ) : null}
-
-                <div className="admin-ai-inbox-grid">
-                    {/* Users */}
-                    <div className="admin-ai-col">
-                        <div className="admin-ai-section-title">Users</div>
-                        {loadingUsers ? (
-                            <div className="admin-ai-empty">Loading...</div>
-                        ) : adminUsers.length === 0 ? (
-                            <div className="admin-ai-empty">No users found.</div>
-                        ) : (
-                            <div className="admin-ai-scroll admin-ai-user-list">
-                                {adminUsers.map(u => (
-                                    <button
-                                        key={u.id}
-                                        type="button"
-                                        className={`admin-ai-row ${u.id === selectedUserId ? 'active' : ''}`}
-                                        onClick={() => setSelectedUserId(u.id)}
-                                    >
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-                                            <div style={{ fontWeight: 950, color: 'var(--text-main)', fontSize: 13 }}>
-                                                {u.name || u.email}
-                                            </div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 800 }}>
-                                                {u.membership_tier || 'Consultant'} • tokens today: {u.ai_tokens_today}
-                                            </div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Sessions */}
-                    <div className="admin-ai-col">
-                        <div className="admin-ai-section-title">Sessions</div>
-                        {!selectedUserId ? (
-                            <div className="admin-ai-empty">Select a user.</div>
-                        ) : loadingSessions ? (
-                            <div className="admin-ai-empty">Loading...</div>
-                        ) : sessions.length === 0 ? (
-                            <div className="admin-ai-empty">No sessions for this user.</div>
-                        ) : (
-                            <div className="admin-ai-scroll admin-ai-session-list">
-                                {sessions.map(s => (
-                                    <button
-                                        key={s.id}
-                                        type="button"
-                                        className={`admin-ai-row ${s.id === selectedSessionId ? 'active' : ''}`}
-                                        onClick={() => setSelectedSessionId(s.id)}
-                                    >
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-                                            <div style={{ fontWeight: 950, color: 'var(--text-main)', fontSize: 13 }}>
-                                                {s.title || `Session #${s.id}`}
-                                            </div>
-                                            <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 800 }}>
-                                                {s.updated_at ? new Date(s.updated_at).toLocaleString() : '—'}
-                                            </div>
-                                        </div>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Details */}
-                    <div className="admin-ai-col admin-ai-col-details">
-                        <div className="admin-ai-details-kb">
-                            <div className="admin-ai-section-title">Enabled Knowledge Base</div>
-                            {loadingKb ? (
-                                <div className="admin-ai-empty">Loading...</div>
-                            ) : kb ? (
-                                <div className="admin-ai-side-text" style={{ marginBottom: 0 }}>
-                                    Tier: <strong style={{ color: 'var(--text-main)' }}>{kb.tier}</strong> • enabled courses: <strong style={{ color: 'var(--text-main)' }}>{kb.courses.length}</strong>
+                {/* Intelligent Neural Stream (Center) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0', background: 'rgba(5, 7, 26, 0.4)' }}>
+                        <div style={{ padding: '20px 30px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                                <div className="card-heading" style={{ marginBottom: '4px' }}>Neural Transmission Feed</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                                    {sessions.find(s => s.id === selectedSessionId)?.title || 'Standard Transmission'}
                                 </div>
-                            ) : (
-                                <div className="admin-ai-side-text" style={{ marginBottom: 0 }}>No KB data.</div>
-                            )}
+                            </div>
+                            <div style={{ padding: '6px 12px', background: 'rgba(0, 224, 150, 0.1)', borderRadius: '8px', color: '#00e096', fontSize: '0.65rem', fontWeight: 900, border: '1px solid rgba(0, 224, 150, 0.2)' }}>ENCRYPTED</div>
                         </div>
 
-                        <div className="admin-ai-details-messages">
-                            <div className="admin-ai-section-title">Messages</div>
-                            <div className="admin-ai-scroll admin-ai-messages">
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '40px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                                 {loadingMessages ? (
-                                    <div className="admin-ai-empty">Loading...</div>
+                                    <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontWeight: 700 }}>Initializing Message Protocol...</div>
                                 ) : messages.length === 0 ? (
-                                    <div className="admin-ai-empty">No messages to show.</div>
+                                    <div style={{ textAlign: 'center', padding: '100px 40px', color: 'var(--text-muted)', fontWeight: 700, opacity: 0.3 }}>No neural activity detected in this stream.</div>
                                 ) : (
                                     messages.map(m => (
-                                        <div key={m.id} className={`admin-ai-message ${m.role === 'user' ? 'from-user' : 'from-assistant'}`}>
-                                            <div className="admin-ai-bubble">
-                                                <div className="admin-ai-role">{m.role === 'user' ? 'User' : 'Reven'}</div>
-                                                <div className="admin-ai-text">{m.role === 'assistant' ? safeParseStoredAssistantContent(m.content).text : m.content}</div>
-                                                {m.role === 'assistant' && typeof m.total_tokens === 'number' ? (
-                                                    <div style={{ marginTop: 8, fontSize: 12, color: 'var(--text-muted)', fontWeight: 800 }}>
-                                                        Tokens used: {m.total_tokens}{m.model ? ` (${m.model})` : ''}
+                                        <div key={m.id} style={{ alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start', maxWidth: '80%' }}>
+                                            <div style={{ 
+                                                padding: '20px', 
+                                                borderRadius: m.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
+                                                background: m.role === 'user' ? 'rgba(255,255,255,0.03)' : 'rgba(109, 40, 217, 0.1)',
+                                                border: m.role === 'user' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(109, 40, 217, 0.2)',
+                                                boxShadow: m.role === 'user' ? 'none' : '0 10px 30px rgba(109, 40, 217, 0.05)'
+                                            }}>
+                                                <div style={{ fontSize: '0.6rem', fontWeight: 900, color: m.role === 'user' ? 'var(--text-muted)' : 'var(--primary)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>
+                                                    {m.role === 'user' ? 'Operator' : 'AI Strategic Core'}
+                                                </div>
+                                                <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)', lineHeight: '1.6' }}>
+                                                    {m.role === 'assistant' ? safeParseStoredAssistantContent(m.content).text : m.content}
+                                                </div>
+                                                {m.total_tokens > 0 && (
+                                                    <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: '15px', fontWeight: 800 }}>
+                                                        <span>COMPUTE: {m.total_tokens} TK</span>
+                                                        <span>MODEL: {m.model?.toUpperCase() || 'CORE-GEN-3'}</span>
                                                     </div>
-                                                ) : null}
+                                                )}
                                             </div>
-                                            {m.role === 'assistant' ? assistantMessageFooter(m) : null}
                                         </div>
                                     ))
                                 )}
                                 <div ref={messagesEndRef} />
                             </div>
                         </div>
-
-                        <div className="admin-ai-details-tickets">
-                            <div className="admin-ai-section-title">Human Handoff</div>
-
-                            <div className="admin-ai-ticket-create">
-                                <textarea
-                                    className="admin-ai-textarea"
-                                    placeholder="Add note for human support (create ticket for this user/session)..."
-                                    value={ticketRequest}
-                                    onChange={(e) => setTicketRequest(e.target.value)}
-                                    rows={2}
-                                    disabled={!selectedUserId}
-                                />
-                                <button
-                                    className="btn-primary"
-                                    type="button"
-                                    onClick={() => void handleCreateTicket()}
-                                    disabled={!selectedUserId || ticketCreateLoading || !ticketRequest.trim()}
-                                >
-                                    {ticketCreateLoading ? 'Creating...' : 'Create Ticket'}
-                                </button>
-                            </div>
-
-                            {loadingTickets ? (
-                                <div className="admin-ai-empty">Loading...</div>
-                            ) : filteredTickets.length === 0 ? (
-                                <div className="admin-ai-side-text" style={{ marginBottom: 0 }}>No tickets yet.</div>
-                            ) : (
-                                <div className="admin-ai-ticket-list">
-                                    {filteredTickets.slice(0, 8).map(t => {
-                                        const isResolved = t.status === 'resolved';
-                                        const resolutionValue = resolutionByTicketId[t.id] ?? '';
-                                        return (
-                                            <div key={t.id} className="admin-ai-ticket-row">
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
-                                                    <div>
-                                                        <div style={{ fontWeight: 950, color: 'var(--text-main)' }}>
-                                                            Ticket #{t.id} • {isResolved ? 'Resolved' : 'Open'}
-                                                        </div>
-                                                        {t.request_message ? (
-                                                            <div className="admin-ai-muted" style={{ marginTop: 6 }}>
-                                                                {t.request_message}
-                                                            </div>
-                                                        ) : null}
-                                                    </div>
-                                                    <div style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 800 }}>
-                                                        {t.created_at ? new Date(t.created_at).toLocaleString() : '—'}
-                                                    </div>
-                                                </div>
-
-                                                {isResolved ? (
-                                                    t.admin_resolution ? (
-                                                        <div className="admin-ai-muted" style={{ marginTop: 10 }}>
-                                                            Resolution: {t.admin_resolution}
-                                                        </div>
-                                                    ) : null
-                                                ) : (
-                                                    <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                                        <textarea
-                                                            className="admin-ai-textarea"
-                                                            value={resolutionValue}
-                                                            onChange={(e) => setResolutionByTicketId(prev => ({ ...prev, [t.id]: e.target.value }))}
-                                                            placeholder="Admin resolution / summary..."
-                                                            rows={2}
-                                                        />
-                                                        <button
-                                                            className="btn-view"
-                                                            type="button"
-                                                            onClick={() => void handleResolveTicket(t)}
-                                                            disabled={!resolutionValue.trim()}
-                                                            style={{ alignSelf: 'flex-end' }}
-                                                        >
-                                                            Resolve
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
                     </div>
                 </div>
+
+                {/* Mediation Hub (Right) */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                    
+                    {/* Knowledge Projections */}
+                    <div className="glass-panel" style={{ padding: '30px' }}>
+                        <div className="card-heading" style={{ marginBottom: '20px' }}>Knowledge Projection</div>
+                        {kb ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Clearance Tier</span>
+                                    <span className="tier-pill titan" style={{ fontSize: '0.65rem' }}>{kb.tier.toUpperCase()}</span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Neural Nodes</span>
+                                    <span style={{ color: 'var(--text-main)', fontWeight: 800 }}>{kb.courses.length} Active</span>
+                                </div>
+                                <div style={{ height: '1px', background: 'rgba(255,255,255,0.05)', margin: '5px 0' }}></div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+                                    {kb.courses.slice(0, 8).map((_, i) => (
+                                        <div key={i} style={{ height: '6px', background: 'var(--primary)', borderRadius: '10px', opacity: 0.3 + (i * 0.1) }}></div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No projection data available.</div>}
+                    </div>
+
+                    {/* Neural Streams History */}
+                    <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
+                        <div style={{ padding: '25px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div className="card-heading">Stream History</div>
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {sessions.map(s => (
+                                    <button
+                                        key={s.id}
+                                        onClick={() => setSelectedSessionId(s.id)}
+                                        style={{
+                                            padding: '16px',
+                                            background: s.id === selectedSessionId ? 'rgba(255,255,255,0.05)' : 'transparent',
+                                            border: s.id === selectedSessionId ? '1px solid rgba(255,255,255,0.1)' : '1px solid transparent',
+                                            borderRadius: '12px',
+                                            cursor: 'pointer',
+                                            textAlign: 'left',
+                                            transition: '0.2s'
+                                        }}
+                                    >
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '4px' }}>{s.title || `Stream #${s.id}`}</div>
+                                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)' }}>{s.updated_at ? new Date(s.updated_at).toLocaleTimeString() : '—'}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Handoff Mediation */}
+                    <div className="glass-panel" style={{ padding: '30px', borderLeft: '4px solid var(--accent)' }}>
+                        <div className="card-heading" style={{ marginBottom: '20px' }}>Strategic Handoff</div>
+                        <textarea
+                            value={ticketRequest}
+                            onChange={(e) => setTicketRequest(e.target.value)}
+                            className="form-input"
+                            placeholder="Specify mediation requirements..."
+                            style={{ width: '100%', marginBottom: '15px', minHeight: '80px', background: 'rgba(0,0,0,0.15)' }}
+                        ></textarea>
+                        <button 
+                            onClick={handleCreateTicket}
+                            disabled={ticketCreateLoading || !ticketRequest.trim()}
+                            className="btn-command primary"
+                            style={{ width: '100%', height: '50px', fontSize: '0.75rem', padding: 0 }}
+                        >
+                            {ticketCreateLoading ? 'AUTHORIZING...' : 'AUTHORIZE HUMAN MEDIATION'}
+                        </button>
+                    </div>
+                </div>
+
             </div>
+
         </div>
     );
 };
 
 export default AdminAiInboxPage;
-

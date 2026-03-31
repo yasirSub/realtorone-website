@@ -4,6 +4,7 @@ interface HeaderProps {
     searchTerm: string;
     setSearchTerm: (term: string) => void;
     activeTab: string;
+    setActiveTab?: (tab: any) => void;
     theme: string;
     toggleTheme: () => void;
 }
@@ -12,6 +13,7 @@ const Header: React.FC<HeaderProps> = ({
     searchTerm,
     setSearchTerm,
     activeTab,
+    setActiveTab,
     theme,
     toggleTheme
 }) => {
@@ -27,6 +29,7 @@ const Header: React.FC<HeaderProps> = ({
             case 'courses': return 'COURSE LIBRARY';
             case 'notifications': return 'PUSH NOTIFICATIONS';
             case 'ai-agent': return 'AI INBOX';
+            case 'admin-notifications': return 'SYSTEM LOGS';
             default: return activeTab.toUpperCase();
         }
     };
@@ -79,6 +82,40 @@ const Header: React.FC<HeaderProps> = ({
 
             {/* Right Section: System Status & Controls */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: '250px', justifyContent: 'flex-end' }}>
+                <button
+                    className="icon-button"
+                    onClick={() => setActiveTab?.('admin-notifications')}
+                    title="Operational Audit Center"
+                    style={{
+                        background: 'var(--bg-card)',
+                        border: '1px solid var(--glass-border)',
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        color: activeTab === 'notifications' ? 'var(--primary)' : 'var(--text-main)',
+                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                        position: 'relative'
+                    }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                    <div style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        width: '8px',
+                        height: '8px',
+                        background: 'var(--primary)',
+                        borderRadius: '50%',
+                        border: '2px solid var(--bg-card)',
+                        boxShadow: '0 0 10px rgba(109, 40, 217, 0.4)'
+                    }}></div>
+                </button>
+
                 <button
                     className="icon-button"
                     onClick={toggleTheme}

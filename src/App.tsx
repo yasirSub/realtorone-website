@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { NotificationProvider, useNotification } from './contexts/NotificationContext'
 import './App.css'
 import { apiClient } from './api/client'
 import type { Tab, User, ActivityType, SubscriptionPackage, UserSubscription, Coupon } from './types'
@@ -18,6 +19,7 @@ import BadgesPage from './pages/BadgesPage'
 import NotificationsPage from './pages/NotificationsPage'
 import AdminAiInboxPage from './pages/AdminAiInboxPage'
 import SignupQuestionsPage from './pages/SignupQuestionsPage'
+import AdminNotificationsPage from './pages/AdminNotificationsPage'
 
 // Modals
 import ConfirmModal from './components/modals/ConfirmModal'
@@ -26,7 +28,9 @@ import AddActivityModal from './components/modals/AddActivityModal'
 import AddPackageModal from './components/modals/AddPackageModal'
 
 function App() {
+  const { addNotification } = useNotification()
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('adminToken'))
+  const previousUserCount = useRef<number | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -41,7 +45,7 @@ function App() {
   // Initialize from URL or default
   const getInitialTab = (): Tab => {
     const path = window.location.pathname.replace('/', '') as Tab;
-    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'subscriptions', 'courses', 'leaderboard', 'badges', 'notifications', 'ai-agent', 'signup-questions'];
+    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'subscriptions', 'courses', 'leaderboard', 'badges', 'notifications', 'ai-agent', 'signup-questions', 'admin-notifications'];
     return validTabs.includes(path) ? path : 'dashboard';
   };
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab())
@@ -174,9 +178,9 @@ function App() {
   const [courses, setCourses] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchData = async (isInitial = true) => {
       if (!isLoggedIn) return;
-      setIsLoading(true);
+      if (isInitial) setIsLoading(true);
       try {
         const [statsRes, usersRes] = await Promise.allSettled([
           apiClient.getStats(),
@@ -194,12 +198,46 @@ function App() {
           apiClient.getCoupons().then(res => res.success && setCoupons(res.data)).catch(() => { }),
           apiClient.getCourses().then(res => res.success && setCourses(res.data)).catch(() => { }),
         ]);
+
+        if (isInitial) {
+          addNotification({
+            type: 'success',
+            title: 'Neural Core Synchronized',
+            description: 'High-fidelity operations command center is online and verified.',
+            meta: 'v4.3',
+            actions: [
+              { label: 'View Reports', onClick: () => setActiveTab('dashboard'), primary: true },
+              { label: 'Done', onClick: () => { } }
+            ]
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (isInitial) setIsLoading(false);
       }
     };
+
     fetchData();
-  }, [isLoggedIn]);
+    const interval = setInterval(() => fetchData(false), 30000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, addNotification]);
+
+  // Network Growth Sentinel
+  useEffect(() => {
+    if (users.length > 0 && previousUserCount.current !== null && users.length > previousUserCount.current) {
+      const newUser = users[0]; // Assuming newest is first or just notifying of growth
+      addNotification({
+        type: 'info',
+        title: 'New Practitioner Identity',
+        description: `${newUser.name || newUser.email} has successfully initialized their growth protocol.`,
+        meta: 'NETWORK GROWTH',
+        actions: [
+          { label: 'View Profile', onClick: () => { setSelectedUser(newUser); setActiveTab('user-profile'); }, primary: true },
+          { label: 'Acknowledge', onClick: () => { } }
+        ]
+      });
+    }
+    previousUserCount.current = users.length;
+  }, [users, addNotification]);
 
   if (!isLoggedIn) {
     return (
@@ -308,6 +346,7 @@ function App() {
           {activeTab === 'notifications' && <NotificationsPage users={users} />}
           {activeTab === 'ai-agent' && <AdminAiInboxPage />}
           {activeTab === 'signup-questions' && <SignupQuestionsPage />}
+          {activeTab === 'admin-notifications' && <AdminNotificationsPage />}
           {activeTab === 'user-profile' && !selectedUser && (
             <div className="app-page-loader">
               <div className="loader" style={{ width: 48, height: 48, borderWidth: 4 }} />
@@ -363,4 +402,12 @@ function App() {
   )
 }
 
-export default App
+const AppNotificationWrapper = () => {
+  return (
+    <NotificationProvider>
+      <App />
+    </NotificationProvider>
+  )
+}
+
+export default AppNotificationWrapper

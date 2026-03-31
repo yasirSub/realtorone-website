@@ -77,20 +77,15 @@ const UsersPage: React.FC<UsersPageProps> = ({
                                     <td style={{ textAlign: 'right' }} data-label="Actions">
                                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
                                             <button
-                                                className="btn-view"
+                                                className="btn-command primary"
                                                 onClick={() => {
                                                     onUserClick(user);
                                                 }}
                                                 style={{
-                                                    background: 'var(--primary)',
-                                                    color: 'white',
-                                                    border: 'none',
                                                     padding: '6px 15px',
-                                                    borderRadius: '8px',
-                                                    fontSize: '0.7rem',
-                                                    fontWeight: 800,
-                                                    cursor: 'pointer',
-                                                    boxShadow: '0 4px 12px var(--primary-shadow)'
+                                                    fontSize: '0.65rem',
+                                                    height: 'auto',
+                                                    minWidth: '100px'
                                                 }}
                                             >
                                                 VIEW DOSSIER

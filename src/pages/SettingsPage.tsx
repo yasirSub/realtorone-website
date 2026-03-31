@@ -16,7 +16,7 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
     const [pointsValue, setPointsValue] = useState(500);
     const [saving, setSaving] = useState(false);
     const [message, setMessage] = useState('');
-    
+
     // Backup State
     const [includeDb, setIncludeDb] = useState(true);
     const [includeMedia, setIncludeMedia] = useState(true);
@@ -98,7 +98,7 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                 else if (next < 40) setBackupStage('Generating high-fidelity MySQL dump...');
                 else if (next < 85) setBackupStage('Compressing course media and assets (ZIP)...');
                 else setBackupStage('Finalizing encrypted archive package...');
-                
+
                 return next;
             });
         }, 150);
@@ -106,16 +106,16 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
         try {
             const res = await apiClient.getBackup({ db: includeDb, media: includeMedia });
             if (backupTimerRef.current) clearInterval(backupTimerRef.current);
-            
+
             if (res.success) {
                 setBackupProgress(100);
                 setBackupStage('Archive synchronized and verified.');
                 setMessage('Backup complete! Download initiated.');
-                
+
                 if (res.data?.name) {
                     await apiClient.downloadBackup(res.data.name);
                 }
-                
+
                 fetchBackups();
                 setTimeout(() => {
                     setIsBackingUp(false);
@@ -175,87 +175,70 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
     };
 
     return (
-        <div className="admin-layout" style={{ 
-            minHeight: '100vh', 
-            background: 'radial-gradient(circle at 0% 0%, #1a1a2e 0%, #0d0d14 100%)',
-            padding: '50px',
-            color: '#fff',
-            fontFamily: "'Inter', sans-serif"
-        }}>
-            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-                <div style={{ marginBottom: '60px' }}>
-                    <h1 style={{ fontSize: '3rem', fontWeight: 900, marginBottom: '15px', letterSpacing: '-2px', textShadow: '0 0 30px rgba(139, 92, 246, 0.3)' }}>System Admin</h1>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                        <div style={{ padding: '4px 12px', background: 'rgba(139, 92, 246, 0.1)', border: '1px solid rgba(139, 92, 246, 0.3)', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 800, color: '#A78BFA' }}>
-                            INFRASTRUCTURE v4.2
+        <div className="view-container fade-in" style={{ padding: '0 40px 60px 40px' }}>
+            <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '50px', paddingTop: '30px' }}>
+                    <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                            <div className="pulse-dot" style={{ background: 'var(--neon-purple)' }}></div>
+                            <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2.5px', textTransform: 'uppercase' }}>
+                                OPERATIONAL CONFIGURATION
+                            </span>
                         </div>
-                        <div style={{ width: '1px', height: '15px', background: 'rgba(255,255,255,0.1)' }} />
-                        <p style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.9rem', margin: 0 }}>Advanced cluster controls and terminal parameters.</p>
+                        <h1 className="text-outfit" style={{ fontSize: '2.8rem', fontWeight: 900, margin: 0, letterSpacing: '-1.8px', textTransform: 'uppercase' }}>
+                            System <span style={{ color: 'var(--primary)', fontWeight: 600 }}>Configuration</span>
+                        </h1>
+                    </div>
+
+                    <div style={{ padding: '8px 20px', background: 'rgba(139, 92, 246, 0.05)', border: '1px solid rgba(139, 92, 246, 0.2)', borderRadius: '12px', textAlign: 'right' }}>
+                        <div style={{ fontSize: '0.6rem', fontWeight: 800, color: 'var(--primary)', letterSpacing: '1px' }}>KERNEL VERSION</div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 700 }}>INFRASTRUCTURE v4.3.0</div>
                     </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '40px' }}>
-                    
+
                     {/* DISASTER RECOVERY PANEL */}
-                    <div style={{ 
-                        background: 'rgba(255, 255, 255, 0.02)', 
-                        backdropFilter: 'blur(15px)',
-                        borderRadius: '30px',
-                        padding: '40px',
-                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                        boxShadow: '0 40px 100px -20px rgba(0,0,0,0.6)',
-                        position: 'relative'
-                    }}>
+                    <div className="glass-panel" style={{ padding: '40px' }}>
                         <div style={{ position: 'absolute', top: '40px', right: '40px' }}>
-                            <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#EF4444', boxShadow: '0 0 15px #EF4444' }} />
+                            <div className="pulse-dot" style={{ background: '#EF4444' }} />
                         </div>
 
-                        <h2 style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '35px', display: 'flex', alignItems: 'center', gap: '15px' }}>
-                            <span style={{ fontSize: '1.2rem' }}>💎</span> Disaster Recovery
+                        <h2 className="text-outfit" style={{ fontSize: '1.6rem', fontWeight: 900, marginBottom: '35px', display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                            Disaster Recovery
                         </h2>
 
-                        <div style={{ background: 'rgba(0,0,0,0.2)', padding: '25px', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.03)', marginBottom: '30px' }}>
-                            <p style={{ fontSize: '0.65rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '2px', marginBottom: '20px' }}>ARCHIVE SPECIFICATIONS</p>
+                        <div style={{ background: 'rgba(0,0,0,0.3)', padding: '30px', borderRadius: '18px', border: '1px solid var(--glass-border)', marginBottom: '30px' }}>
+                            <p style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2px', marginBottom: '20px' }}>ARCHIVE SPECIFICATIONS</p>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                                <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '15px', cursor: 'pointer', padding: '15px', borderRadius: '12px', background: includeDb ? 'rgba(139, 92, 246, 0.05)' : 'transparent', border: `1px solid ${includeDb ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.05)'}`, transition: 'all 0.2s' }}>
-                                    <input type="checkbox" checked={includeDb} onChange={e => setIncludeDb(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#8B5CF6' }} />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer', padding: '18px', borderRadius: '14px', background: includeDb ? 'rgba(139, 92, 246, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${includeDb ? 'var(--primary)' : 'rgba(255,255,255,0.05)'}`, transition: 'all 0.2s' }}>
+                                    <input type="checkbox" checked={includeDb} onChange={e => setIncludeDb(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
                                     <div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Database Set</div>
-                                        <div style={{ fontSize: '0.65rem', opacity: 0.4 }}>MySQL Nodes</div>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Database Set</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>MySQL Nodes</div>
                                     </div>
                                 </label>
-                                <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '15px', cursor: 'pointer', padding: '15px', borderRadius: '12px', background: includeMedia ? 'rgba(139, 92, 246, 0.05)' : 'transparent', border: `1px solid ${includeMedia ? 'rgba(139, 92, 246, 0.2)' : 'rgba(255,255,255,0.05)'}`, transition: 'all 0.2s' }}>
-                                    <input type="checkbox" checked={includeMedia} onChange={e => setIncludeMedia(e.target.checked)} style={{ width: '18px', height: '18px', accentColor: '#8B5CF6' }} />
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer', padding: '18px', borderRadius: '14px', background: includeMedia ? 'rgba(139, 92, 246, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${includeMedia ? 'var(--primary)' : 'rgba(255,255,255,0.05)'}`, transition: 'all 0.2s' }}>
+                                    <input type="checkbox" checked={includeMedia} onChange={e => setIncludeMedia(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
                                     <div>
-                                        <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>Media Assets</div>
-                                        <div style={{ fontSize: '0.65rem', opacity: 0.4 }}>public/* storage</div>
+                                        <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Media Assets</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>public/* distribution</div>
                                     </div>
                                 </label>
                             </div>
                         </div>
 
                         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px' }}>
-                            <button 
+                            <button
                                 onClick={handleDownloadBackup}
                                 disabled={isBackingUp || isRestoring}
-                                style={{ 
-                                    flex: 1.5, height: '60px', borderRadius: '18px', border: 'none',
-                                    background: 'linear-gradient(135deg, #8B5CF6 0%, #6366F1 100%)',
-                                    color: '#fff', fontWeight: 900, fontSize: '0.9rem', cursor: 'pointer',
-                                    boxShadow: '0 20px 40px -10px rgba(139, 92, 246, 0.4)',
-                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    opacity: (isBackingUp || isRestoring) ? 0.6 : 1,
-                                    textTransform: 'uppercase', letterSpacing: '1px'
-                                }}
+                                className="btn-command primary"
+                                style={{ flex: 1.5, height: '60px', padding: 0 }}
                             >
                                 {isBackingUp ? 'Compiling Archive...' : 'Generate New Backup'}
                             </button>
-                            <label style={{ 
-                                flex: 1, height: '60px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.1)',
-                                background: 'rgba(255,255,255,0.03)', color: '#fff', fontWeight: 800, fontSize: '0.8rem',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                                transition: 'all 0.2s ease', opacity: (isBackingUp || isRestoring) ? 0.5 : 1
-                            }}>
+                            <label className="btn-command" style={{ flex: 1, height: '60px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                 Restore Sync
                                 <input type="file" accept=".zip" onChange={handleRestoreBackup} style={{ display: 'none' }} disabled={isBackingUp || isRestoring} />
                             </label>
@@ -263,8 +246,8 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
 
                         {/* PROGRESS HUD */}
                         {(isBackingUp || isRestoring) && (
-                            <div style={{ 
-                                padding: '30px', background: 'rgba(0,0,0,0.3)', borderRadius: '24px', 
+                            <div style={{
+                                padding: '30px', background: 'rgba(0,0,0,0.3)', borderRadius: '24px',
                                 border: `1px solid ${isBackingUp ? 'rgba(139, 92, 246, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
                                 marginBottom: '40px', position: 'relative', overflow: 'hidden'
                             }}>
@@ -280,8 +263,8 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                     </div>
                                 </div>
                                 <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
-                                    <div style={{ 
-                                        height: '100%', width: `${isBackingUp ? backupProgress : restoreProgress}%`, 
+                                    <div style={{
+                                        height: '100%', width: `${isBackingUp ? backupProgress : restoreProgress}%`,
                                         background: isBackingUp ? 'linear-gradient(90deg, #8B5CF6, #6D28D9)' : 'linear-gradient(90deg, #10B981, #059669)',
                                         transition: 'width 0.4s ease-out',
                                         boxShadow: `0 0 20px ${isBackingUp ? 'rgba(139, 92, 246, 0.5)' : 'rgba(16, 185, 129, 0.5)'}`
@@ -292,10 +275,10 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
 
                         {/* HISTORY LOGS */}
                         <div>
-                            <button 
+                            <button
                                 onClick={() => setShowHistory(!showHistory)}
-                                style={{ 
-                                    background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', 
+                                style={{
+                                    background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)',
                                     fontSize: '0.75rem', fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px'
                                 }}
                             >
@@ -308,7 +291,7 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                         <div style={{ padding: '30px', textAlign: 'center', opacity: 0.3, fontSize: '0.8rem' }}>Vault is empty.</div>
                                     ) : (
                                         backups.map((bak, idx) => (
-                                            <div key={idx} style={{ 
+                                            <div key={idx} style={{
                                                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                                                 padding: '15px 20px', background: 'rgba(255,255,255,0.01)', borderRadius: '15px',
                                                 border: '1px solid rgba(255,255,255,0.03)', transition: 'all 0.2s'
@@ -317,12 +300,12 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#8B5CF6' }} />
                                                     <div>
                                                         <div style={{ fontSize: '0.8rem', fontWeight: 700 }}>{bak.name}</div>
-                                                        <div style={{ fontSize: '0.6rem', opacity: 0.4 }}>{(bak.size / (1024*1024)).toFixed(2)} MB • {new Date(bak.created_at * 1000).toLocaleDateString()}</div>
+                                                        <div style={{ fontSize: '0.6rem', opacity: 0.4 }}>{(bak.size / (1024 * 1024)).toFixed(2)} MB • {new Date(bak.created_at * 1000).toLocaleDateString()}</div>
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '10px' }}>
                                                     <button onClick={() => apiClient.downloadBackup(bak.name)} style={{ padding: '8px 15px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', color: '#fff', fontSize: '0.6rem', fontWeight: 900, cursor: 'pointer' }}>DNLD</button>
-                                                    <button onClick={async () => { if(window.confirm('Erase?')) { await apiClient.deleteBackup(bak.name); fetchBackups(); } }} style={{ padding: '8px 15px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#EF4444', fontSize: '0.6rem', fontWeight: 900, cursor: 'pointer' }}>DEL</button>
+                                                    <button onClick={async () => { if (window.confirm('Erase?')) { await apiClient.deleteBackup(bak.name); fetchBackups(); } }} style={{ padding: '8px 15px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#EF4444', fontSize: '0.6rem', fontWeight: 900, cursor: 'pointer' }}>DEL</button>
                                                 </div>
                                             </div>
                                         ))
@@ -334,39 +317,32 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
 
                     {/* RIGHT COLUMN: MAINTENANCE & TERMINAL */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-                        
+
                         {/* MAINTENANCE CARD */}
-                        <div style={{ 
-                            background: 'rgba(255, 255, 255, 0.02)', 
-                            backdropFilter: 'blur(15px)',
-                            borderRadius: '30px',
-                            padding: '40px',
-                            border: '1px solid rgba(255, 255, 255, 0.05)',
-                        }}>
-                             <h2 style={{ fontSize: '1.2rem', fontWeight: 900, marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <span style={{ fontSize: '1rem' }}>⚙️</span> Terminal Control
+                        <div className="glass-panel" style={{ padding: '40px' }}>
+                            <h2 className="text-outfit" style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                Terminal Control
                             </h2>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '12px' }}>GLOBAL ACTIVITY WEIGHT</label>
                                     <div style={{ display: 'flex', gap: '15px' }}>
-                                        <input 
-                                            type="number" 
-                                            value={pointsValue} 
+                                        <input
+                                            type="number"
+                                            value={pointsValue}
                                             onChange={e => setPointsValue(parseInt(e.target.value))}
-                                            style={{ 
-                                                width: '100px', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: '12px', padding: '12px', color: '#fff', fontWeight: 800, textAlign: 'center'
+                                            style={{
+                                                width: '100px', background: 'rgba(0,0,0,0.4)', border: '1px solid var(--glass-border)',
+                                                borderRadius: '12px', padding: '12px', color: 'var(--text-main)', fontWeight: 800, textAlign: 'center'
                                             }}
                                         />
-                                        <button 
+                                        <button
                                             onClick={handleSavePoints}
                                             disabled={saving}
-                                            style={{ 
-                                                flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)',
-                                                borderRadius: '12px', color: '#fff', fontWeight: 900, fontSize: '0.75rem', cursor: 'pointer'
-                                            }}
+                                            className="btn-command"
+                                            style={{ flex: 1, padding: 0 }}
                                         >
                                             {saving ? 'SYNCING...' : 'UPDATE REGISTRY'}
                                         </button>
@@ -374,9 +350,9 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                 </div>
 
                                 <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <button 
+                                    <button
                                         onClick={handleSyncActivities}
-                                        style={{ 
+                                        style={{
                                             width: '100%', padding: '18px', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.1)',
                                             borderRadius: '15px', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer'
                                         }}
@@ -400,7 +376,7 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
 
                         {/* STATUS NOTIFICATION */}
                         {message && (
-                            <div style={{ 
+                            <div style={{
                                 padding: '20px 25px',
                                 background: 'linear-gradient(90deg, rgba(139, 92, 246, 0.1), rgba(99, 102, 241, 0.1))',
                                 border: '1px solid rgba(139, 92, 246, 0.3)',

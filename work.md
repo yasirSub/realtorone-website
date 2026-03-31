@@ -618,3 +618,17 @@ Website:
 Infrastructure:
   - Performed a deep-clean recovery of the VPS deployment pipeline: resolved local/remote Git branch desynchronization and recovered host-level terminal access.
   - Rebuilt the live production environment on the VPS (`187.77.184.129`) to apply the new backup utilities and ensure full end-to-end data persistence.
+
+### Day 59: Mar 31 - Google Play Compliance & Account Deletion Flow
+Backend:
+  - Created public web route `GET /delete-account` and `POST /delete-account` with blade view (`delete_account.blade.php`) for Google Play Data Safety compliance — URL: `https://api.realtorone.com/delete-account`.
+  - Added authenticated API endpoint `POST /user/request-deletion`: marks user as `inactive`, clears their auth token (logs them out), and logs the request for admin review.
+  - Hardened `/login` to return `403 Forbidden` with a clear message when a deactivated (deletion-requested) user tries to log in.
+Application (Mobile):
+  - Wired the existing "DELETE ACCOUNT" button in `settings_page.dart` to the new `POST /user/request-deletion` API via `UserApi.requestAccountDeletion()`.
+  - On success: shows a green snackbar ("Account deletion requested. Pending admin review.") then automatically logs the user out.
+  - On failure: shows a red snackbar with the server error message without logging out.
+  - Added `requestDeletion` endpoint constant to `ApiEndpoints` and `requestAccountDeletion()` method to `UserApi`.
+Website (Admin):
+  - Admin handles deletion requests via the Users page: deletion-requested users appear as `Inactive` status — admin can then permanently delete them using the existing trash icon.
+
