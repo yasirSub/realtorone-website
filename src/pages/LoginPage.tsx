@@ -36,7 +36,15 @@ const LoginPage: React.FC<LoginPageProps> = ({
 
             <div className="login-card fade-in">
                 <div className="login-header" style={{ textAlign: 'center', marginBottom: '40px' }}>
-                    <div className="logo-spark" style={{ fontSize: '3rem', marginBottom: '10px' }}>⚡</div>
+                    <div className="logo-spark" style={{ marginBottom: '14px', display: 'flex', justifyContent: 'center' }}>
+                        <img
+                            src="/logo.png"
+                            alt="Realtor One"
+                            width={120}
+                            height={120}
+                            style={{ height: '72px', width: 'auto', maxWidth: 'min(200px, 85vw)', objectFit: 'contain' }}
+                        />
+                    </div>
                     <h1 className="logo-text" style={{ fontSize: '2.5rem', marginBottom: '5px' }}>Realtor<span>One</span></h1>
                     <p style={{ color: 'var(--text-muted)', fontWeight: 800, fontSize: '0.75rem', letterSpacing: '2px', textTransform: 'uppercase' }}>Administrative Overwatch</p>
                 </div>
@@ -103,6 +111,18 @@ const LoginPage: React.FC<LoginPageProps> = ({
                     </button>
 
                 </form>
+
+                <p style={{
+                    marginTop: '28px',
+                    textAlign: 'center',
+                    fontSize: '0.8rem',
+                    color: 'var(--text-muted)',
+                    lineHeight: 1.6,
+                }}>
+                    <a href="/privacy" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}>Privacy Policy</a>
+                    <span style={{ margin: '0 10px', opacity: 0.5 }}>·</span>
+                    <a href="/terms" style={{ color: 'var(--primary)', fontWeight: 700, textDecoration: 'none' }}>Terms of Service</a>
+                </p>
             </div>
         </div>
     );

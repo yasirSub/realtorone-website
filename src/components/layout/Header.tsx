@@ -37,8 +37,9 @@ const Header: React.FC<HeaderProps> = ({
     return (
         <header className="top-bar">
             {/* Left Section: Operational Title */}
-            <div style={{ display: 'flex', flexDirection: 'column', minWidth: '250px' }}>
-                <h1 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: 'var(--text-main)', lineHeight: 1.1, letterSpacing: '-0.5px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', minWidth: '250px', gap: '10px' }}>
+                <div style={{ width: '4px', height: '22px', background: 'var(--primary)', borderRadius: '4px' }}></div>
+                <h1 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)', letterSpacing: '0.2px' }}>
                     {getTabTitle()}
                 </h1>
             </div>
@@ -55,18 +56,7 @@ const Header: React.FC<HeaderProps> = ({
                         placeholder="Search operational data..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
-                        style={{
-                            width: '100%',
-                            padding: '12px 20px 12px 48px',
-                            background: theme === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                            border: '1px solid var(--glass-border)',
-                            borderRadius: '16px',
-                            color: 'var(--text-main)',
-                            fontSize: '0.9rem',
-                            fontWeight: 600,
-                            outline: 'none',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}
+                        className="search-input"
                     />
                     <div style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
                         <svg
@@ -83,23 +73,11 @@ const Header: React.FC<HeaderProps> = ({
             {/* Right Section: System Status & Controls */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', minWidth: '250px', justifyContent: 'flex-end' }}>
                 <button
-                    className="icon-button"
+                    className="header-icon-btn"
                     onClick={() => setActiveTab?.('admin-notifications')}
                     title="Operational Audit Center"
                     style={{
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--glass-border)',
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
                         color: activeTab === 'notifications' ? 'var(--primary)' : 'var(--text-main)',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                        position: 'relative'
                     }}
                 >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
@@ -112,28 +90,14 @@ const Header: React.FC<HeaderProps> = ({
                         background: 'var(--primary)',
                         borderRadius: '50%',
                         border: '2px solid var(--bg-card)',
-                        boxShadow: '0 0 10px rgba(109, 40, 217, 0.4)'
+                        boxShadow: '0 0 10px rgba(79, 70, 229, 0.4)'
                     }}></div>
                 </button>
 
                 <button
-                    className="icon-button"
+                    className="header-icon-btn"
                     onClick={toggleTheme}
                     title="Switch Interface Environment"
-                    style={{
-                        background: 'var(--bg-card)',
-                        border: '1px solid var(--glass-border)',
-                        width: '42px',
-                        height: '42px',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        cursor: 'pointer',
-                        color: 'var(--text-main)',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.05)'
-                    }}
                 >
                     {theme === 'light' ? (
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>

@@ -1,6 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../api/client';
 import type { User } from '../types';
+import { MomentumChart } from '../components/MomentumChart';
+import HotLeadFlowModal from '../components/HotLeadFlowModal';
+import {
+    parseHotLeadNotesMeta,
+    formatPipelineStage,
+    sourceBadgeMeta,
+    formatCrmFlowBucketsHint,
+    formatCommission,
+} from '../lib/dealRoomFormatters';
 
 interface UserProfilePageProps {
     user: User;
@@ -18,15 +27,28 @@ interface RevenueMetrics {
 
 type LearningFilter = 'all' | 'courses' | 'exams' | 'materials';
 
-const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
+const MOMENTUM_CHART_LS = 'realtorone-momentum-chart-variant';
+
+const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActiveTab }) => {
     const [performance, setPerformance] = useState<any[]>([]);
     const [activities, setActivities] = useState<any[]>([]);
     const [revenueMetrics, setRevenueMetrics] = useState<RevenueMetrics | null>(null);
+    const [aiUsage, setAiUsage] = useState<{ ai_tokens_today: number; ai_calls_today: number; ai_tokens_total: number; ai_calls_total: number } | null>(null);
     const [resultsHotLeads, setResultsHotLeads] = useState<any[]>([]);
     const [resultsDealsClosed, setResultsDealsClosed] = useState<any[]>([]);
     const [expandedMetric, setExpandedMetric] = useState<'hot_leads' | 'deals_closed' | 'commission' | 'top_source' | null>(null);
     const [, setLoading] = useState(false);
     const [viewRange, setViewRange] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+    const [momentumChartVariant, setMomentumChartVariant] = useState<'bars' | 'lines'>(() => {
+        if (typeof window === 'undefined') return 'bars';
+        try {
+            const v = window.localStorage.getItem(MOMENTUM_CHART_LS);
+            if (v === 'bars' || v === 'lines') return v;
+        } catch {
+            /* ignore */
+        }
+        return 'bars';
+    });
     const [expandedDays, setExpandedDays] = useState<string[]>([]);
     const [learningData, setLearningData] = useState<{
         subscription: { package_name: string; expires_at: string } | null;
@@ -35,6 +57,31 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
         material_progress: any[];
     } | null>(null);
     const [learningFilter, setLearningFilter] = useState<LearningFilter>('all');
+    const [hotLeadFlowModal, setHotLeadFlowModal] = useState<Record<string, unknown> | null>(null);
+    const [dealRoomExcelMenuOpen, setDealRoomExcelMenuOpen] = useState(false);
+    const [dealRoomExcelImporting, setDealRoomExcelImporting] = useState(false);
+    const dealRoomExcelInputRef = useRef<HTMLInputElement>(null);
+    const dealRoomExcelMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!dealRoomExcelMenuOpen) return;
+        const onDoc = (ev: MouseEvent) => {
+            const el = dealRoomExcelMenuRef.current;
+            if (el && !el.contains(ev.target as Node)) {
+                setDealRoomExcelMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', onDoc);
+        return () => document.removeEventListener('mousedown', onDoc);
+    }, [dealRoomExcelMenuOpen]);
+
+    useEffect(() => {
+        try {
+            window.localStorage.setItem(MOMENTUM_CHART_LS, momentumChartVariant);
+        } catch {
+            /* ignore */
+        }
+    }, [momentumChartVariant]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -47,11 +94,12 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                     material_progress: [],
                 };
 
-                const [perfRes, actRes, revRes, courseRes] = await Promise.all([
+                const [perfRes, actRes, revRes, courseRes, aiRes] = await Promise.all([
                     apiClient.getUserPerformance(user.id),
                     apiClient.getUserActivities(user.id),
                     apiClient.getUserRevenueMetrics(user.id).catch(() => ({ success: false, data: null })),
-                    apiClient.getUserCourseDetail(user.id).catch(() => ({ success: false, data: null }))
+                    apiClient.getUserCourseDetail(user.id).catch(() => ({ success: false, data: null })),
+                    apiClient.getAdminAiUserUsage(user.id).catch(() => ({ success: false, data: null })),
                 ]);
 
                 if (perfRes.success) {
@@ -68,6 +116,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                 } else {
                     // Prevent the "Loading learning data…" state from staying forever.
                     setLearningData((prev) => prev ?? emptyLearningData);
+                }
+                if ((aiRes as any)?.success && (aiRes as any)?.data) {
+                    setAiUsage((aiRes as any).data);
                 }
             } catch (error) {
                 console.error('Failed to sync operator data', error);
@@ -108,10 +159,35 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
         }
     };
 
-    const formatCommission = (v: number) => {
-        if (v >= 1000000) return `AED ${(v / 1000000).toFixed(1)}M`;
-        if (v >= 1000) return `AED ${(v / 1000).toFixed(0)}k`;
-        return `AED ${v.toFixed(0)}`;
+    const onDealRoomExcelFileChange: React.ChangeEventHandler<HTMLInputElement> = async (e) => {
+        const file = e.target.files?.[0];
+        e.target.value = '';
+        if (!file) return;
+        if (!file.name.toLowerCase().endsWith('.xlsx')) {
+            window.alert('Please choose an Excel .xlsx file.');
+            return;
+        }
+        setDealRoomExcelImporting(true);
+        try {
+            const res = await apiClient.adminImportDealRoomExcel(user.id, file);
+            if (res.success) {
+                const rev = await apiClient.getUserRevenueMetrics(user.id);
+                if (rev.success && rev.data) {
+                    setRevenueMetrics(rev.data);
+                }
+                await fetchMetricDetails('hot_leads');
+                setExpandedMetric('hot_leads');
+                window.alert(res.message ?? 'Import complete.');
+            } else {
+                window.alert(res.message ?? 'Import failed.');
+            }
+        } catch (err) {
+            console.error(err);
+            window.alert('Import failed.');
+        } finally {
+            setDealRoomExcelImporting(false);
+            setDealRoomExcelMenuOpen(false);
+        }
     };
 
     const toggleDay = (date: string) => {
@@ -123,25 +199,36 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
     const getChartData = () => {
         if (performance.length === 0) return [];
 
+        const chronological = [...performance].sort(
+            (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+        );
+
         if (viewRange === 'daily') {
-            return performance.slice(-7).map(p => ({
-                label: new Date(p.date).toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
-                value: p.total_momentum_score,
-                subco: p.subconscious_score,
-                conscious: p.conscious_score,
-                date: p.date
-            }));
+            const last7 = chronological.slice(-7);
+            return last7.map(p => {
+                const dt = new Date(p.date);
+                return {
+                    label: dt.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase(),
+                    sublabel: dt.toLocaleDateString('en-US', { month: 'numeric', day: 'numeric' }),
+                    value: p.total_momentum_score,
+                    subco: p.subconscious_score,
+                    conscious: p.conscious_score,
+                    date: p.date
+                };
+            });
         }
 
         if (viewRange === 'weekly') {
             const weeks: any[] = [];
-            for (let i = 0; i < performance.length; i += 7) {
-                const slice = performance.slice(i, i + 7);
+            for (let i = 0; i < chronological.length; i += 7) {
+                const slice = chronological.slice(i, i + 7);
+                if (slice.length === 0) continue;
                 const avgSub = Math.round(slice.reduce((acc, curr) => acc + curr.subconscious_score, 0) / slice.length);
                 const avgCon = Math.round(slice.reduce((acc, curr) => acc + curr.conscious_score, 0) / slice.length);
                 const avgTotal = Math.round(slice.reduce((acc, curr) => acc + curr.total_momentum_score, 0) / slice.length);
                 weeks.push({
-                    label: `WEEK ${Math.floor(i / 7) + 1}`,
+                    label: `WEEK ${weeks.length + 1}`,
+                    sublabel: '',
                     value: avgTotal,
                     subco: avgSub,
                     conscious: avgCon
@@ -151,27 +238,39 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
         }
 
         if (viewRange === 'monthly') {
-            const months: { [key: string]: any[] } = {};
-            performance.forEach(p => {
-                const month = new Date(p.date).toLocaleString('en-US', { month: 'short' }).toUpperCase();
-                if (!months[month]) months[month] = [];
-                months[month].push(p);
+            const months: { [key: string]: { rows: any[]; sortKey: number } } = {};
+            chronological.forEach(p => {
+                const dt = new Date(p.date);
+                const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}`;
+                if (!months[key]) {
+                    months[key] = { rows: [], sortKey: dt.getTime() };
+                }
+                months[key].rows.push(p);
             });
-            return Object.entries(months).map(([name, slice]) => ({
-                label: name,
-                value: Math.round(slice.reduce((acc, curr) => acc + curr.total_momentum_score, 0) / slice.length),
-                subco: Math.round(slice.reduce((acc, curr) => acc + curr.subconscious_score, 0) / slice.length),
-                conscious: Math.round(slice.reduce((acc, curr) => acc + curr.conscious_score, 0) / slice.length)
-            }));
+            return Object.values(months)
+                .sort((a, b) => a.sortKey - b.sortKey)
+                .map(({ rows, sortKey }) => {
+                    const dt = new Date(sortKey);
+                    const name = dt.toLocaleString('en-US', { month: 'short' }).toUpperCase();
+                    return {
+                        label: name,
+                        sublabel: String(dt.getFullYear()),
+                        value: Math.round(rows.reduce((acc, curr) => acc + curr.total_momentum_score, 0) / rows.length),
+                        subco: Math.round(rows.reduce((acc, curr) => acc + curr.subconscious_score, 0) / rows.length),
+                        conscious: Math.round(rows.reduce((acc, curr) => acc + curr.conscious_score, 0) / rows.length)
+                    };
+                });
         }
 
         return [];
     };
 
     const activityData = getChartData();
-    // Scale bars using separate maxima for each score so the chart doesn't look “flattened”.
-    const maxConVal = Math.max(...activityData.map((d: any) => Number(d.conscious ?? 0)), 100);
-    const maxSubVal = Math.max(...activityData.map((d: any) => Number(d.subco ?? 0)), 100);
+    /** Scores are 0–100%; use one Y scale so both tracks are comparable and bars use the full plot height. */
+    const chartYMax = Math.max(
+        100,
+        ...activityData.map((d: any) => Math.max(Number(d.conscious ?? 0), Number(d.subco ?? 0), 0))
+    );
 
     const getTierColor = (tier?: string) => {
         switch (tier?.toLowerCase()) {
@@ -285,13 +384,85 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                         <path d="M8 10h8" />
                     </svg>
                 );
+            case 'source_whatsapp':
+                return (
+                    <svg {...common}>
+                        <path d="M20 12a8 8 0 0 1-11.8 7l-3.2 1 1-3.2A8 8 0 1 1 20 12z" />
+                        <path d="M9.5 9.5c.3 2.2 2.3 4.1 4.5 4.5" />
+                        <path d="M14.8 14.5l-1.3.7a1 1 0 0 1-1-.1 9.2 9.2 0 0 1-3.6-3.6 1 1 0 0 1-.1-1l.7-1.3" />
+                        <path d="M14 18.3l1.3 1.2 2.6-2.4" />
+                    </svg>
+                );
+            case 'source_phone':
+                return (
+                    <svg {...common}>
+                        <path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.7 19.7 0 0 1-8.6-3 19.3 19.3 0 0 1-6-6A19.7 19.7 0 0 1 2.2 4.3 2 2 0 0 1 4.2 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .7 3a2 2 0 0 1-.5 2.1L8.1 10a16 16 0 0 0 5.9 5.9l1.2-1.3a2 2 0 0 1 2.1-.5c1 .4 2 .6 3 .7A2 2 0 0 1 22 16.9z" />
+                    </svg>
+                );
+            case 'source_instagram':
+                return (
+                    <svg {...common}>
+                        <rect x="3" y="3" width="18" height="18" rx="5" />
+                        <circle cx="12" cy="12" r="4" />
+                        <circle cx="17.5" cy="6.5" r="1" />
+                    </svg>
+                );
+            case 'source_content':
+                return (
+                    <svg {...common}>
+                        <rect x="3" y="4" width="18" height="15" rx="2" />
+                        <path d="M8 10l3 3 5-5" />
+                        <path d="M8 19v2h8v-2" />
+                    </svg>
+                );
+            case 'source_referral':
+                return (
+                    <svg {...common}>
+                        <circle cx="9" cy="8" r="3" />
+                        <path d="M3 20c.7-2.7 2.8-4 6-4 2.2 0 3.9.6 5 2" />
+                        <path d="M15 8h6" />
+                        <path d="M18 5l3 3-3 3" />
+                    </svg>
+                );
+            case 'source_default':
+                return (
+                    <svg {...common}>
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M12 7v5l3 3" />
+                    </svg>
+                );
             default:
                 return <span style={{ fontWeight: 900, color }}>{name}</span>;
         }
     };
 
+    const hotLeadTimelineModal = <HotLeadFlowModal lead={hotLeadFlowModal} onClose={() => setHotLeadFlowModal(null)} />;
+
     return (
+        <>
         <div className="view-container fade-in userprofile-page">
+            {user.deletion_requested_at ? (
+                <div
+                    className="glass-panel"
+                    style={{
+                        marginBottom: '20px',
+                        padding: '16px 20px',
+                        border: '1px solid rgba(239, 68, 68, 0.35)',
+                        background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(15, 23, 42, 0.6))',
+                    }}
+                >
+                    <div style={{ fontSize: '0.72rem', fontWeight: 950, letterSpacing: '1px', color: '#fecaca', marginBottom: '8px', textTransform: 'uppercase' }}>
+                        Data removal requested (app)
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: 1.55 }}>
+                        This practitioner submitted an account deletion request from the mobile app on{' '}
+                        <strong style={{ color: 'var(--text-main)' }}>
+                            {new Date(user.deletion_requested_at).toLocaleString()}
+                        </strong>
+                        . Their account is inactive until you complete your privacy process (purge data or re-open the account from Registry).
+                    </p>
+                </div>
+            ) : null}
             {/* Action Bar */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '22px' }}>
                 <button
@@ -466,16 +637,63 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                             })}
                         </div>
                     </div>
+
+                    <div className="glass-panel" style={{
+                        padding: '22px 24px',
+                        background: 'linear-gradient(135deg, rgba(79, 70, 229, 0.08), transparent)',
+                        border: '1px solid rgba(79, 70, 229, 0.22)',
+                    }}>
+                        <h4 style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            fontSize: '0.7rem',
+                            fontWeight: 950,
+                            marginBottom: '16px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '2px',
+                            color: 'var(--primary)'
+                        }}>
+                            <div style={{
+                                width: '4px',
+                                height: '12px',
+                                background: 'var(--primary)',
+                                borderRadius: '10px',
+                                boxShadow: '0 0 10px rgba(79, 70, 229, 0.55)'
+                            }}></div>
+                            AI Usage
+                        </h4>
+                        {aiUsage ? (
+                            <>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
+                                    <div style={{ fontWeight: 950, color: 'var(--text-main)' }}>
+                                        {aiUsage.ai_tokens_today.toLocaleString()} TK <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800 }}>today</span>
+                                    </div>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 850 }}>
+                                        {aiUsage.ai_calls_today.toLocaleString()} calls
+                                    </div>
+                                </div>
+                                <div style={{ height: 8, width: '100%', background: 'rgba(255,255,255,0.08)', borderRadius: 999, overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${Math.min(100, Math.round((aiUsage.ai_tokens_today / 50000) * 100))}%`, background: 'linear-gradient(90deg, rgba(79,70,229,0.9), rgba(0,224,150,0.85))', borderRadius: 999 }} />
+                                </div>
+                                <div style={{ marginTop: 10, fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 750 }}>
+                                    Total: {aiUsage.ai_tokens_total.toLocaleString()} TK · {aiUsage.ai_calls_total.toLocaleString()} calls
+                                </div>
+                            </>
+                        ) : (
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', opacity: 0.75 }}>No AI usage data.</div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Main Performance Grid */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
                         {[
-                            { label: 'AGGREGATE GROWTH', value: `${user.growth_score || 0}%`, iconKey: 'growth', color: 'var(--primary)' },
-                            { label: 'EXECUTION RATE', value: `${user.execution_rate || 0}%`, iconKey: 'execution', color: 'var(--success)' },
-                            { label: 'MINDSET INDEX', value: user.mindset_index || 0, iconKey: 'mindset', color: '#f59e0b' },
-                            { label: 'CURRENT STREAK', value: `${user.current_streak || 0}D`, iconKey: 'streak', color: '#ef4444' },
+                            { label: 'AGGREGATE GROWTH', value: `${user.growth_score ?? 0}%`, hint: 'Overall momentum score (0–100%) on the user record.', iconKey: 'growth', color: 'var(--primary)' },
+                            { label: 'EXECUTION RATE', value: `${user.execution_rate ?? 0}%`, hint: 'Task completion rate (0–100%) updated as they log activities.', iconKey: 'execution', color: 'var(--success)' },
+                            { label: 'MINDSET INDEX', value: user.mindset_index ?? 0, hint: 'Identity / mindset track index.', iconKey: 'mindset', color: '#f59e0b' },
+                            { label: 'CURRENT STREAK', value: `${user.current_streak ?? 0}D`, hint: 'Consecutive days with logged activity.', iconKey: 'streak', color: '#ef4444' },
                         ].map((stat, i) => (
                             <div key={i} className="glass-panel" style={{ 
                                 padding: '25px', 
@@ -493,7 +711,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.transform = 'translateY(0)';
                                 e.currentTarget.style.boxShadow = 'none';
-                            }}>
+                            }}
+                            title={stat.hint}
+                            >
                                 <div style={{ 
                                     position: 'absolute', 
                                     top: -20, 
@@ -510,120 +730,17 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                         <IconSvg name={stat.iconKey} color={stat.color} size={18} />
                                     </span>
                                 </div>
+                                {/* Solid color — gradient text clip was invisible for some CSS-variable colors (looked “empty” at 0%). */}
                                 <div style={{ 
                                     fontSize: '2.4rem', 
                                     fontWeight: 950, 
                                     letterSpacing: '-1px',
-                                    background: `linear-gradient(135deg, ${stat.color}, ${stat.color}80)`,
-                                    WebkitBackgroundClip: 'text',
-                                    WebkitTextFillColor: 'transparent',
-                                    backgroundClip: 'text',
-                                    position: 'relative'
+                                    color: stat.color,
+                                    position: 'relative',
+                                    lineHeight: 1.1,
                                 }}>{stat.value}</div>
                             </div>
                         ))}
-                    </div>
-
-                    {/* Deal Room / Key Metrics - Admin view per user */}
-                    <div className="glass-panel" style={{ 
-                        padding: '28px', 
-                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.06), transparent)',
-                        border: '1px solid rgba(16, 185, 129, 0.25)'
-                    }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 950, marginBottom: '25px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div style={{ width: '4px', height: '12px', background: 'var(--success)', borderRadius: '10px' }}></div>
-                            Deal Room / Key Metrics
-                        </h3>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-                            {[
-                                { key: 'hot_leads' as const, label: 'HOT LEADS', value: revenueMetrics?.hot_leads ?? '—', iconKey: 'hot_leads', color: 'var(--primary)' },
-                                { key: 'deals_closed' as const, label: 'DEALS CLOSED', value: revenueMetrics?.deals_closed ?? '—', iconKey: 'deals_closed', color: '#a855f7' },
-                                { key: 'commission' as const, label: 'NET COMMISSION EARNED', value: revenueMetrics != null ? formatCommission(revenueMetrics.total_commission) : '—', iconKey: 'commission', color: 'var(--success)' },
-                                { key: 'top_source' as const, label: 'TOP SOURCE', value: revenueMetrics?.top_source ?? '—', iconKey: 'top_source', color: '#f59e0b' },
-                            ].map((m) => (
-                                <div
-                                    key={m.key}
-                                    onClick={() => toggleMetricExpand(m.key)}
-                                    className="glass-panel"
-                                    style={{ 
-                                        padding: '20px', 
-                                        border: `1px solid ${m.color}30`, 
-                                        cursor: 'pointer',
-                                        transition: 'all 0.3s ease',
-                                        background: expandedMetric === m.key ? `${m.color}10` : 'transparent'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
-                                        e.currentTarget.style.boxShadow = `0 6px 20px ${m.color}25`;
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = 'none';
-                                    }}
-                                >
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
-                                        <span style={{ fontSize: '0.6rem', fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '1px' }}>{m.label}</span>
-                                        <span style={{ display: 'flex', alignItems: 'center' }}>
-                                            <IconSvg name={m.iconKey} color={m.color} size={18} />
-                                        </span>
-                                    </div>
-                                    <div style={{ fontSize: '1.4rem', fontWeight: 950, color: m.color }}>{m.value}</div>
-                                    {expandedMetric === m.key && (
-                                        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--glass-border)', maxHeight: '200px', overflowY: 'auto' }}>
-                                            {m.key === 'hot_leads' && resultsHotLeads.length > 0 && (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
-                                                    {resultsHotLeads.slice(0, 20).map((r: any, i: number) => (
-                                                        <div key={i} style={{ padding: '6px 10px', background: 'var(--bg-app)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                                                            <span>{r.client_name || '—'}</span>
-                                                            <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{r.source || '—'}</span>
-                                                        </div>
-                                                    ))}
-                                                    {resultsHotLeads.length > 20 && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>+{resultsHotLeads.length - 20} more</span>}
-                                                </div>
-                                            )}
-                                            {m.key === 'deals_closed' && resultsDealsClosed.length > 0 && (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
-                                                    {resultsDealsClosed.slice(0, 20).map((r: any, i: number) => {
-                                                        let notes: Record<string, any> = {};
-                                                        try { notes = typeof r.notes === 'string' ? JSON.parse(r.notes || '{}') : (r.notes || {}); } catch { notes = {}; }
-                                                        const amt = notes.commission ?? notes.deal_amount ?? 0;
-                                                        return (
-                                                            <div key={i} style={{ padding: '6px 10px', background: 'var(--bg-app)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                                                                <span>{r.client_name || '—'}</span>
-                                                                <span style={{ color: 'var(--success)', fontWeight: 800 }}>{typeof amt === 'number' ? formatCommission(amt) : amt}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                    {resultsDealsClosed.length > 20 && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>+{resultsDealsClosed.length - 20} more</span>}
-                                                </div>
-                                            )}
-                                            {m.key === 'top_source' && revenueMetrics?.top_source && (
-                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Most common source when adding clients</div>
-                                            )}
-                                            {m.key === 'commission' && resultsDealsClosed.length > 0 && (
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
-                                                    {resultsDealsClosed.slice(0, 15).map((r: any, i: number) => {
-                                                        let notes: Record<string, any> = {};
-                                                        try { notes = typeof r.notes === 'string' ? JSON.parse(r.notes || '{}') : (r.notes || {}); } catch { notes = {}; }
-                                                        const amt = notes.commission ?? notes.deal_amount ?? 0;
-                                                        if (!amt) return null;
-                                                        return (
-                                                            <div key={i} style={{ padding: '6px 10px', background: 'var(--bg-app)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                                                                <span>{r.client_name || '—'}</span>
-                                                                <span style={{ color: 'var(--success)', fontWeight: 800 }}>{typeof amt === 'number' ? formatCommission(amt) : String(amt)}</span>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                            {(m.key === 'hot_leads' && resultsHotLeads.length === 0) || (m.key === 'deals_closed' && resultsDealsClosed.length === 0) ? (
-                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No data</span>
-                                            ) : null}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
-                        </div>
                     </div>
 
                     {/* Learning & courses — clean layout: package, courses, exams, materials */}
@@ -860,78 +977,98 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                         )}
                     </div>
 
-                    <div className="glass-panel" style={{ padding: '28px', minHeight: '400px', position: 'relative' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '35px' }}>
-                            <div>
+                    <div className="glass-panel" style={{ padding: '22px 24px 28px', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '18px', flexWrap: 'wrap', gap: '14px' }}>
+                            <div style={{ minWidth: 0 }}>
                                 <h3 style={{ fontSize: '1.3rem', fontWeight: 950, margin: 0, letterSpacing: '-0.5px' }}>Behavioral Momentum Path</h3>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600 }}>{
-                                    viewRange === 'daily' ? 'Tactical precision over the last 7 cycles' :
-                                        viewRange === 'weekly' ? 'Strategic momentum trends by week' :
-                                            'Long-term operational growth arc'
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '6px', fontWeight: 600, lineHeight: 1.4 }}>{
+                                    viewRange === 'daily' ? 'Last 7 days · conscious vs identity completion (%)' :
+                                        viewRange === 'weekly' ? 'Weekly averages · strategic momentum' :
+                                            'Monthly averages · long-term arc'
                                 }</p>
                             </div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '20px' }}>
-                                <div style={{ display: 'flex', background: 'var(--bg-app)', padding: '5px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                                    {(['daily', 'weekly', 'monthly'] as const).map(r => (
-                                        <button
-                                            key={r}
-                                            onClick={() => setViewRange(r)}
-                                            style={{
-                                                padding: '8px 18px',
-                                                fontSize: '0.7rem',
-                                                fontWeight: 950,
-                                                background: viewRange === r ? 'var(--primary)' : 'transparent',
-                                                color: viewRange === r ? 'white' : 'var(--text-muted)',
-                                                border: 'none',
-                                                borderRadius: '8px',
-                                                cursor: 'pointer',
-                                                textTransform: 'uppercase',
-                                                transition: 'all 0.3s'
-                                            }}
-                                        >
-                                            {r}
-                                        </button>
-                                    ))}
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '12px' }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', background: 'var(--bg-app)', padding: '5px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                        {(['daily', 'weekly', 'monthly'] as const).map(r => (
+                                            <button
+                                                key={r}
+                                                onClick={() => setViewRange(r)}
+                                                style={{
+                                                    padding: '8px 18px',
+                                                    fontSize: '0.7rem',
+                                                    fontWeight: 950,
+                                                    background: viewRange === r ? 'var(--primary)' : 'transparent',
+                                                    color: viewRange === r ? 'white' : 'var(--text-muted)',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    textTransform: 'uppercase',
+                                                    transition: 'all 0.3s'
+                                                }}
+                                            >
+                                                {r}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    <div
+                                        style={{ display: 'flex', background: 'var(--bg-app)', padding: '5px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}
+                                        title="Switch between grouped bars and momentum curves"
+                                    >
+                                        {([
+                                            ['bars', 'Bars'] as const,
+                                            ['lines', 'Curve'] as const,
+                                        ]).map(([key, label]) => (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                onClick={() => setMomentumChartVariant(key)}
+                                                style={{
+                                                    padding: '8px 16px',
+                                                    fontSize: '0.68rem',
+                                                    fontWeight: 950,
+                                                    background: momentumChartVariant === key ? 'linear-gradient(135deg, #7e22ce, #d946ef)' : 'transparent',
+                                                    color: momentumChartVariant === key ? 'white' : 'var(--text-muted)',
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    textTransform: 'uppercase',
+                                                    letterSpacing: '0.04em',
+                                                    transition: 'all 0.25s',
+                                                }}
+                                            >
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }}>
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#7e22ce' }}></div> REVENUE ACTIONS
+                                <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }} title="Conscious / business track">
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#7e22ce' }}></div> CONSCIOUS
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }}>
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#d946ef' }}></div> IDENTITY CONDITIONING
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }} title="Identity / mindset track">
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#d946ef' }}></div> IDENTITY
                                     </div>
+                                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', opacity: 0.85 }}>Y: 0–{chartYMax}%</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div style={{ height: '240px', display: 'flex', alignItems: 'flex-end', justifyContent: 'space-around', gap: '20px', padding: '0 30px' }}>
-                            {activityData.length === 0 ? (
-                                <div style={{ alignSelf: 'center', color: 'var(--text-muted)', fontSize: '0.9rem', width: '100%', textAlign: 'center' }}>Synchronizing intelligence archives...</div>
-                            ) : activityData.map((d: any, i) => (
-                                <div key={i} style={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '15px' }}>
-                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'flex-end', height: '100%', justifyContent: 'center' }}>
-                                            <div style={{
-                                            width: '16px',
-                                            height: `${Math.max(10, (Number(d.conscious ?? 0) / maxConVal) * 200)}px`,
-                                            background: 'linear-gradient(to top, #7e22ce, #a855f7)',
-                                            borderRadius: '6px 6px 2px 2px',
-                                            transition: 'height 1s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: '0 4px 15px rgba(126, 34, 206, 0.3)'
-                                        }}></div>
-                                        <div style={{
-                                            width: '16px',
-                                            height: `${Math.max(10, (Number(d.subco ?? 0) / maxSubVal) * 200)}px`,
-                                            background: 'linear-gradient(to top, #d946ef, #f472b6)',
-                                            borderRadius: '6px 6px 2px 2px',
-                                            transition: 'height 1s cubic-bezier(0.4, 0, 0.2, 1)',
-                                            boxShadow: '0 4px 15px rgba(217, 70, 239, 0.3)'
-                                        }}></div>
-                                    </div>
-                                    <span style={{ fontSize: '0.7rem', fontWeight: 950, color: 'var(--text-muted)', textAlign: 'center' }}>{d.label}</span>
-                                </div>
-                            ))}
-                        </div>
+                        {activityData.length === 0 ? (
+                            <div style={{ padding: '48px 16px', color: 'var(--text-muted)', fontSize: '0.9rem', textAlign: 'center' }}>No performance data yet.</div>
+                        ) : (
+                            <MomentumChart
+                                variant={momentumChartVariant}
+                                yMax={chartYMax}
+                                data={activityData.map((d: { label: string; sublabel?: string; conscious: number; subco: number }) => ({
+                                    label: d.label,
+                                    sublabel: d.sublabel,
+                                    conscious: Number(d.conscious ?? 0),
+                                    subco: Number(d.subco ?? 0),
+                                }))}
+                            />
+                        )}
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '28px' }}>
@@ -1114,11 +1251,351 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                         </div>
                     </div>
 
+                    {/* Deal Room metrics + pipeline (stacked with Activity Log — same “business / conscious” context) */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    <div className="glass-panel" style={{
+                        padding: '28px',
+                        background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.06), transparent)',
+                        border: '1px solid rgba(16, 185, 129, 0.25)'
+                    }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '14px', marginBottom: '6px' }}>
+                            <div style={{ fontSize: '0.62rem', fontWeight: 950, letterSpacing: '0.14em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Deal Room · pipeline snapshot</div>
+                            <button
+                                type="button"
+                                onClick={() => setActiveTab('deal-room')}
+                                style={{
+                                    padding: '8px 14px',
+                                    borderRadius: 999,
+                                    border: '1px solid rgba(99, 102, 241, 0.45)',
+                                    background: 'rgba(99, 102, 241, 0.12)',
+                                    color: 'var(--primary)',
+                                    fontWeight: 900,
+                                    fontSize: '0.68rem',
+                                    letterSpacing: '0.04em',
+                                    cursor: 'pointer',
+                                    whiteSpace: 'nowrap',
+                                }}
+                            >
+                                See more →
+                            </button>
+                        </div>
+                        <h3 style={{ fontSize: '1.08rem', fontWeight: 950, marginBottom: '8px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <div style={{ width: '4px', height: '14px', background: 'var(--success)', borderRadius: '10px' }}></div>
+                            Clients &amp; revenue outcomes
+                        </h3>
+                        <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 18px 0', lineHeight: 1.45, fontWeight: 600 }}>
+                            Same notes as the mobile Deal Room. Expand <strong style={{ color: 'var(--text-main)' }}>HOT LEADS</strong> for stage + flow flags, or open the <strong style={{ color: 'var(--text-main)' }}>full Deal Room</strong> for every client &amp; commission. Below, the Activity Log shows daily <strong style={{ color: 'var(--text-main)' }}>Conscious</strong> / <strong style={{ color: 'var(--text-main)' }}>Identity</strong> task completion.
+                        </p>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
+                            {[
+                                { key: 'hot_leads' as const, label: 'HOT LEADS', value: revenueMetrics?.hot_leads ?? '—', iconKey: 'hot_leads', color: 'var(--primary)' },
+                                { key: 'deals_closed' as const, label: 'DEALS CLOSED', value: revenueMetrics?.deals_closed ?? '—', iconKey: 'deals_closed', color: '#a855f7' },
+                                { key: 'commission' as const, label: 'NET COMMISSION EARNED', value: revenueMetrics != null ? formatCommission(revenueMetrics.total_commission) : '—', iconKey: 'commission', color: 'var(--success)' },
+                                { key: 'top_source' as const, label: 'TOP SOURCE', value: revenueMetrics?.top_source ?? '—', iconKey: 'top_source', color: '#f59e0b' },
+                            ].map((m) => (
+                                <div
+                                    key={m.key}
+                                    onClick={() => toggleMetricExpand(m.key)}
+                                    className="glass-panel"
+                                    style={{
+                                        padding: '20px',
+                                        border: `1px solid ${m.color}30`,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s ease',
+                                        background: expandedMetric === m.key ? `${m.color}10` : 'transparent'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.boxShadow = `0 6px 20px ${m.color}25`;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center' }}>
+                                        <span style={{ fontSize: '0.6rem', fontWeight: 950, color: 'var(--text-muted)', letterSpacing: '1px' }}>{m.label}</span>
+                                        <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            {m.key === 'hot_leads' ? (
+                                                <>
+                                                    <input
+                                                        ref={dealRoomExcelInputRef}
+                                                        type="file"
+                                                        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                                                        style={{ display: 'none' }}
+                                                        onChange={onDealRoomExcelFileChange}
+                                                    />
+                                                    <div ref={dealRoomExcelMenuRef} style={{ position: 'relative' }}>
+                                                        <button
+                                                            type="button"
+                                                            title="Download Deal Room template or import Excel for this user"
+                                                            disabled={dealRoomExcelImporting}
+                                                            onClick={(ev) => {
+                                                                ev.stopPropagation();
+                                                                setDealRoomExcelMenuOpen((o) => !o);
+                                                            }}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                width: 30,
+                                                                height: 30,
+                                                                padding: 0,
+                                                                borderRadius: 10,
+                                                                border: '1px solid rgba(99, 102, 241, 0.35)',
+                                                                background: 'rgba(99, 102, 241, 0.12)',
+                                                                cursor: dealRoomExcelImporting ? 'wait' : 'pointer',
+                                                                color: 'var(--primary)',
+                                                            }}
+                                                        >
+                                                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                                                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                                                                <circle cx="9" cy="7" r="4" />
+                                                                <line x1="19" y1="8" x2="19" y2="14" />
+                                                                <line x1="22" y1="11" x2="16" y2="11" />
+                                                            </svg>
+                                                        </button>
+                                                        {dealRoomExcelMenuOpen && (
+                                                            <div
+                                                                style={{
+                                                                    position: 'absolute',
+                                                                    right: 0,
+                                                                    top: 'calc(100% + 6px)',
+                                                                    zIndex: 50,
+                                                                    minWidth: 200,
+                                                                    padding: '8px',
+                                                                    borderRadius: 12,
+                                                                    border: '1px solid var(--glass-border)',
+                                                                    background: 'var(--bg-card)',
+                                                                    boxShadow: '0 12px 32px rgba(0,0,0,0.35)',
+                                                                    display: 'flex',
+                                                                    flexDirection: 'column',
+                                                                    gap: '6px',
+                                                                }}
+                                                                onClick={(ev) => ev.stopPropagation()}
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        const url = new URL(
+                                                                            'deal-room-clients-template.xlsx',
+                                                                            `${window.location.origin}${import.meta.env.BASE_URL || '/'}`
+                                                                        ).href;
+                                                                        const a = document.createElement('a');
+                                                                        a.href = url;
+                                                                        a.download = 'RealtorOne_Deal_Room_Clients_Template.xlsx';
+                                                                        a.rel = 'noopener';
+                                                                        document.body.appendChild(a);
+                                                                        a.click();
+                                                                        a.remove();
+                                                                        setDealRoomExcelMenuOpen(false);
+                                                                    }}
+                                                                    style={{
+                                                                        textAlign: 'left',
+                                                                        padding: '8px 10px',
+                                                                        borderRadius: 8,
+                                                                        border: 'none',
+                                                                        background: 'rgba(16, 185, 129, 0.12)',
+                                                                        color: 'var(--text-main)',
+                                                                        fontWeight: 700,
+                                                                        fontSize: '0.78rem',
+                                                                        cursor: 'pointer',
+                                                                    }}
+                                                                >
+                                                                    Download sheet template
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={dealRoomExcelImporting}
+                                                                    onClick={() => {
+                                                                        dealRoomExcelInputRef.current?.click();
+                                                                    }}
+                                                                    style={{
+                                                                        textAlign: 'left',
+                                                                        padding: '8px 10px',
+                                                                        borderRadius: 8,
+                                                                        border: 'none',
+                                                                        background: 'rgba(99, 102, 241, 0.15)',
+                                                                        color: 'var(--text-main)',
+                                                                        fontWeight: 700,
+                                                                        fontSize: '0.78rem',
+                                                                        cursor: dealRoomExcelImporting ? 'wait' : 'pointer',
+                                                                    }}
+                                                                >
+                                                                    {dealRoomExcelImporting ? 'Importing…' : 'Import .xlsx for this user'}
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <IconSvg name={m.iconKey} color={m.color} size={18} />
+                                            )}
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: '1.4rem', fontWeight: 950, color: m.color }}>{m.value}</div>
+                                    {expandedMetric === m.key && (
+                                        <div style={{ marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--glass-border)', maxHeight: '200px', overflowY: 'auto' }}>
+                                            {m.key === 'hot_leads' && resultsHotLeads.length > 0 && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
+                                                    {resultsHotLeads.slice(0, 20).map((r: any, i: number) => {
+                                                        const meta = parseHotLeadNotesMeta(r.notes);
+                                                        const stage = formatPipelineStage(meta.lead_stage);
+                                                        const bucketHint = formatCrmFlowBucketsHint(meta);
+                                                        const sourceMeta = sourceBadgeMeta(r.source);
+                                                        return (
+                                                            <div
+                                                                key={i}
+                                                                style={{
+                                                                    padding: '7px 9px',
+                                                                    background: 'var(--bg-app)',
+                                                                    borderRadius: '8px',
+                                                                    display: 'flex',
+                                                                    flexDirection: 'column',
+                                                                    gap: '5px',
+                                                                    textAlign: 'left',
+                                                                }}
+                                                            >
+                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            setHotLeadFlowModal(r as Record<string, unknown>);
+                                                                        }}
+                                                                        style={{
+                                                                            fontWeight: 800,
+                                                                            textAlign: 'left',
+                                                                            background: 'none',
+                                                                            border: 'none',
+                                                                            padding: 0,
+                                                                            margin: 0,
+                                                                            cursor: 'pointer',
+                                                                            color: 'var(--primary)',
+                                                                            textDecoration: 'underline',
+                                                                            textUnderlineOffset: '2px',
+                                                                            fontSize: 'inherit',
+                                                                            fontFamily: 'inherit',
+                                                                        }}
+                                                                        title="View CRM activity timeline"
+                                                                    >
+                                                                        {r.client_name || '—'}
+                                                                    </button>
+                                                                    <span
+                                                                        style={{
+                                                                            fontSize: '0.62rem',
+                                                                            fontWeight: 900,
+                                                                            letterSpacing: '0.04em',
+                                                                            color: 'var(--primary)',
+                                                                            whiteSpace: 'nowrap',
+                                                                            maxWidth: '52%',
+                                                                            overflow: 'hidden',
+                                                                            textOverflow: 'ellipsis',
+                                                                        }}
+                                                                        title={stage}
+                                                                    >
+                                                                        {stage}
+                                                                    </span>
+                                                                </div>
+                                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+                                                                    <span
+                                                                        style={{
+                                                                            display: 'inline-flex',
+                                                                            alignItems: 'center',
+                                                                            gap: '5px',
+                                                                            padding: '2px 7px',
+                                                                            borderRadius: '999px',
+                                                                            fontSize: '0.62rem',
+                                                                            fontWeight: 800,
+                                                                            letterSpacing: '0.01em',
+                                                                            color: sourceMeta.fg,
+                                                                            background: sourceMeta.bg,
+                                                                        }}
+                                                                        title={`Source: ${r.source || '—'}`}
+                                                                    >
+                                                                        <IconSvg name={sourceMeta.icon} color={sourceMeta.fg} size={11} />
+                                                                        {sourceMeta.label}
+                                                                    </span>
+                                                                    {typeof meta.lead_package === 'string' && meta.lead_package ? (
+                                                                        <span
+                                                                            style={{
+                                                                                textTransform: 'uppercase',
+                                                                                fontWeight: 800,
+                                                                                fontSize: '0.62rem',
+                                                                                color: '#93c5fd',
+                                                                                background: 'rgba(59, 130, 246, 0.12)',
+                                                                                padding: '2px 7px',
+                                                                                borderRadius: '999px',
+                                                                            }}
+                                                                        >
+                                                                            Pkg: {meta.lead_package}
+                                                                        </span>
+                                                                    ) : null}
+                                                                </div>
+                                                                {bucketHint ? (
+                                                                    <div style={{ fontSize: '0.6rem', color: 'var(--warning, #d97706)', fontWeight: 700, opacity: 0.95 }} title={bucketHint}>
+                                                                        {bucketHint}
+                                                                    </div>
+                                                                ) : null}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {resultsHotLeads.length > 20 && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>+{resultsHotLeads.length - 20} more</span>}
+                                                </div>
+                                            )}
+                                            {m.key === 'deals_closed' && resultsDealsClosed.length > 0 && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
+                                                    {resultsDealsClosed.slice(0, 20).map((r: any, i: number) => {
+                                                        let notes: Record<string, any> = {};
+                                                        try { notes = typeof r.notes === 'string' ? JSON.parse(r.notes || '{}') : (r.notes || {}); } catch { notes = {}; }
+                                                        const amt = notes.commission ?? notes.deal_amount ?? 0;
+                                                        return (
+                                                            <div key={i} style={{ padding: '6px 10px', background: 'var(--bg-app)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span>{r.client_name || '—'}</span>
+                                                                <span style={{ color: 'var(--success)', fontWeight: 800 }}>{typeof amt === 'number' ? formatCommission(amt) : amt}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {resultsDealsClosed.length > 20 && <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>+{resultsDealsClosed.length - 20} more</span>}
+                                                </div>
+                                            )}
+                                            {m.key === 'top_source' && revenueMetrics?.top_source && (
+                                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Most common source when adding clients</div>
+                                            )}
+                                            {m.key === 'commission' && resultsDealsClosed.length > 0 && (
+                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '0.75rem' }}>
+                                                    {resultsDealsClosed.slice(0, 15).map((r: any, i: number) => {
+                                                        let notes: Record<string, any> = {};
+                                                        try { notes = typeof r.notes === 'string' ? JSON.parse(r.notes || '{}') : (r.notes || {}); } catch { notes = {}; }
+                                                        const amt = notes.commission ?? notes.deal_amount ?? 0;
+                                                        if (!amt) return null;
+                                                        return (
+                                                            <div key={i} style={{ padding: '6px 10px', background: 'var(--bg-app)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
+                                                                <span>{r.client_name || '—'}</span>
+                                                                <span style={{ color: 'var(--success)', fontWeight: 800 }}>{typeof amt === 'number' ? formatCommission(amt) : String(amt)}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                            {(m.key === 'hot_leads' && resultsHotLeads.length === 0) || (m.key === 'deals_closed' && resultsDealsClosed.length === 0) ? (
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No data</span>
+                                            ) : null}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     <div className="glass-panel" style={{ padding: '32px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '30px' }}>
                             <div>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 950, letterSpacing: '0.14em', color: 'var(--text-muted)', marginBottom: '6px', textTransform: 'uppercase' }}>Daily execution · task log</div>
                                 <h3 style={{ fontSize: '1.4rem', fontWeight: 950, margin: 0, letterSpacing: '-0.5px' }}>Activity Log</h3>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600 }}>User activity entries with task responses</p>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '8px', fontWeight: 600, lineHeight: 1.45 }}>
+                                    <strong style={{ color: 'var(--text-main)', fontWeight: 800 }}>Identity</strong> (mindset / audio) and <strong style={{ color: 'var(--text-main)', fontWeight: 800 }}>Conscious</strong> (business &amp; revenue blocks). Expand a day for per-task detail — this complements the Deal Room snapshot above.
+                                </p>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 950, textTransform: 'uppercase', letterSpacing: '2px' }}>Recent System Entries</div>
@@ -1148,9 +1625,9 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                 </div>
                                                 <div>
                                                     <div style={{ fontSize: '1rem', fontWeight: 950, color: 'var(--text-main)', letterSpacing: '-0.3px' }}>Daily Tactical Execution</div>
-                                                    <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                                                        <span style={{ fontSize: '0.65rem', padding: '4px 12px', background: 'rgba(126, 34, 206, 0.1)', color: '#a855f7', borderRadius: '30px', fontWeight: 950, border: '1px solid rgba(126, 34, 206, 0.2)' }}>REVENUE ACTIONS: {day.conscious_score}%</span>
-                                                        <span style={{ fontSize: '0.65rem', padding: '4px 12px', background: 'rgba(217, 70, 239, 0.1)', color: '#d946ef', borderRadius: '30px', fontWeight: 950, border: '1px solid rgba(217, 70, 239, 0.2)' }}>IDENTITY CONDITIONING: {day.subconscious_score}%</span>
+                                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginTop: '8px' }}>
+                                                        <span style={{ fontSize: '0.65rem', padding: '4px 12px', background: 'rgba(126, 34, 206, 0.1)', color: '#a855f7', borderRadius: '30px', fontWeight: 950, border: '1px solid rgba(126, 34, 206, 0.2)' }} title="Conscious / business track completion">CONSCIOUS: {day.conscious_score}%</span>
+                                                        <span style={{ fontSize: '0.65rem', padding: '4px 12px', background: 'rgba(217, 70, 239, 0.1)', color: '#d946ef', borderRadius: '30px', fontWeight: 950, border: '1px solid rgba(217, 70, 239, 0.2)' }} title="Identity / mindset track completion">IDENTITY: {day.subconscious_score}%</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1172,9 +1649,15 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                 <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0 0 25px 0' }}></div>
                                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px' }}>
                                                     <div>
-                                                        <h5 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950, color: '#a855f7', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                                            <div style={{ width: '3px', height: '10px', background: '#a855f7', borderRadius: '10px' }}></div>
-                                                            Revenue Actions (Part B) <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '0.6rem' }}>MAX 45 PTS</span>
+                                                        <h5 style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '4px', marginBottom: '16px' }}>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', fontWeight: 950, color: '#a855f7', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                                                <span style={{ width: '3px', height: '10px', background: '#a855f7', borderRadius: '10px', flexShrink: 0 }} />
+                                                                Conscious track
+                                                                <span style={{ marginLeft: 'auto', fontSize: '0.58rem', opacity: 0.75, fontWeight: 900 }}>Max 45 pts</span>
+                                                            </span>
+                                                            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', paddingLeft: '11px', lineHeight: 1.35 }}>
+                                                                Business &amp; revenue tasks (cold calling, follow-up, meetings, etc.)
+                                                            </span>
                                                         </h5>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                             {dayActivities.filter(a => a.category === 'task' || a.category === 'conscious').map((a, i) => (
@@ -1246,9 +1729,15 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                                                         </div>
                                                     </div>
                                                     <div>
-                                                        <h5 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950, color: '#d946ef', marginBottom: '20px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                                            <div style={{ width: '3px', height: '10px', background: '#d946ef', borderRadius: '10px' }}></div>
-                                                            Identity Conditioning (Part A) <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '0.6rem' }}>MAX 40 PTS</span>
+                                                        <h5 style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '4px', marginBottom: '16px' }}>
+                                                            <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', fontWeight: 950, color: '#d946ef', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                                                <span style={{ width: '3px', height: '10px', background: '#d946ef', borderRadius: '10px', flexShrink: 0 }} />
+                                                                Identity track
+                                                                <span style={{ marginLeft: 'auto', fontSize: '0.58rem', opacity: 0.75, fontWeight: 900 }}>Max 40 pts</span>
+                                                            </span>
+                                                            <span style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', paddingLeft: '11px', lineHeight: 1.35 }}>
+                                                                Mindset &amp; conditioning (visualization, affirmations, audio goals)
+                                                            </span>
                                                         </h5>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                             {dayActivities.filter(a => a.category === 'subconscious').map((a, i) => (
@@ -1327,9 +1816,12 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack }) => {
                             })}
                         </div>
                     </div>
+                    </div>
                 </div>
             </div>
         </div>
+        {hotLeadTimelineModal}
+        </>
     );
 };
 

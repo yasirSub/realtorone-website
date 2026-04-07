@@ -632,3 +632,222 @@ Application (Mobile):
 Website (Admin):
   - Admin handles deletion requests via the Users page: deletion-requested users appear as `Inactive` status — admin can then permanently delete them using the existing trash icon.
 
+### **Day 60: Apr 2 - Structured CRM Pipelines & Lead Automation**
+Application (Mobile):
+    - **Visual Pipeline Stepper**: Implemented a cinematic 5-stage progress stepper (Cold Calling, Follow-up Back, Client Meeting, Site Visit, Deal Close) with real-time status tracking.
+    - **Dynamic Goal HUD**: Redesigned the client action screen to feature a "CURRENT GOAL" card that automatically updates as the lead moves through the pipeline.
+    - **Lead Categorization**: Added an interactive status selector for **Lead Packages** (Hot, Nurture, Blocker) with color-coded chip styling for rapid prioritization.
+    - **Stay vs. Advance Logic**: Engineered a double-action interaction model allowing users to either "Stay in Stage" (log effort) or "Mark as Done" (advance to the next sequential step).
+    - **History & Milestone Feed**: Unified all stage transitions, package changes, and daily logs into a cohesive Activity History timeline.
+Backend:
+    - **Automated Pipeline Engine**: Developed a state-machine in `api.php` that enforces the correctly ordered 5-stage workflow and handles automatic `lead_stage` advancement.
+    - **Native Excel Sync Command**: Architected a high-performance `leads:sync-excel` command using native PHP (ZipArchive/SimpleXML) to synchronize leads from the researcher's master Excel sheet without external dependencies.
+    - **Daily CRM Reminders**: Implemented `notifications:lead-reminders` scheduled daily at 10:00 AM to notify users of clients stuck in a specific stage for over 24 hours.
+    - **Persistent Lead Metadata**: Updated the Result model's notes schema to support `lead_package` and pipeline state persistence across sessions.
+Website (Automated Monitoring):
+    - **Sync Health Visualization**: Verified and monitored the automated sync flow between the research folders and the live CRM database.
+
+### Day 61: Apr 4 - Admin portal API base URL
+Website:
+  - Wired `api/client.ts` to `VITE_API_BASE_URL` with default `/api` so the Vite proxy targets the local Laravel backend instead of a stale LAN IP (fixes admin login "gateway timed out" when the API was unreachable).
+  - Eased default admin UI contrast: slate-based dark palette (no pure black), lighter glass panels, and first-visit default theme set to light with theme preference read from localStorage; sun/moon toggle still switches dark/light.
+Application (Mobile):
+  - Pointed debug builds at local Laravel: Android emulator uses `10.0.2.2:8000`, simulators/desktop use `127.0.0.1:8000`; optional `--dart-define=API_BASE_URL=...` for a phone on Wi‑Fi; release builds still use the live API base URL.
+
+### Day 62: Apr 4 - CRM five-stage pipeline (PDF-aligned)
+Backend:
+  - Introduced `App\Support\CrmPipeline` with canonical action keys: cold calling, follow-up, client meeting, deal negotiation, deal closure; replaced former “site visit” stage with `deal_negotiation` and normalized legacy `site_visit` / `site visite` data in hot_lead notes.
+  - `POST /clients` now defaults `lead_stage` to cold calling, sets `crm_started_at`, and normalizes stage spelling; `GET/POST /clients/{id}/actions` and daily-progress use the five pipeline keys; auto-advance uses ordered PDF stages.
+  - `notifications:lead-reminders` now scans `results` hot_leads (not the old `leads` table) and dedupes FCM by client; Excel sync maps spreadsheet stages to the same vocabulary and preserves `crm_started_at` on updates.
+Application (Mobile):
+  - Add Client and Deal Room client detail use the five stages; client detail shows CRM day count from `created_at`, pipeline banner, negotiation/meeting hint lines from the PDF, and client list tiles show stage plus day-in-pipeline.
+
+### Day 63: Apr 4 - Cold calling flowchart (CALL / WhatsApp)
+Backend:
+  - Added `App\Support\ColdCallingFlow` and hot_lead `notes.cold_calling` state: mode, call/WhatsApp attempt counts, bucket (in progress, retargeting, nutshell, nurture WhatsApp), `next_contact_at`, touch log.
+  - `POST /api/clients/{id}/cold-calling/touch` applies outcomes (interested/exploring → advance to follow-up + revenue log; not interested → retargeting; no_answer / no_reply → increment attempts, schedule next, or terminal buckets after 4/3 attempts).
+  - `GET /api/clients/cold-calling/today` lists leads due for cold outreach today; new clients get default `cold_calling` state on create.
+Application (Mobile):
+  - Client detail cold-calling stage: mode toggle, outcome chips, no-answer/no-reply with schedule sheet (tomorrow / +2 days / custom date), terminal bucket messaging, optional “skip wizard” mark-done; Deal Room shows “Today’s cold outreach” chips linking to clients.
+
+### Day 64: Apr 4 - Follow-up structure (parallel to cold calling)
+Backend:
+  - Added `App\Support\FollowUpFlow` with `notes.follow_up` state: mode (call / WhatsApp / email), touch count, buckets (in progress, retargeting, stalled after five continue touches), `next_contact_at`, touch log.
+  - Advancing from cold calling to follow-up now merges default `follow_up` state into hot_lead notes.
+  - `POST /api/clients/{id}/follow-up/touch` records outcomes: ready for meeting → client meeting stage + daily/revenue log; not interested → retargeting; continue touch → schedule next or stalled at max.
+  - `GET /api/clients/follow-up/today` lists follow-up leads due today (excludes stalled/retargeting).
+Application (Mobile):
+  - Follow-up stage: three-mode wizard, meeting / not interested / continue with schedule, terminal messaging, optional mark-done skip; Deal Room shows “Today’s follow-up” chips.
+
+### Day 65: Apr 4 - Client Meeting, Deal Negotiation, Deal Closure flows
+Backend:
+  - Added `ClientMeetingFlow`, `DealNegotiationFlow`, `DealClosureFlow` with notes keys `client_meeting`, `deal_negotiation`, `deal_closure` (touch counts, buckets, schedules, logs) aligned with follow-up patterns.
+  - Follow-up → client meeting and client meeting → negotiation and negotiation → closure now merge the next stage’s default state when advancing; `POST` touch routes log daily/revenue rows on advances to negotiation and to deal closure respectively.
+  - New routes: `POST/GET` client-meeting, deal-negotiation, deal-closure (`touch` + `today` lists). Deal closure supports `continue_touch` (paperwork) and `lost`; won deals still use existing `action-log` + `deal_closed` results from the app.
+Application (Mobile):
+  - Stages 3–5: channel chips, advance / not interested / continue-with-schedule wizards; closure adds primary “Record closed deal” (existing modal + mark done), paperwork follow-up, mark lost, skip; Deal Room shows today’s chips for meetings, negotiation, and closure.
+  - Lead Package (Hot / Nurture / Blocker) selector on client detail is hidden for now (backend `lead_package` unchanged).
+
+### Day 66: Apr 4 - Admin view of Deal Room pipeline fields
+Website:
+  - User profile (admin) “Deal Room / Key Metrics” → expand HOT LEADS: each row now shows pipeline stage from `notes.lead_stage`, source, optional `lead_package`, and a short hint when any CRM flow bucket is not `in_progress` (cold / follow-up / meeting / negotiation / closure). Full touch logs remain mobile/API-only unless we add a raw JSON drill-down later.
+  - Activity Log: renamed confusing “Revenue Actions (Part B)” / “Identity Conditioning (Part A)” to Conscious track vs Identity track with plain-English subtitles; day chips now say CONSCIOUS / IDENTITY to match momentum scoring, with a short intro explaining the two tracks.
+  - Deal Room metrics + hot-lead pipeline block moved to sit directly above Activity Log (single stacked “business + daily execution” section); chart legend aligned to CONSCIOUS / IDENTITY.
+
+### Day 67: Apr 4 - YOUR CLIENTS list chips
+Application (Mobile):
+  - Deal Room client tiles: status chip shows CRM pipeline stage only (cold calling through deal closure), with one accent per stage; daily completion moved to the subtitle (day in pipeline + % of today’s tasks). Lost deals keep a red “Lost deal” chip and subtitle “Not in active pipeline”.
+
+### Day 68: Apr 4 - Hot lead CRM timeline (admin profile)
+Website:
+  - User profile → expand HOT LEADS: client name is a link that opens a modal with a chronological CRM timeline built from stored `notes` (record created, pipeline start, per-stage touch logs, daily task completions) plus “next contact scheduled” when present.
+
+### Day 69: Apr 4 - Deal Room chips + revenue metrics
+Application (Mobile):
+  - YOUR CLIENTS: removed all “Today’s …” shortcut strips (cold outreach, client meetings, deal negotiation — plus earlier follow-up / deal closure). They were CRM “due today” shortcuts from the API, not push notifications; the main client list + open client detail is the single path. Pipeline work stays on the client detail screen.
+  - Pipeline Metrics / Recent Activity: activity badge prefers `notes.lead_stage` (canonical CRM stages) when present; feed lists one row per client name so duplicate names from many revenue actions no longer repeat.
+Backend:
+  - `GET /revenue/metrics`: hot lead total uses `COUNT(DISTINCT client_name)` for `hot_lead` rows; period lead comparison uses distinct client names in the date window; recent_activity dedupes by client (newest-first) from hot_lead / deal_closed / revenue_action / commission.
+
+### Day 70: Apr 4 - Follow-up stage UI polish (client detail)
+Application (Mobile):
+  - Client detail pipeline stepper uses short consistent labels (e.g. Follow-up vs split “Follow Up Back”); current goal title uses sentence case (“Follow-up”) instead of all-caps.
+  - Follow-up wizard: progress explains schedule-next count vs backend max (5), primary CTA is “Log touch & schedule next”; “Ready for meeting” / “Not interested” sit under a collapsible “Other outcomes” to reduce clutter; loading shows a thin progress bar.
+
+### Day 71: Apr 4 - CRM reminder notification rules (backend)
+Backend:
+  - Documented in code when `notifications:lead-reminders` fires (daily FCM for active hot leads missing today’s stage work). Skips `status=lost`, terminal CRM buckets (retargeting/stalled; cold calling nutshell/nurture WhatsApp), and leads already marked via `notes.daily_actions[date]`. Push copy uses `CrmPipeline` stage labels. Added `CrmPipeline::actionKeyFromLeadStage` / `actionLabelForLeadStage` for consistent mapping.
+
+### Day 72: Apr 4 - Behavioral Momentum chart (admin user profile)
+Website:
+  - User profile chart: fixed daily series (was using wrong slice so weekday labels repeated/out of order); performance rows sorted by date, then last 7 days chronological. Monthly buckets sorted by year-month. Shared Y-axis (0–100% with ceiling from data), horizontal grid lines, value labels on bars, date sublabels on daily ticks, tighter header layout.
+
+### Day 73: Apr 4 - Profile metrics visibility + refresh preserves dossier
+Website:
+  - Practitioner dossier metric cards: Aggregate Growth & Execution Rate were using gradient text with CSS variables, which often rendered as blank; values now use solid `color`. Short `title` tooltips explain each KPI. URL sync adds `?userId=` on user profile and avoids stripping it before hydrate; after login, refresh on `/user-profile?userId=` restores that user from the users list (removed the old “always redirect to dashboard” behavior).
+
+### Day 74: Apr 4 - Behavioral Momentum chart bars vs curve
+Website:
+  - User profile “Behavioral Momentum Path”: new `MomentumChart` with grouped rounded bars (conscious vs identity gradients) or smooth SVG curves with gradient fills and point markers. Toggle Bars / Curve next to Daily/Weekly/Monthly; choice persisted in `localStorage` (`realtorone-momentum-chart-variant`). Same data and Y scale as before.
+
+### Day 75: Apr 4 - Branding + momentum chart readability
+Website:
+  - Login: replaced emoji mark with `/logo.png`; favicon uses `/logo.png` instead of Vite SVG. Sidebar shows the same logo expanded and collapsed (compact size when collapsed).
+  - Curve chart: removed min-height distortion on the SVG, added bottom/right padding in the viewBox, smaller axis type (12–13px equivalent), so Y ticks and X labels (e.g. WEEK N) stay proportional and are not clipped at the edges.
+
+### Day 76: Apr 4 - Deal Room Excel template download (mobile)
+Application (Mobile):
+  - “How to add clients?” dialog: added a compact “Download sheet format” action under Update Excel Sheet. Bundles `assets/templates/deal_room_clients_template.xlsx` (copied from research `Deal Room Data.xlsx`), writes to temp, opens the system share sheet so users can save the file. Excel row subtitle clarifies using the template columns before upload.
+
+### Day 77: Apr 4 - Excel client import (mobile + API)
+Backend:
+  - `DealRoomExcelImport` support class: shared XLSX parse + upsert logic for `hot_lead` rows (same column rules as the old `leads:sync-excel` command). New authenticated route `POST /clients/import-excel` (multipart field `file`, `.xlsx` only, max ~15MB). `SyncExcelLeads` artisan command refactored to call the same importer.
+Application (Mobile):
+  - Tapping “Update Excel Sheet” opens the system file picker for `.xlsx`, uploads to `/clients/import-excel`, shows success/error from API, refreshes the Deal Room list. Added `file_picker` + `ApiClient.postMultipartFile`.
+  - Follow-up: Excel import uses `FileType.any` + `.xlsx` check; `MissingPluginException` shows rebuild instructions; Android manifest adds `GET_CONTENT` / `OPEN_DOCUMENT` queries for pickers on Android 11+.
+
+### Day 80: Apr 4 - Deal Room Excel import column alignment fix
+Backend:
+  - `DealRoomExcelImport` XLSX reader now places each cell by Excel column letter (`r="B5"` etc.). Previously, omitted blank cells shifted values left so `Name` never lined up with the header — imports showed 0 added and many “skipped” rows. Also handles rich-text shared strings and `inlineStr` cells; optional header aliases for contact/source/stage.
+  - Import API copy: when 0 created/updated but rows were skipped, message explains that the sheet likely has no names in the Name column (e.g. empty template with only headers). Research `Deal Room Data.xlsx` itself is header + blank rows only — real imports need names filled in column A.
+
+### Day 79: Apr 4 - Admin Deal Room Excel from user profile (website)
+Backend:
+  - `POST /admin/users/{userId}/import-excel` (multipart `file`, `.xlsx`, max ~15MB): imports Deal Room rows for that practitioner; requires Bearer token and `admin@realtorone.com`.
+Website:
+  - Practitioner dossier → Deal Room snapshot → **HOT LEADS** card: **+** button opens **Download sheet template** (static `public/deal-room-clients-template.xlsx`) or **Import .xlsx for this user** (calls new admin API, refreshes counts + list). `apiClient.adminImportDealRoomExcel`.
+
+### Day 81: Apr 4 - HOT LEADS compact visual polish
+Website:
+  - User profile → HOT LEADS expanded rows are now denser and clearer: compact chips with source icons/colors (including WhatsApp), package pill styling, and tighter spacing for quick scanning.
+
+### Day 82: Apr 4 - Mobile client-tile compact source chips
+Application (Mobile):
+  - Deal Room `YOUR CLIENTS` tile UI now uses compact multi-chip badges: pipeline stage + source badge with readable icons/colors (WhatsApp, Instagram, cold call, content, referral, fallback), tighter spacing/padding for better density while staying legible.
+
+### Day 83: Apr 4 - Client detail screen declutter (mobile)
+Application (Mobile):
+  - Client detail (`ClientRevenueActionsPage`) simplified for compact readability: removed app-bar subtitle noise, tightened CRM-day banner and stage stepper spacing/sizing, shortened “Current goal” copy to one concise hint, and removed all “Skip wizard” actions across cold calling/follow-up/meeting/negotiation/closure flows.
+
+### Day 84: Mobile UI animations & real brand icons
+- Application (Mobile):
+  - Added `flutter_animate` for smooth page load and list transitions in Deal Room.
+  - Replaced generic chat/camera icons with real WhatsApp and Instagram icons using `font_awesome_flutter`.
+
+### Day 85: Mobile UI polish & icon-only mode chips
+- Application (Mobile):
+  - Reduced top padding and spacing on the client detail screen for a tighter layout.
+  - Refactored all channel selection chips (Call, WA, Email, Video, In Person) to be icon-only squares, making the UI much cleaner and more compact.
+
+### Day 86: Mobile UI polish - removed star icon & fixed top gap
+- Application (Mobile):
+  - Removed the star icon next to 'CURRENT GOAL' to make the layout cleaner and align the text to the left.
+  - Fixed the large white gap at the top of the client detail screen by removing redundant safe area padding and simplifying the app bar title.
+
+### Day 87g: Apr 7 - Client CRM layout (mobile)
+Application (Mobile):
+  - Deal room client actions: CRM day under the app bar title; five-stage stepper uses full card width (dots and connectors edge-aligned via layout math); activity history back on the same scroll below the action card (no separate tab).
+  - Steppers: larger numbered steps, tabular figures, green done + blue active with ring/shadow, pill connectors; schedule follow-up uses card CTA + streak bar; channel chips use call icon, WhatsApp asset, Gmail-style mail icon; date picker sheet copy/icons tightened.
+
+### Day 87h: Apr 7 - CRM stage flows unified chrome (mobile)
+Application (Mobile):
+  - Cold, follow-up, meeting, negotiation, and closure blocks share the same section labels, muted info panels, touch progress strip, next-contact row, horizontal mode chips, and paired outcome buttons for a calmer professional layout.
+  - Cold-call terminal notices (stalled/retargeting) use the same muted panel style; secondary “stay in stage” outline uses a valid dark border color.
+  - Tightened vertical rhythm: smaller section gaps, slimmer panels and CTAs, shorter stepper label stack, and slightly reduced type sizes so the screen reads simpler without losing hierarchy.
+  - Client CRM app bar shows the same `logo.png` brand mark as splash/home (above client name), with a slightly taller toolbar so it does not feel cramped.
+  - Cold calling: single muted flow card for limits, next-contact line, channel, outcomes, and no-answer row; outcomes use divider-separated list rows instead of separate white bordered cards.
+  - Settings: removed the Support & Help block (Help Center, Contact Support, Rate App).
+  - Profile Performance card: removed the “My Challenges” row from the app screen.
+  - CRM touch progress strip (follow-up, meeting, negotiation, closure): title case + insights icon, pill counter chip, 8px pill bar on stronger track/fill contrast, footnote at 11px.
+  - Chatbot launcher: `RevenChatPage.show` uses a genie-style open/close transition (bottom-right squash/expand + slide/fade) for smoother bot window behavior.
+
+### Day 87i: Apr 7 - Admin Deal Room full page (website)
+Website:
+  - User profile: Deal Room snapshot has “See more →” and responsive metric grid; copy points to full workspace.
+  - New tab/route `deal-room` (`/deal-room?userId=`) with `DealRoomPage`: larger KPI cards, full hot-lead list with CRM modal, deals closed, Excel template/import, auto-refresh; shared `dealRoomFormatters.ts`, `DealRoomIconSvg`, `HotLeadFlowModal`.
+  - Deal Room export: admin can now download current hot leads as `.xlsx` in the same template columns used for import (`Name`, `Contact number`, `Email`, `Lead Source`, `Lead Stage`, `Lead Type`).
+  - AI Inbox: center chat is now scrollable with a sticky reply composer (send from the middle panel); Settings now supports provider/model selection + PDF upload to ingest text into the runtime knowledge base; backend adds admin send endpoint and KB PDF ingest route.
+  - Added dedicated `/ai-settings` page for AI provider/model/key, knowledge source toggles (custom/courses), tier-based AI access gating, test prompt runner, and per-user token usage list; User Profile now shows an AI token usage bar.
+  - Expanded AI providers in settings (OpenAI, OpenRouter, Groq, Together, DeepSeek, Mistral, Fireworks, xAI) using OpenAI-compatible chat-completions URLs + optional custom base URL override.
+  - AI Settings: upgraded knowledge base into multiple toggleable datasets (many blocks + PDF ingestion becomes its own dataset) and added Behavior/Role instructions that are injected into the system prompt to control tone/rules.
+  - AI Inbox: removed duplicated settings card from inbox panel (now links to `/ai-settings`); sidebar no longer shows AI Settings.
+  - AI gating: when a tier is blocked from AI, chatbot fallback replies now include an upgrade suggestion; KB datasets delete now removes the dataset server-side with a confirm popup; each dataset can be refreshed from a new PDF file.
+  - CRM-aware AI: chat controller injects structured Deal Room data (active hot-lead clients and this-month closed deals) into the model so the bot can answer questions like “who are my active clients?” and “how many deals did I close this month?” from live results data.
+
+### Day 87f: Apr 7 - Admin-editable legal → API, web, and mobile WebView
+Backend:
+  - `legal_documents` table; public `GET /legal-documents/{slug}`; admin `GET`/`PUT /admin/legal-documents/{slug}` (HTML body, script tags stripped on save).
+Website:
+  - `/privacy` and `/terms` fetch HTML from the API; admin Settings → Legal includes HTML editor and “Save to API”.
+Application (Mobile):
+  - Settings Legal opens `LegalDocumentWebViewPage` (loads same API HTML via `webview_flutter`); `AppConfig.apiOrigin` for WebView base URL.
+
+### Day 87e: Apr 7 - Client CRM screen clarity (mobile)
+Application (Mobile):
+  - Deal room client detail: calmer goal card (no heavy gradient), larger stepper labels, cold-calling flow split into numbered steps with progress bars, labeled Call/WhatsApp channels, full-width outcome rows with short explanations, and a lighter “no response” action.
+
+### Day 87d: Apr 7 - Settings legal navigation
+Application (Mobile):
+  - Legal rows open privacy/terms in an in-app browser when possible, with clearer “Terms & Conditions” copy.
+Website:
+  - Admin System Configuration page includes a Legal & compliance card linking to `/privacy` and `/terms`.
+
+### Day 87c: Apr 7 - Admin deletion queue + legal links in panel
+Website:
+  - Sidebar footer links to `/privacy` and `/terms` (new tab).
+  - Dashboard shows a compliance alert when users have pending app deletion requests.
+  - Registry table shows a red “Data removal requested” badge; user dossier shows a top banner with request timestamp.
+Backend:
+  - `users.deletion_requested_at` + `status` migration; mobile `request-deletion` sets timestamp; admin stats include `pending_deletion_requests`; re-activating a user clears the deletion flag.
+
+### Day 87b: Apr 7 - Splash brand logo
+Application (Mobile):
+  - Splash screen hero uses `assets/images/logo.png` inside the glass circle instead of the rocket icon; removed duplicate logo below so the brand shows once.
+
+### Day 87: Apr 7 - Privacy Policy and Terms of Service (Play Store / legal)
+Website:
+  - Added public `/privacy` and `/terms` pages (no login) via `main.tsx` routing; login screen links to both.
+Backend:
+  - Added `GET /privacy` and `GET /terms` Blade views under `resources/views/legal/` for the same content when served from Laravel.
+Application (Mobile):
+  - Settings Legal rows open the policy URLs in the external browser; `AppConfig` uses production `https://aanantbishthealing.com` in release and local Vite in debug (overridable with `LEGAL_PRIVACY_URL` / `LEGAL_TERMS_URL`).

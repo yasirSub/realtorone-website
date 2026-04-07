@@ -34,6 +34,12 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
     const [backups, setBackups] = useState<any[]>([]);
     const [showHistory, setShowHistory] = useState(false);
 
+    const [legalSlug, setLegalSlug] = useState<'privacy' | 'terms'>('privacy');
+    const [legalTitle, setLegalTitle] = useState('');
+    const [legalBody, setLegalBody] = useState('');
+    const [legalLoading, setLegalLoading] = useState(false);
+    const [legalSaving, setLegalSaving] = useState(false);
+
     const fetchBackups = async () => {
         try {
             const res = await apiClient.getBackups();
@@ -50,6 +56,45 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
             if (res.success) setPointsValue(res.data.points_per_activity);
         });
     }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        setLegalLoading(true);
+        void apiClient
+            .getAdminLegalDocument(legalSlug)
+            .then((res) => {
+                if (cancelled) return;
+                setLegalLoading(false);
+                if (res.success && res.data) {
+                    setLegalTitle(res.data.title);
+                    setLegalBody(res.data.body_html);
+                }
+            })
+            .catch(() => {
+                if (!cancelled) setLegalLoading(false);
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, [legalSlug]);
+
+    const handleSaveLegal = async () => {
+        setLegalSaving(true);
+        setMessage('');
+        try {
+            const res = await apiClient.updateAdminLegalDocument(legalSlug, {
+                title: legalTitle,
+                body_html: legalBody,
+            });
+            if (res.success) setMessage('Legal document saved. Website /privacy and /terms and the mobile app reflect this content.');
+            else setMessage(String(res.message ?? 'Save failed.'));
+        } catch {
+            setMessage('Network error saving legal document.');
+        } finally {
+            setLegalSaving(false);
+            setTimeout(() => setMessage(''), 5000);
+        }
+    };
 
     const handleSavePoints = async () => {
         setSaving(true);
@@ -265,7 +310,7 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                 <div style={{ height: '8px', background: 'rgba(255,255,255,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
                                     <div style={{
                                         height: '100%', width: `${isBackingUp ? backupProgress : restoreProgress}%`,
-                                        background: isBackingUp ? 'linear-gradient(90deg, #8B5CF6, #6D28D9)' : 'linear-gradient(90deg, #10B981, #059669)',
+                                        background: isBackingUp ? 'linear-gradient(90deg, #8B5CF6, #4f46e5)' : 'linear-gradient(90deg, #10B981, #059669)',
                                         transition: 'width 0.4s ease-out',
                                         boxShadow: `0 0 20px ${isBackingUp ? 'rgba(139, 92, 246, 0.5)' : 'rgba(16, 185, 129, 0.5)'}`
                                     }} />
@@ -361,17 +406,107 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                     </button>
                                 </div>
 
-                                <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-                                    <div style={{ padding: '20px', background: 'rgba(234, 179, 8, 0.05)', border: '1px dashed rgba(234, 179, 8, 0.2)', borderRadius: '15px' }}>
-                                        <div style={{ fontSize: '0.75rem', color: '#EAB308', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                                            <span>⚠️</span> System Advisory
-                                        </div>
-                                        <p style={{ fontSize: '0.7rem', color: '#EAB308', opacity: 0.8, margin: 0, lineHeight: 1.5 }}>
-                                            Always verify ZIP integrity before restoration. Large archives may require extended server allocation.
-                                        </p>
-                                    </div>
-                                </div>
+
                             </div>
+                        </div>
+
+                        {/* Legal: public URLs + admin editor (API → web /privacy /terms + mobile WebView) */}
+                        <div className="glass-panel" style={{ padding: '32px' }}>
+                            <h2 className="text-outfit" style={{ fontSize: '1.15rem', fontWeight: 900, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v18"></path><rect x="4" y="8" width="16" height="12" rx="2"></rect></svg>
+                                Legal &amp; compliance
+                            </h2>
+                            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '18px', lineHeight: 1.5 }}>
+                                Public pages load from the API. Edits here apply to the website and the in-app legal WebView.
+                            </p>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '22px' }}>
+                                <a
+                                    href="/privacy"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn-command"
+                                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '14px 20px', textDecoration: 'none', color: 'var(--text-main)', fontWeight: 800, fontSize: '0.75rem' }}
+                                >
+                                    Preview Privacy →
+                                </a>
+                                <a
+                                    href="/terms"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn-command"
+                                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '14px 20px', textDecoration: 'none', color: 'var(--text-main)', fontWeight: 800, fontSize: '0.75rem' }}
+                                >
+                                    Preview Terms →
+                                </a>
+                            </div>
+
+                            <p style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.35)', letterSpacing: '1px', marginBottom: '12px' }}>EDIT SOURCE (HTML)</p>
+                            <div style={{ marginBottom: '14px' }}>
+                                <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Document</label>
+                                <select
+                                    value={legalSlug}
+                                    onChange={(e) => setLegalSlug(e.target.value as 'privacy' | 'terms')}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 14px',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--glass-border)',
+                                        background: 'rgba(0,0,0,0.35)',
+                                        color: 'var(--text-main)',
+                                        fontWeight: 700,
+                                    }}
+                                >
+                                    <option value="privacy">Privacy Policy</option>
+                                    <option value="terms">Terms &amp; Conditions</option>
+                                </select>
+                            </div>
+                            <div style={{ marginBottom: '14px' }}>
+                                <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Title (shown in app bar)</label>
+                                <input
+                                    type="text"
+                                    value={legalTitle}
+                                    onChange={(e) => setLegalTitle(e.target.value)}
+                                    disabled={legalLoading}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 14px',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--glass-border)',
+                                        background: 'rgba(0,0,0,0.35)',
+                                        color: 'var(--text-main)',
+                                    }}
+                                />
+                            </div>
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '8px' }}>Body (HTML fragment)</label>
+                                <textarea
+                                    value={legalBody}
+                                    onChange={(e) => setLegalBody(e.target.value)}
+                                    disabled={legalLoading}
+                                    rows={12}
+                                    style={{
+                                        width: '100%',
+                                        padding: '14px',
+                                        borderRadius: '12px',
+                                        border: '1px solid var(--glass-border)',
+                                        background: 'rgba(0,0,0,0.35)',
+                                        color: 'var(--text-main)',
+                                        fontFamily: 'ui-monospace, monospace',
+                                        fontSize: '0.75rem',
+                                        lineHeight: 1.45,
+                                        resize: 'vertical',
+                                    }}
+                                />
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => void handleSaveLegal()}
+                                disabled={legalLoading || legalSaving || !legalBody.trim()}
+                                className="btn-command primary"
+                                style={{ width: '100%', padding: '14px', fontWeight: 900, fontSize: '0.75rem' }}
+                            >
+                                {legalSaving ? 'SAVING…' : legalLoading ? 'LOADING…' : 'SAVE TO API'}
+                            </button>
                         </div>
 
                         {/* STATUS NOTIFICATION */}

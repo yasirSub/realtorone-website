@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { apiClient } from '../api/client';
 import type { AdminAiUserSummary, AiHumanTicket, ChatMessage, ChatSession, Course } from '../types';
 
@@ -18,29 +18,30 @@ function safeParseStoredAssistantContent(content: string): { text: string; cours
 }
 
 const AdminAiInboxPage: React.FC = () => {
-    const [error, setError] = useState<string | null>(null);
     const [adminUsers, setAdminUsers] = useState<AdminAiUserSummary[]>([]);
-    const [loadingUsers, setLoadingUsers] = useState(false);
+    const [, setLoadingUsers] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
     const [sessions, setSessions] = useState<ChatSession[]>([]);
-    const [loadingSessions, setLoadingSessions] = useState(false);
+    const [, setLoadingSessions] = useState(false);
     const [selectedSessionId, setSelectedSessionId] = useState<number | null>(null);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [loadingMessages, setLoadingMessages] = useState(false);
     const [kb, setKb] = useState<{ tier: string; courses: Course[] } | null>(null);
-    const [loadingKb, setLoadingKb] = useState(false);
-    const [tickets, setTickets] = useState<AiHumanTicket[]>([]);
-    const [loadingTickets, setLoadingTickets] = useState(false);
+    const [, setLoadingKb] = useState(false);
+    const [, setTickets] = useState<AiHumanTicket[]>([]);
+    const [, setLoadingTickets] = useState(false);
     const [ticketRequest, setTicketRequest] = useState('');
     const [ticketCreateLoading, setTicketCreateLoading] = useState(false);
-    const [resolutionByTicketId, setResolutionByTicketId] = useState<Record<number, string>>({});
+    const [centerDraft, setCenterDraft] = useState('');
+    const [centerSending, setCenterSending] = useState(false);
+    // Settings are handled in /ai-settings
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
     const loadUsers = useCallback(async () => {
         setLoadingUsers(true);
         try {
             const res = await apiClient.getAdminAiUsers();
-            if (res.success) {
+            if (res.success && res.data) {
                 setAdminUsers(res.data);
                 if (res.data.length > 0) setSelectedUserId(res.data[0].id);
             }
@@ -51,7 +52,7 @@ const AdminAiInboxPage: React.FC = () => {
         setLoadingSessions(true);
         try {
             const res = await apiClient.getAdminAiUserSessions(userId);
-            if (res.success) {
+            if (res.success && res.data) {
                 setSessions(res.data);
                 setSelectedSessionId(res.data.length > 0 ? res.data[0].id : null);
             }
@@ -62,7 +63,7 @@ const AdminAiInboxPage: React.FC = () => {
         setLoadingMessages(true);
         try {
             const res = await apiClient.getAdminAiSessionMessages(sessionId);
-            if (res.success) setMessages(res.data);
+            if (res.success && res.data) setMessages(res.data);
         } finally { setLoadingMessages(false); }
     }, []);
 
@@ -70,7 +71,7 @@ const AdminAiInboxPage: React.FC = () => {
         setLoadingKb(true);
         try {
             const res = await apiClient.getAdminAiUserKb(userId);
-            if (res.success) setKb(res.data);
+            if (res.success && res.data) setKb(res.data);
         } finally { setLoadingKb(false); }
     }, []);
 
@@ -78,11 +79,13 @@ const AdminAiInboxPage: React.FC = () => {
         setLoadingTickets(true);
         try {
             const res = await apiClient.getAdminAiTickets();
-            if (res.success) setTickets(res.data);
+            if (res.success && res.data) setTickets(res.data);
         } finally { setLoadingTickets(false); }
     }, []);
 
-    useEffect(() => { void loadUsers(); }, [loadUsers]);
+    useEffect(() => {
+        void loadUsers();
+    }, [loadUsers]);
     useEffect(() => {
         if (selectedUserId === null) return;
         void loadSessions(selectedUserId);
@@ -110,18 +113,29 @@ const AdminAiInboxPage: React.FC = () => {
         } finally { setTicketCreateLoading(false); }
     };
 
-    const handleResolveTicket = async (ticket: AiHumanTicket) => {
-        const resolution = (resolutionByTicketId[ticket.id!] ?? '').trim();
-        if (!resolution) return;
-        const res = await apiClient.resolveAdminAiTicket(ticket.id!, resolution);
-        if (res.success) {
-            setResolutionByTicketId(prev => ({ ...prev, [ticket.id!]: '' }));
-            await loadTickets();
+    const handleCenterSend = async () => {
+        if (selectedUserId === null) return;
+        const msg = centerDraft.trim();
+        if (!msg) return;
+        setCenterSending(true);
+        try {
+            const res = await apiClient.adminAiSendForUser({
+                user_id: selectedUserId,
+                session_id: selectedSessionId ?? null,
+                message: msg,
+            });
+            if (res.success && typeof res.session_id === 'number') {
+                setCenterDraft('');
+                if (selectedSessionId !== res.session_id) {
+                    setSelectedSessionId(res.session_id);
+                    await loadSessions(selectedUserId);
+                }
+                await loadMessages(res.session_id);
+            }
+        } finally {
+            setCenterSending(false);
         }
     };
-
-    const selectedUser = useMemo(() => adminUsers.find(u => u.id === selectedUserId), [adminUsers, selectedUserId]);
-    const filteredTickets = useMemo(() => tickets.filter(t => t.user_id === selectedUserId), [tickets, selectedUserId]);
 
     return (
         <div className="view-container fade-in" style={{ padding: '0 40px 60px 40px' }}>
@@ -141,6 +155,13 @@ const AdminAiInboxPage: React.FC = () => {
                 </div>
 
                 <div style={{ display: 'flex', gap: '30px', alignItems: 'center' }}>
+                    <a
+                        href="/ai-settings"
+                        className="btn-command"
+                        style={{ height: 42, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', padding: '0 14px', textDecoration: 'none' }}
+                    >
+                        AI SETTINGS →
+                    </a>
                     <div style={{ textAlign: 'right' }}>
                         <div className="card-heading" style={{ marginBottom: '4px' }}>System Velocity</div>
                         <div className="text-outfit" style={{ fontSize: '1.2rem', fontWeight: 700 }}>{adminUsers.reduce((acc, u) => acc + u.ai_tokens_today, 0).toLocaleString()} <span style={{ fontSize: '0.7rem', opacity: 0.5 }}>TOKENS today</span></div>
@@ -154,7 +175,7 @@ const AdminAiInboxPage: React.FC = () => {
             </div>
 
             {/* Neural Matrix Layout */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1.2fr) 3.5fr minmax(320px, 1.3fr)', gap: '30px', height: 'calc(100vh - 280px)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(280px, 1fr) 4.2fr minmax(320px, 1.2fr)', gap: '20px', height: 'calc(100vh - 280px)' }}>
                 
                 {/* Operator Registry (Left) */}
                 <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', padding: '0' }}>
@@ -163,7 +184,13 @@ const AdminAiInboxPage: React.FC = () => {
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '15px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {adminUsers.map(u => (
+                            {adminUsers.map(u => {
+                                const tier = u.membership_tier || 'Consultant';
+                                const tierColor =
+                                    tier === 'Titan' ? '#facc15' :
+                                    tier === 'Rainmaker' ? '#22c55e' :
+                                    '#6366f1';
+                                return (
                                 <button
                                     key={u.id}
                                     onClick={() => setSelectedUserId(u.id)}
@@ -172,8 +199,8 @@ const AdminAiInboxPage: React.FC = () => {
                                         alignItems: 'center',
                                         gap: '14px',
                                         padding: '16px',
-                                        background: u.id === selectedUserId ? 'rgba(109, 40, 217, 0.1)' : 'rgba(255,255,255,0.02)',
-                                        border: u.id === selectedUserId ? '1px solid rgba(109, 40, 217, 0.2)' : '1px solid transparent',
+                                        background: u.id === selectedUserId ? 'rgba(79, 70, 229, 0.1)' : 'rgba(255,255,255,0.02)',
+                                        border: u.id === selectedUserId ? '1px solid rgba(79, 70, 229, 0.2)' : '1px solid transparent',
                                         borderRadius: '16px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s',
@@ -185,11 +212,19 @@ const AdminAiInboxPage: React.FC = () => {
                                     </div>
                                     <div style={{ flex: 1 }}>
                                         <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)', marginBottom: '2px' }}>{u.name || u.email}</div>
-                                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{u.membership_tier || 'Consultant'} • {u.ai_tokens_today} TK</div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+                                            <span style={{ fontSize: '0.6rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>
+                                                <span style={{ color: tierColor }}>{tier}</span>
+                                            </span>
+                                            <span style={{ fontSize: '0.65rem', fontWeight: 850, color: 'var(--text-muted)' }}>
+                                                {u.ai_tokens_today.toLocaleString()} TK today
+                                            </span>
+                                        </div>
                                     </div>
                                     {u.id === selectedUserId && <div style={{ width: '4px', height: '20px', background: 'var(--primary)', borderRadius: '10px' }}></div>}
                                 </button>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -207,7 +242,7 @@ const AdminAiInboxPage: React.FC = () => {
                             <div style={{ padding: '6px 12px', background: 'rgba(0, 224, 150, 0.1)', borderRadius: '8px', color: '#00e096', fontSize: '0.65rem', fontWeight: 900, border: '1px solid rgba(0, 224, 150, 0.2)' }}>ENCRYPTED</div>
                         </div>
 
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '40px' }}>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '26px 30px' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
                                 {loadingMessages ? (
                                     <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)', fontWeight: 700 }}>Initializing Message Protocol...</div>
@@ -219,9 +254,9 @@ const AdminAiInboxPage: React.FC = () => {
                                             <div style={{ 
                                                 padding: '20px', 
                                                 borderRadius: m.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px',
-                                                background: m.role === 'user' ? 'rgba(255,255,255,0.03)' : 'rgba(109, 40, 217, 0.1)',
-                                                border: m.role === 'user' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(109, 40, 217, 0.2)',
-                                                boxShadow: m.role === 'user' ? 'none' : '0 10px 30px rgba(109, 40, 217, 0.05)'
+                                                background: m.role === 'user' ? 'rgba(255,255,255,0.03)' : 'rgba(79, 70, 229, 0.1)',
+                                                border: m.role === 'user' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(79, 70, 229, 0.2)',
+                                                boxShadow: m.role === 'user' ? 'none' : '0 10px 30px rgba(79, 70, 229, 0.05)'
                                             }}>
                                                 <div style={{ fontSize: '0.6rem', fontWeight: 900, color: m.role === 'user' ? 'var(--text-muted)' : 'var(--primary)', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '1px' }}>
                                                     {m.role === 'user' ? 'Operator' : 'AI Strategic Core'}
@@ -229,7 +264,7 @@ const AdminAiInboxPage: React.FC = () => {
                                                 <div style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)', lineHeight: '1.6' }}>
                                                     {m.role === 'assistant' ? safeParseStoredAssistantContent(m.content).text : m.content}
                                                 </div>
-                                                {m.total_tokens > 0 && (
+                                                {(m.total_tokens ?? 0) > 0 && (
                                                     <div style={{ marginTop: '15px', paddingTop: '10px', borderTop: '1px solid rgba(255,255,255,0.03)', fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', gap: '15px', fontWeight: 800 }}>
                                                         <span>COMPUTE: {m.total_tokens} TK</span>
                                                         <span>MODEL: {m.model?.toUpperCase() || 'CORE-GEN-3'}</span>
@@ -242,11 +277,55 @@ const AdminAiInboxPage: React.FC = () => {
                                 <div ref={messagesEndRef} />
                             </div>
                         </div>
+
+                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', padding: '16px 18px', background: 'rgba(0,0,0,0.12)' }}>
+                            <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+                                <textarea
+                                    value={centerDraft}
+                                    onChange={(e) => setCenterDraft(e.target.value)}
+                                    placeholder={selectedUserId ? 'Reply from here… (sends as selected user for testing)' : 'Select a user to reply…'}
+                                    className="form-input"
+                                    style={{ flex: 1, minHeight: 44, maxHeight: 120, background: 'rgba(0,0,0,0.15)', resize: 'vertical' }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            void handleCenterSend();
+                                        }
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleCenterSend}
+                                    disabled={centerSending || selectedUserId === null || !centerDraft.trim()}
+                                    className="btn-command primary"
+                                    style={{ width: 130, height: 44, fontSize: '0.72rem', padding: 0 }}
+                                >
+                                    {centerSending ? 'SENDING…' : 'SEND'}
+                                </button>
+                            </div>
+                            <div style={{ marginTop: 8, fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, opacity: 0.8 }}>
+                                Tip: Press Enter to send, Shift+Enter for a new line.
+                            </div>
+                        </div>
                     </div>
                 </div>
 
                 {/* Mediation Hub (Right) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                    {/* AI Runtime Settings (moved to AI Settings page) */}
+                    <div className="glass-panel" style={{ padding: '26px', borderLeft: '4px solid var(--primary)' }}>
+                        <div className="card-heading" style={{ marginBottom: '10px' }}>AI Settings</div>
+                        <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', fontWeight: 700, lineHeight: 1.55, marginBottom: 14 }}>
+                            Provider, model, API key, knowledge datasets/PDFs, behavior/role, tier gating, and test prompt are managed in one place.
+                        </div>
+                        <a
+                            href="/ai-settings"
+                            className="btn-command primary"
+                            style={{ height: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', padding: '0 14px', textDecoration: 'none', width: '100%' }}
+                        >
+                            OPEN AI SETTINGS →
+                        </a>
+                    </div>
                     
                     {/* Knowledge Projections */}
                     <div className="glass-panel" style={{ padding: '30px' }}>

@@ -1,4 +1,4 @@
-export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges' | 'notifications' | 'ai-agent' | 'signup-questions' | 'admin-notifications';
+export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'deal-room' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges' | 'notifications' | 'ai-agent' | 'ai-settings' | 'signup-questions' | 'admin-notifications';
 
 export interface DiagnosisQuestionOption {
     text: string;
@@ -119,6 +119,8 @@ export interface User {
     membership_tier?: 'Consultant' | 'Rainmaker' | 'Titan';
     is_admin?: boolean;
     status?: string;
+    /** ISO timestamp when user requested account deletion from the app (admin queue). */
+    deletion_requested_at?: string | null;
     created_at?: string;
     diagnosis_scores?: {
         branding: number;

@@ -62,7 +62,21 @@ const UsersPage: React.FC<UsersPageProps> = ({
                                     <td data-label="Practitioner">
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer' }} onClick={() => onQuickLook(user)}>
                                             <div className="avatar-chip" style={{ width: '35px', height: '35px', fontSize: '0.8rem' }}>{(user.name || 'U').substring(0, 1)}</div>
-                                            <span style={{ fontWeight: 800, fontSize: '0.9rem' }} className="table-row-hover-link">{user.name}</span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px' }}>
+                                                <span style={{ fontWeight: 800, fontSize: '0.9rem' }} className="table-row-hover-link">{user.name}</span>
+                                                {user.deletion_requested_at ? (
+                                                    <span style={{
+                                                        fontSize: '0.6rem',
+                                                        fontWeight: 900,
+                                                        letterSpacing: '0.5px',
+                                                        textTransform: 'uppercase',
+                                                        color: '#fff',
+                                                        background: 'linear-gradient(90deg, #dc2626, #b91c1c)',
+                                                        padding: '3px 8px',
+                                                        borderRadius: '6px',
+                                                    }} title={user.deletion_requested_at}>Data removal requested</span>
+                                                ) : null}
+                                            </div>
                                         </div>
                                     </td>
                                     <td data-label="Email">

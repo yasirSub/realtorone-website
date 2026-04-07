@@ -73,9 +73,9 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
     }>({ show: false, pkgId: 0, pkgName: '', value: '' });
 
     const activeTabStyle = {
-        background: 'rgba(109, 40, 217, 0.1)',
+        background: 'rgba(79, 70, 229, 0.1)',
         color: 'var(--primary)',
-        borderColor: 'rgba(109, 40, 217, 0.2)'
+        borderColor: 'rgba(79, 70, 229, 0.2)'
     };
 
     return (
@@ -163,7 +163,7 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                         }} 
                         onClick={() => setShowAddPackageModal(true)}
                     >
-                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(109, 40, 217, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
+                        <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(79, 70, 229, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '20px' }}>
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                         </div>
                         <span className="text-outfit" style={{ fontWeight: 800, fontSize: '1rem', letterSpacing: '-0.5px' }}>Create New Protocol</span>
@@ -253,7 +253,7 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                                     onClick={() => setSelectedTierFilter(f as any)}
                                     style={{
                                         padding: '6px 16px',
-                                        background: selectedTierFilter === f ? 'rgba(109, 40, 217, 0.1)' : 'transparent',
+                                        background: selectedTierFilter === f ? 'rgba(79, 70, 229, 0.1)' : 'transparent',
                                         color: selectedTierFilter === f ? 'var(--primary)' : 'var(--text-muted)',
                                         border: 'none',
                                         borderRadius: '8px',
@@ -290,7 +290,7 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
                                             <tr onClick={() => setExpandedUserId(isExpanded ? null : u.id)} style={{ cursor: 'pointer', background: isExpanded ? 'rgba(255,255,255,0.02)' : 'transparent' }}>
                                                 <td>
                                                     <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                                                        <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(109, 40, 217, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
+                                                        <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: 'rgba(79, 70, 229, 0.1)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800 }}>
                                                             {(u.name || 'U')[0]}
                                                         </div>
                                                         <div>

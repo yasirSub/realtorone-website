@@ -1,24 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    --primary: #6d28d9;
-    --primary-glow: rgba(109, 40, 217, 0.3);
-    --accent: #d946ef;
+    --primary: #4f46e5;
+    --primary-rgb: 79, 70, 229;
+    --primary-glow: rgba(79, 70, 229, 0.15);
+    --accent: #818cf8;
 
-    /* Obsidian Elite II - Deep Space Protocol */
-    --bg-app: #030303;
-    --bg-app-rgb: 3, 3, 3;
-    --bg-sidebar: #080808;
-    --bg-card: #0c0c0e;
-    --bg-card-rgb: 12, 12, 14;
-    --bg-modal: #0a0a0a;
+    /* Dark: slate midnight (readable mid-tones — not pure black) */
+    --bg-app: #0f172a;
+    --bg-app-rgb: 15, 23, 42;
+    --bg-sidebar: #131c31;
+    --bg-card: #1e293b;
+    --bg-card-rgb: 30, 41, 59;
+    --bg-modal: #1a2332;
 
-    --glass-border: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(148, 163, 184, 0.14);
 
-    --text-main: #ffffff;
-    --text-main-rgb: 255, 255, 255;
-    --text-secondary: #a1a1aa;
-    --text-muted: #52525b;
+    --text-main: #f1f5f9;
+    --text-main-rgb: 241, 245, 249;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
 
     /* Hyper-Saturated Tactical Accents (from Research) */
     --neon-blue: #3b82f6;
@@ -32,7 +33,7 @@
     --error: #ee5d50;
     --warning: #ffb547;
 
-    --primary-shadow: rgba(109, 40, 217, 0.55);
+    --primary-shadow: rgba(79, 70, 229, 0.22);
     --card-radius: 16px;
     --modal-radius: 24px;
 
@@ -42,8 +43,8 @@
     --anim-slow: 0.7s cubic-bezier(0.4, 0, 0.2, 1);
     --anim-bounce: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 
-    --sidebar-width: 280px;
-    --sidebar-collapsed-width: 75px;
+    --sidebar-width: 260px;
+    --sidebar-collapsed-width: 84px;
     --header-height: 70px;
 }
 
@@ -62,7 +63,7 @@
     --text-secondary: #4a5568;
     --text-muted: #718096;
 
-    --primary-shadow: rgba(109, 40, 217, 0.08);
+    --primary-shadow: rgba(79, 70, 229, 0.08);
     
     /* Light Mode Specific: Sophisticated Horizon Shadows */
     --horizon-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.05), 0 5px 15px -3px rgba(0, 0, 0, 0.02);

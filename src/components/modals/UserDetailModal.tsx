@@ -52,7 +52,7 @@ const UserDetailModal: React.FC<UserDetailModalProps> = ({
                                 <span style={{ fontSize: '0.65rem', fontWeight: 800, color: user.badge_color || '#6b7280', background: `${user.badge_color || '#6b7280'}18`, padding: '2px 8px', borderRadius: '6px' }}>
                                     {user.momentum_badge || 'Inactive'}
                                 </span>
-                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', background: 'rgba(109,40,217,0.1)', padding: '2px 8px', borderRadius: '6px' }}>
+                                <span style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--primary)', background: 'rgba(79, 70, 229,0.1)', padding: '2px 8px', borderRadius: '6px' }}>
                                     🔥 {user.current_streak || 0} Streak
                                 </span>
                             </div>

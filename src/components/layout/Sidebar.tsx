@@ -21,8 +21,17 @@ const Sidebar: React.FC<SidebarProps> = ({
     return (
         <aside className={`sidebar ${isSidebarCollapsed ? 'collapsed' : ''}`}>
             <div className="sidebar-brand">
-                <div className="logo">
-                    {!isSidebarCollapsed && <span>Realtor<span>One</span></span>}
+                <div className="logo" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img
+                        src="/logo.png"
+                        alt="Realtor One"
+                        style={{
+                            height: isSidebarCollapsed ? '36px' : '56px',
+                            width: 'auto',
+                            maxWidth: isSidebarCollapsed ? '40px' : 'none',
+                            objectFit: 'contain',
+                        }}
+                    />
                 </div>
                 <button
                     className="collapse-btn"

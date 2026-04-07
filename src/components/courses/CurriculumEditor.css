@@ -420,24 +420,26 @@
 
 /* Premium Button System */
 .btn-premium-primary {
-    background: var(--primary);
+    background: linear-gradient(180deg, #4f46e5 0%, #3730a3 100%);
     color: white;
-    border: none;
+    border: 1px solid rgba(0, 0, 0, 0.3);
     padding: 0.8rem 2rem;
     border-radius: 12px;
-    font-weight: 800;
-    font-size: 0.9rem;
+    font-weight: 700;
+    font-size: 0.85rem;
     cursor: pointer;
     transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 8px 20px var(--primary-shadow);
+    box-shadow: 0 4px 14px rgba(55, 48, 163, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
     text-transform: uppercase;
-    letter-spacing: 1px;
+    letter-spacing: 0.5px;
 }
 
 .btn-premium-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 12px 28px var(--primary-shadow);
-    filter: brightness(1.1);
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, #5c54eb 0%, #3f36b5 100%);
+    box-shadow: 0 6px 20px rgba(55, 48, 163, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    border-color: rgba(0, 0, 0, 0.4);
 }
 
 .btn-premium-ghost {

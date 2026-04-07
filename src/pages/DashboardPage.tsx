@@ -7,6 +7,7 @@ interface DashboardPageProps {
         active_today: number;
         total_activities: number;
         db_connected: boolean;
+        pending_deletion_requests?: number;
     };
 }
 
@@ -47,9 +48,43 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ stats }) => {
 
     const accentColor = getStatusColor(momentumScore);
 
+    const pendingRemoval = stats.pending_deletion_requests ?? 0;
+
     return (
         <div className="view-container fade-in" style={{ padding: '0 40px 60px 40px' }}>
-            
+            {pendingRemoval > 0 ? (
+                <div
+                    className="glass-panel"
+                    style={{
+                        marginBottom: '24px',
+                        padding: '14px 20px',
+                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: '12px',
+                    }}
+                >
+                    <div>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 950, letterSpacing: '2px', color: '#fecaca', textTransform: 'uppercase', marginBottom: '4px' }}>
+                            Compliance queue
+                        </div>
+                        <div style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+                            <strong style={{ color: 'var(--text-main)' }}>{pendingRemoval}</strong> practitioner{pendingRemoval === 1 ? '' : 's'} requested data / account removal from the app. Open <strong>Registry</strong> and look for the red &quot;Data removal requested&quot; badge.
+                        </div>
+                    </div>
+                    <span style={{
+                        fontSize: '1.25rem',
+                        fontWeight: 950,
+                        color: '#fff',
+                        background: '#dc2626',
+                        padding: '8px 14px',
+                        borderRadius: '10px',
+                    }}>{pendingRemoval}</span>
+                </div>
+            ) : null}
+
             {/* Header: Adaptive Operational Context */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px', paddingTop: '20px' }}>
                 <div>
@@ -91,7 +126,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ stats }) => {
                     </div>
                 </div>
                 <div className="glass-panel" style={{ padding: '24px', display: 'flex', alignItems: 'center', gap: '20px' }}>
-                    <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(109, 40, 217, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>👥</div>
+                    <div style={{ width: '50px', height: '50px', borderRadius: '14px', background: 'rgba(79, 70, 229, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.4rem' }}>👥</div>
                     <div>
                         <div className="card-heading" style={{ marginBottom: '2px' }}>Network</div>
                         <div className="metric-value" style={{ fontSize: '1.5rem' }}>{stats.total_users} Agents</div>

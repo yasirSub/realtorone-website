@@ -148,7 +148,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
         const t = tier?.toLowerCase() || '';
         if (t.includes('titan')) return '#F59E0B'; // Gold/Amber
         if (t.includes('rainmaker')) return '#94A3B8'; // Silver/Slate
-        return '#6d28d9'; // Consultant / Primary Purple
+        return '#4f46e5'; // Consultant / Primary Purple
     };
 
     const tierColor = getTierColor(course?.min_tier);

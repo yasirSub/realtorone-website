@@ -13,11 +13,13 @@ import MomentumPage from './pages/MomentumPage'
 import SubscriptionsPage from './pages/SubscriptionsPage'
 import SettingsPage from './pages/SettingsPage'
 import UserProfilePage from './pages/UserProfilePage'
+import DealRoomPage from './pages/DealRoomPage'
 import { CoursesPage } from './pages/CoursesPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import BadgesPage from './pages/BadgesPage'
 import NotificationsPage from './pages/NotificationsPage'
 import AdminAiInboxPage from './pages/AdminAiInboxPage'
+import AdminAiSettingsPage from './pages/AdminAiSettingsPage'
 import SignupQuestionsPage from './pages/SignupQuestionsPage'
 import AdminNotificationsPage from './pages/AdminNotificationsPage'
 
@@ -36,29 +38,60 @@ function App() {
   const [showPassword, setShowPassword] = useState(false)
   const [loginError, setLoginError] = useState('')
 
-  // Dark mode is always the default — ignore any saved 'light' preference
-
   const [isLoading, setIsLoading] = useState(true)
-  const [stats, setStats] = useState({ total_users: 0, active_today: 0, total_activities: 0, db_connected: false })
+  const [stats, setStats] = useState({ total_users: 0, active_today: 0, total_activities: 0, db_connected: false, pending_deletion_requests: 0 })
   const [users, setUsers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  // Initialize from URL or default
+  // Initialize from URL or default (pathname only; query handled after users load)
   const getInitialTab = (): Tab => {
-    const path = window.location.pathname.replace('/', '') as Tab;
-    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'subscriptions', 'courses', 'leaderboard', 'badges', 'notifications', 'ai-agent', 'signup-questions', 'admin-notifications'];
-    return validTabs.includes(path) ? path : 'dashboard';
+    const seg = window.location.pathname.replace(/^\/+/, '').split('/').filter(Boolean)[0] ?? 'dashboard';
+    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'deal-room', 'subscriptions', 'courses', 'leaderboard', 'badges', 'notifications', 'ai-agent', 'ai-settings', 'signup-questions', 'admin-notifications'];
+    return validTabs.includes(seg as Tab) ? (seg as Tab) : 'dashboard';
   };
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab())
 
-  // Sync URL with tab
-  useEffect(() => {
-    if (activeTab) {
-      window.history.pushState(null, '', `/${activeTab}`);
-    }
-  }, [activeTab]);
-
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
-  const [theme, setTheme] = useState<string>('dark') // always default to dark
+
+  // Keep URL in sync so refresh restores tab + practitioner profile (?userId=)
+  useEffect(() => {
+    if (!activeTab) return;
+    if ((activeTab === 'user-profile' || activeTab === 'deal-room') && !selectedUser) {
+      return;
+    }
+    let path = `/${activeTab}`;
+    if ((activeTab === 'user-profile' || activeTab === 'deal-room') && selectedUser) {
+      path += `?userId=${selectedUser.id}`;
+    }
+    const next = path + window.location.hash;
+    if (window.location.pathname + window.location.search + window.location.hash !== next) {
+      window.history.replaceState(null, '', next);
+    }
+  }, [activeTab, selectedUser]);
+
+  // Restore selected user after refresh when URL is /user-profile?userId= or /deal-room?userId=
+  useEffect(() => {
+    if (!isLoggedIn || (activeTab !== 'user-profile' && activeTab !== 'deal-room') || selectedUser) return;
+    const params = new URLSearchParams(window.location.search);
+    const uid = params.get('userId');
+    if (!uid) {
+      setActiveTab('dashboard');
+      return;
+    }
+    if (users.length === 0) return;
+    const id = parseInt(uid, 10);
+    if (!Number.isFinite(id)) {
+      setActiveTab('dashboard');
+      return;
+    }
+    const u = users.find((x) => x.id === id);
+    if (u) setSelectedUser(u);
+    else setActiveTab('dashboard');
+  }, [isLoggedIn, activeTab, users, selectedUser]);
+  const [theme, setTheme] = useState<string>(() => {
+    const saved = localStorage.getItem('theme')
+    if (saved === 'light' || saved === 'dark') return saved
+    return 'light'
+  })
   const [activeTier, setActiveTier] = useState<'All' | 'Consultant' | 'Rainmaker' | 'Titan'>('All')
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(localStorage.getItem('sidebarCollapsed') === 'true')
 
@@ -107,13 +140,6 @@ function App() {
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', String(isSidebarCollapsed))
   }, [isSidebarCollapsed])
-
-  // On refresh at /user-profile, selectedUser is never persisted — redirect to dashboard
-  useEffect(() => {
-    if (isLoggedIn && activeTab === 'user-profile' && !selectedUser) {
-      setActiveTab('dashboard');
-    }
-  }, [isLoggedIn, activeTab, selectedUser]);
 
   const toggleTheme = () => setTheme(theme === 'light' ? 'dark' : 'light')
 
@@ -187,7 +213,13 @@ function App() {
           apiClient.getUsers()
         ]);
 
-        if (statsRes.status === 'fulfilled') setStats(statsRes.value);
+        if (statsRes.status === 'fulfilled') {
+          const s = statsRes.value;
+          setStats({
+            ...s,
+            pending_deletion_requests: s.pending_deletion_requests ?? 0,
+          });
+        }
         if (usersRes.status === 'fulfilled') setUsers(usersRes.value);
 
         Promise.all([
@@ -341,13 +373,24 @@ function App() {
               }}
             />
           )}
+          {activeTab === 'deal-room' && selectedUser && (
+            <DealRoomPage
+              user={selectedUser}
+              onBackToProfile={() => setActiveTab('user-profile')}
+              onBackToRegistry={() => {
+                setSelectedUser(null);
+                setActiveTab('users');
+              }}
+            />
+          )}
           {activeTab === 'leaderboard' && <LeaderboardPage />}
           {activeTab === 'badges' && <BadgesPage />}
           {activeTab === 'notifications' && <NotificationsPage users={users} />}
           {activeTab === 'ai-agent' && <AdminAiInboxPage />}
+          {activeTab === 'ai-settings' && <AdminAiSettingsPage />}
           {activeTab === 'signup-questions' && <SignupQuestionsPage />}
           {activeTab === 'admin-notifications' && <AdminNotificationsPage />}
-          {activeTab === 'user-profile' && !selectedUser && (
+          {(activeTab === 'user-profile' || activeTab === 'deal-room') && !selectedUser && (
             <div className="app-page-loader">
               <div className="loader" style={{ width: 48, height: 48, borderWidth: 4 }} />
               <span style={{ marginTop: 16, fontSize: 14, fontWeight: 600, color: 'var(--text-muted)' }}>Redirecting...</span>

@@ -1,7 +1,7 @@
 import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge, NotificationBroadcast, ChatSession, ChatMessage, AdminAiUserSummary, AiHumanTicket, DiagnosisQuestion, DiagnosisQuestionOption } from '../types';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || (['localhost', '127.0.0.1'].includes(window.location.hostname) ? 'http://127.0.0.1:8000/api' : '/api');
-console.log('API Base URL:', API_BASE_URL);
+/** Default `/api` uses Vite dev proxy → http://127.0.0.1:8000 (see vite.config.ts). Override with VITE_API_BASE_URL for production or a remote API. */
+const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
 
 const parseJsonSafely = async <T>(response: Response, fallbackMessage: string): Promise<T> => {
     const text = await response.text();
@@ -36,7 +36,7 @@ export const apiClient = {
             throw error;
         }
     },
-    getStats: async (): Promise<{ total_users: number; active_today: number; total_activities: number; db_connected: boolean }> => {
+    getStats: async (): Promise<{ total_users: number; active_today: number; total_activities: number; db_connected: boolean; pending_deletion_requests?: number }> => {
         try {
             const response = await fetch(`${API_BASE_URL}/admin/stats`);
             if (!response.ok) throw new Error('Network response was not ok');
@@ -773,6 +773,129 @@ export const apiClient = {
         return response.json();
     },
 
+    getAdminAiSettings: async (): Promise<{
+        success: boolean;
+        data?: {
+            provider: string;
+            model: string;
+            base_url?: string;
+            api_key: string;
+            has_api_key: boolean;
+            knowledge_base: string;
+            kb_blocks?: { id: string; title?: string; content: string; enabled?: boolean }[];
+            behavior?: string;
+            kb_sources?: { custom: boolean; courses: boolean };
+            tier_allow?: { Consultant: boolean; Rainmaker: boolean; Titan: boolean };
+        };
+        message?: string;
+    }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/settings`, {
+            method: 'GET',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return response.json();
+    },
+
+    updateAdminAiSettings: async (payload: {
+        provider?: string;
+        model?: string;
+        base_url?: string;
+        api_key?: string;
+        knowledge_base?: string;
+        kb_blocks?: { id?: string; title?: string; content?: string; enabled?: boolean }[];
+        behavior?: string;
+        kb_sources?: { custom?: boolean; courses?: boolean };
+        tier_allow?: { Consultant?: boolean; Rainmaker?: boolean; Titan?: boolean };
+    }): Promise<{
+        success: boolean;
+        data?: {
+            provider: string;
+            model: string;
+            base_url?: string;
+            has_api_key: boolean;
+            knowledge_base: string;
+            kb_blocks?: { id: string; title?: string; content: string; enabled?: boolean }[];
+            behavior?: string;
+            kb_sources?: { custom: boolean; courses: boolean };
+            tier_allow?: { Consultant: boolean; Rainmaker: boolean; Titan: boolean };
+        };
+        message?: string;
+    }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/settings`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify(payload)
+        });
+        return response.json();
+    },
+
+    getAdminAiUserUsage: async (userId: number): Promise<{ success: boolean; data?: { ai_tokens_today: number; ai_calls_today: number; ai_tokens_total: number; ai_calls_total: number }; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/users/${userId}/usage`, {
+            method: 'GET',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return parseJsonSafely(response, 'Failed to fetch AI usage');
+    },
+
+    uploadAdminAiKnowledgeBasePdf: async (payload: { pdf: File; mode?: 'append' | 'replace'; title?: string }): Promise<{ success: boolean; data?: { knowledge_base: string; kb_blocks?: { id: string; title?: string; content: string; enabled?: boolean }[] }; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const form = new FormData();
+        form.append('pdf', payload.pdf);
+        if (payload.mode) form.append('mode', payload.mode);
+        if (payload.title) form.append('title', payload.title);
+
+        const response = await fetch(`${API_BASE_URL}/admin/ai/settings/knowledge-base-pdf`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: form
+        });
+
+        return parseJsonSafely(response, 'Failed to upload PDF knowledge base');
+    },
+
+    replaceAdminAiKbBlockPdf: async (payload: { block_id: string; pdf: File; title?: string }): Promise<{ success: boolean; data?: { kb_blocks?: { id: string; title?: string; content: string; enabled?: boolean }[] }; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const form = new FormData();
+        form.append('pdf', payload.pdf);
+        if (payload.title) form.append('title', payload.title);
+
+        const response = await fetch(`${API_BASE_URL}/admin/ai/settings/kb-block/${encodeURIComponent(payload.block_id)}/pdf`, {
+            method: 'POST',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+            body: form
+        });
+
+        return parseJsonSafely(response, 'Failed to replace dataset PDF');
+    },
+
+    deleteAdminAiKbBlock: async (blockId: string): Promise<{ success: boolean; data?: { kb_blocks?: { id: string; title?: string; content: string; enabled?: boolean }[] }; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/settings/kb-block/${encodeURIComponent(blockId)}`, {
+            method: 'DELETE',
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        return parseJsonSafely(response, 'Failed to delete dataset');
+    },
+
+    adminAiSendForUser: async (payload: { user_id: number; session_id?: number | null; message: string }): Promise<{ success: boolean; reply?: string; session_id?: number; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/ai/users/${payload.user_id}/send`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ session_id: payload.session_id ?? null, message: payload.message })
+        });
+        return parseJsonSafely(response, 'Failed to send message');
+    },
+
     // Admin: human handoff tickets
     createAdminAiTicket: async (payload: { user_id: number; chat_session_id?: number | null; request_message: string }): Promise<{ success: boolean; data?: AiHumanTicket; message?: string }> => {
         const token = localStorage.getItem('adminToken');
@@ -949,7 +1072,67 @@ export const apiClient = {
             method: 'POST'
         });
         return response.json();
-    }
+    },
+
+    /** Admin only: import Deal Room .xlsx into the practitioner’s hot leads (same format as mobile). */
+    adminImportDealRoomExcel: async (
+        userId: number,
+        file: File
+    ): Promise<{ success: boolean; message?: string; created?: number; updated?: number; skipped?: number }> => {
+        const token = localStorage.getItem('adminToken');
+        const formData = new FormData();
+        formData.append('file', file);
+        const response = await fetch(`${API_BASE_URL}/admin/users/${userId}/import-excel`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: formData,
+        });
+        return await parseJsonSafely(response, 'Excel import failed');
+    },
+
+    /** Public: HTML for /privacy, /terms, and mobile WebView (no auth). */
+    fetchLegalDocument: async (
+        slug: 'privacy' | 'terms'
+    ): Promise<{
+        success?: boolean;
+        title?: string;
+        html?: string;
+        updated_at?: string;
+        message?: string;
+    }> => {
+        const response = await fetch(`${API_BASE_URL}/legal-documents/${slug}`);
+        return await parseJsonSafely(response, 'Legal document request failed');
+    },
+
+    getAdminLegalDocument: async (
+        slug: 'privacy' | 'terms'
+    ): Promise<{
+        success?: boolean;
+        data?: { slug: string; title: string; body_html: string; updated_at?: string };
+        message?: string;
+    }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/legal-documents/${slug}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        return await parseJsonSafely(response, 'Failed to load legal document');
+    },
+
+    updateAdminLegalDocument: async (
+        slug: 'privacy' | 'terms',
+        payload: { title: string; body_html: string }
+    ): Promise<{ success?: boolean; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/legal-documents/${slug}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(payload),
+        });
+        return await parseJsonSafely(response, 'Failed to save legal document');
+    },
 };
 
 

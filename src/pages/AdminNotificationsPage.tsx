@@ -52,11 +52,11 @@ const AdminNotificationsPage: React.FC = () => {
                                         padding: '24px 30px',
                                         display: 'flex',
                                         gap: '24px',
-                                        background: 'rgba(12, 12, 14, 0.6)',
+                                        background: 'rgba(30, 41, 59, 0.6)',
                                         borderColor: 'rgba(255, 255, 255, 0.04)',
                                     }}
                                 >
-                                    <div className={`notification-icon-wrap ${log.type}`} style={{ width: '52px', height: '52px', borderRadius: '16px', background: `rgba(${log.type === 'success' ? '0,224,150' : log.type === 'error' ? '238,93,80' : '109,40,217'}, 0.1)` }}>
+                                    <div className={`notification-icon-wrap ${log.type}`} style={{ width: '52px', height: '52px', borderRadius: '16px', background: `rgba(${log.type === 'success' ? '0,224,150' : log.type === 'error' ? '238,93,80' : '79, 70, 229'}, 0.1)` }}>
                                         {log.type === 'success' && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#00e096" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                                         {log.type === 'info' && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>}
                                         {log.type === 'error' && <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ee5d50" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>}
