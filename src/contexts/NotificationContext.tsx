@@ -24,6 +24,7 @@ interface NotificationContextType {
     history: Notification[];
     addNotification: (notification: Omit<Notification, 'id'>) => void;
     removeNotification: (id: string) => void;
+    dismissHistoryItem: (id: string) => void;
     clearHistory: () => void;
 }
 
@@ -64,8 +65,25 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         localStorage.removeItem('admin_notification_history');
     }, []);
 
+    const dismissHistoryItem = useCallback((id: string) => {
+        setHistory((prev) => {
+            const updated = prev.filter((entry) => entry.id !== id);
+            localStorage.setItem('admin_notification_history', JSON.stringify(updated));
+            return updated;
+        });
+    }, []);
+
     return (
-        <NotificationContext.Provider value={{ notifications, history, addNotification, removeNotification, clearHistory }}>
+        <NotificationContext.Provider
+            value={{
+                notifications,
+                history,
+                addNotification,
+                removeNotification,
+                dismissHistoryItem,
+                clearHistory,
+            }}
+        >
             {children}
             <div className="notification-container">
                 {notifications.map((n) => (

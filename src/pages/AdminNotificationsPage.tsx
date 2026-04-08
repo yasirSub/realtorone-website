@@ -2,7 +2,7 @@ import React from 'react';
 import { useNotification } from '../contexts/NotificationContext';
 
 const AdminNotificationsPage: React.FC = () => {
-    const { history, clearHistory } = useNotification();
+    const { history, clearHistory, dismissHistoryItem } = useNotification();
 
     return (
         <div className="view-container fade-in" style={{ padding: '0 40px 60px 40px' }}>
@@ -78,7 +78,12 @@ const AdminNotificationsPage: React.FC = () => {
 
                                         <div style={{ display: 'flex', gap: '12px' }}>
                                             <button className="btn-command">Explore Records</button>
-                                            <button className="btn-command">Dismiss</button>
+                                            <button
+                                                className="btn-command"
+                                                onClick={() => dismissHistoryItem(log.id)}
+                                            >
+                                                Dismiss
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
