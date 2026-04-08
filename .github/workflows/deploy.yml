@@ -41,6 +41,7 @@ jobs:
             systemctl stop nginx || true
             systemctl disable nginx || true
 
+            docker compose down --remove-orphans || true
             docker compose up -d --build --remove-orphans website
             docker image prune -af
             docker ps --filter name=realtorone-website
