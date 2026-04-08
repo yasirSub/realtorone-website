@@ -15,7 +15,15 @@ interface SettingsPageProps {
 const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
     const [pointsValue, setPointsValue] = useState(500);
     const [saving, setSaving] = useState(false);
+    const [savingAppConfig, setSavingAppConfig] = useState(false);
     const [message, setMessage] = useState('');
+
+    const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
+    const [maintenanceMessage, setMaintenanceMessage] = useState('');
+    const [minAndroidVersion, setMinAndroidVersion] = useState('');
+    const [minIosVersion, setMinIosVersion] = useState('');
+    const [androidStoreUrl, setAndroidStoreUrl] = useState('');
+    const [iosStoreUrl, setIosStoreUrl] = useState('');
 
     // Backup State
     const [includeDb, setIncludeDb] = useState(true);
@@ -54,6 +62,17 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
         // Load settings
         apiClient.getPointsPerActivity().then((res: any) => {
             if (res.success) setPointsValue(res.data.points_per_activity);
+        });
+
+        // Load app runtime config (maintenance + min versions)
+        apiClient.getAdminAppConfig().then((res: any) => {
+            if (!res?.success || !res.data) return;
+            setMaintenanceEnabled(Boolean(res.data.maintenance_enabled));
+            setMaintenanceMessage(String(res.data.maintenance_message ?? ''));
+            setMinAndroidVersion(String(res.data.min_android_version ?? ''));
+            setMinIosVersion(String(res.data.min_ios_version ?? ''));
+            setAndroidStoreUrl(String(res.data.android_store_url ?? ''));
+            setIosStoreUrl(String(res.data.ios_store_url ?? ''));
         });
     }, []);
 
@@ -107,6 +126,28 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
         } finally {
             setSaving(false);
             setTimeout(() => setMessage(''), 3000);
+        }
+    };
+
+    const handleSaveAppConfig = async () => {
+        setSavingAppConfig(true);
+        setMessage('');
+        try {
+            const res = await apiClient.updateAdminAppConfig({
+                maintenance_enabled: maintenanceEnabled,
+                maintenance_message: maintenanceMessage,
+                min_android_version: minAndroidVersion,
+                min_ios_version: minIosVersion,
+                android_store_url: androidStoreUrl,
+                ios_store_url: iosStoreUrl,
+            });
+            if (res.success) setMessage('App runtime config saved. Mobile startup will reflect these settings.');
+            else setMessage(String(res.message ?? 'Failed to save app runtime config.'));
+        } catch {
+            setMessage('Network error saving app runtime config.');
+        } finally {
+            setSavingAppConfig(false);
+            setTimeout(() => setMessage(''), 5000);
         }
     };
 
@@ -363,14 +404,155 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                     {/* RIGHT COLUMN: MAINTENANCE & TERMINAL */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
 
-                        {/* MAINTENANCE CARD */}
+                        {/* APP RUNTIME CONFIG (maintenance + min versions) */}
                         <div className="glass-panel" style={{ padding: '40px' }}>
                             <h2 className="text-outfit" style={{ fontSize: '1.4rem', fontWeight: 900, marginBottom: '30px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                                Terminal Control
+                                App Runtime Config
                             </h2>
 
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '6px' }}>
+                                            MAINTENANCE MODE
+                                        </div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                                            When enabled, the mobile app shows a maintenance screen on startup.
+                                        </div>
+                                    </div>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={maintenanceEnabled}
+                                            onChange={(e) => setMaintenanceEnabled(e.target.checked)}
+                                        />
+                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px' }}>
+                                            {maintenanceEnabled ? 'ON' : 'OFF'}
+                                        </span>
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '12px' }}>
+                                        MAINTENANCE MESSAGE (OPTIONAL)
+                                    </label>
+                                    <textarea
+                                        value={maintenanceMessage}
+                                        onChange={(e) => setMaintenanceMessage(e.target.value)}
+                                        rows={3}
+                                        style={{
+                                            width: '100%',
+                                            padding: '14px',
+                                            borderRadius: '12px',
+                                            border: '1px solid var(--glass-border)',
+                                            background: 'rgba(0,0,0,0.35)',
+                                            color: 'var(--text-main)',
+                                            fontFamily: 'ui-sans-serif, system-ui',
+                                            fontSize: '0.8rem',
+                                            lineHeight: 1.4,
+                                            resize: 'vertical',
+                                        }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '10px' }}>
+                                            MIN ANDROID VERSION
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={minAndroidVersion}
+                                            onChange={(e) => setMinAndroidVersion(e.target.value)}
+                                            placeholder="e.g. 1.2.4"
+                                            style={{
+                                                width: '100%',
+                                                background: 'rgba(0,0,0,0.4)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '12px',
+                                                padding: '12px',
+                                                color: 'var(--text-main)',
+                                                fontWeight: 800,
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '10px' }}>
+                                            MIN iOS VERSION
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={minIosVersion}
+                                            onChange={(e) => setMinIosVersion(e.target.value)}
+                                            placeholder="e.g. 1.2.4"
+                                            style={{
+                                                width: '100%',
+                                                background: 'rgba(0,0,0,0.4)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '12px',
+                                                padding: '12px',
+                                                color: 'var(--text-main)',
+                                                fontWeight: 800,
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '10px' }}>
+                                            ANDROID STORE URL
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={androidStoreUrl}
+                                            onChange={(e) => setAndroidStoreUrl(e.target.value)}
+                                            placeholder="https://play.google.com/store/apps/details?id=..."
+                                            style={{
+                                                width: '100%',
+                                                background: 'rgba(0,0,0,0.4)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '12px',
+                                                padding: '12px',
+                                                color: 'var(--text-main)',
+                                                fontWeight: 700,
+                                            }}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '10px' }}>
+                                            iOS STORE URL
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={iosStoreUrl}
+                                            onChange={(e) => setIosStoreUrl(e.target.value)}
+                                            placeholder="https://apps.apple.com/app/id..."
+                                            style={{
+                                                width: '100%',
+                                                background: 'rgba(0,0,0,0.4)',
+                                                border: '1px solid var(--glass-border)',
+                                                borderRadius: '12px',
+                                                padding: '12px',
+                                                color: 'var(--text-main)',
+                                                fontWeight: 700,
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={() => void handleSaveAppConfig()}
+                                    disabled={savingAppConfig}
+                                    className="btn-command primary"
+                                    style={{ width: '100%', padding: '14px', fontWeight: 900, fontSize: '0.75rem' }}
+                                >
+                                    {savingAppConfig ? 'SAVING…' : 'SAVE APP CONFIG'}
+                                </button>
+
+                                <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)' }} />
+
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '12px' }}>GLOBAL ACTIVITY WEIGHT</label>
                                     <div style={{ display: 'flex', gap: '15px' }}>

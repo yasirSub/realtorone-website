@@ -1053,18 +1053,66 @@ export const apiClient = {
     },
 
     getPointsPerActivity: async (): Promise<{ success: boolean; data: { points_per_activity: number } }> => {
-        const response = await fetch(`${API_BASE_URL}/admin/settings/user-activity-points`);
-        const data = await response.json();
-        return { success: true, data: { points_per_activity: data.points } };
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/settings/user-activity-points`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await parseJsonSafely<{ success?: boolean; points?: number; message?: string }>(
+            response,
+            'Failed to load activity points'
+        );
+        if (!data.success) return { success: false, data: { points_per_activity: 0 } };
+        return { success: true, data: { points_per_activity: Number(data.points ?? 0) } };
     },
 
     updatePointsPerActivity: async (points: number): Promise<{ success: boolean }> => {
+        const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/settings/user-activity-points`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
             body: JSON.stringify({ points })
         });
-        return response.json();
+        return await parseJsonSafely(response, 'Failed to save activity points');
+    },
+
+    getAdminAppConfig: async (): Promise<{
+        success?: boolean;
+        data?: {
+            maintenance_enabled?: boolean;
+            maintenance_message?: string;
+            min_android_version?: string;
+            min_ios_version?: string;
+            android_store_url?: string;
+            ios_store_url?: string;
+            updated_at?: string;
+        };
+        message?: string;
+    }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/settings/app-config`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        return await parseJsonSafely(response, 'Failed to load app config');
+    },
+
+    updateAdminAppConfig: async (payload: {
+        maintenance_enabled?: boolean;
+        maintenance_message?: string;
+        min_android_version?: string;
+        min_ios_version?: string;
+        android_store_url?: string;
+        ios_store_url?: string;
+    }): Promise<{ success?: boolean; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/settings/app-config`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(payload),
+        });
+        return await parseJsonSafely(response, 'Failed to save app config');
     },
 
     syncActivityTypes: async (): Promise<{ success: boolean }> => {

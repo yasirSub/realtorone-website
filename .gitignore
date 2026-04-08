@@ -23,3 +23,7 @@ dist-ssr
 *.sln
 *.sw?
 .cursor/rules/work-progress-log.mdc
+
+# Firebase / GCP service accounts (never commit)
+*firebase-adminsdk*.json
+**/serviceAccount*.json

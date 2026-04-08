@@ -1,5 +1,44 @@
 # Realtor One - Project Progress
 
+### Day 88: Apr 8 - Growth activities FAB removed
+Application (Mobile):
+  - Removed the floating “+” button from the Growth & Daily Performance (subconscious) activities tab and deleted the unused custom-activity sheet it opened.
+  - Deal Room: top-right control opens filter + sort (shortlist: all / 4× not attempted / nurture only / other pipeline; Apply runs priority sort with name tiebreaker). Expanded nurture detection (lead_package, lead_stage text, nutshell bucket). Green “NURTURE” chip with eco icon after the source chip when the client qualifies.
+
+### Day 89: Apr 8 - Profile success and diagnosis UI polish
+Application (Mobile):
+  - Profile → Account Settings: removed duplicate Notifications row; single App Settings entry (notifications live under App Preferences there).
+  - Profile: hid City and Target Income rows; profile completeness no longer counts city or target income (5 fields).
+  - Introduced shared brand tokens and grid painter (`lib/theme/realtorone_brand.dart`); onboarding grid now uses the same painter for consistency.
+  - Profile setup success overlay: backdrop blur over the form, indigo–teal radial glow, splash-style gradient shield icon, short subtitle, clearance chip styled with teal border, taller progress indicator.
+  - Diagnosis questionnaire: root scaffold color matches app dark theme, subtle grid and seed-tint blob, gradient progress bar with glow, deeper option cards with ink splash, SKIP control matches onboarding skip styling.
+  - Diagnosis SKIP now jumps to the final question (last item in the list); SKIP on that last question still advances to results.
+  - Main app quick tour (V2): in-scaffold spotlight; Tasks steps now highlight the real controls — Subconscious tab and Clients/Deal Room pill (keys from MainNavigation into ActivitiesPage), tooltip floats under the spotlight; copy tightened; double post-frame after tab sync for layout.
+  - Deal Room “add clients” chooser: replaced centered dialog with a rounded glass bottom sheet (blur, light/dark surfaces), RealtorOne teal/indigo accents, clearer hierarchy, full-width cancel; Excel vs manual tiles use gradient icon wells and tap feedback; template download as centered teal link.
+
+### Day 90: Apr 8 - Branded dialogs and analyze cleanup
+Application (Mobile):
+  - RealtorOneDialogScaffold for high-traffic confirms (logout, change/delete account, delete chat, task description); change-password flow uses pageContext.mounted and dialog pop ordering after async.
+  - Tour: extra layout refresh delay and Semantics on the tour card; Deal Room add-clients sheet not dismissible by drag or outside tap.
+  - Frontend/website .gitignore expanded for service account JSON, key.properties, and keystore patterns.
+  - Cleared flutter analyze on touched files (null-aware map literals, child-last ordering, AnimatedBuilder builder params).
+
+### Day 92: Apr 8 - Settings language (English / Arabic UAE)
+Application (Mobile):
+  - `flutter_localizations` + gen-l10n: `lib/l10n/app_en.arb`, `app_ar.arb`; `LocaleProvider` persists `en` or `ar` in SharedPreferences; `MaterialApp` uses locale + RTL for Arabic.
+  - App Settings → App Preferences: Language row opens bottom sheet (English vs العربية الإمارات); Settings strings use translations (other screens still English until extended).
+
+### Day 93: Apr 8 - Home and profile wired to Arabic
+Application (Mobile):
+  - Home dashboard: growth metric cards and activity log use `AppLocalizations` (ARBs already had strings).
+  - Profile screen: sections, menu rows, stats, footer, photo sheet, completeness pill, and logout confirmation dialog use l10n; added `profileLogoutDialog*` strings in EN/AR.
+
+### Day 94: Apr 8 - Android package rename for Play\r\nApplication (Mobile):\r\n  - Renamed Android package/namespace from com.example.realtorone to com.realtorone.app (Gradle + MainActivity package).\r\n  - Updated Android Firebase config package entries and rebuilt signed release App Bundle successfully.\r\n\r\n### Day 91: Apr 8 - iOS platform wiring
+Application (Mobile):
+  - Added missing `ios/Podfile` (iOS 15), CocoaPods `post_install` macros for `permission_handler` (camera, mic, photos, notifications).
+  - `GoogleService-Info.plist` in Runner + Xcode resource entry; `firebase_options.dart` iOS block aligned with project `realtor-one` / bundle `com.example.realtorone`. Placeholder `GOOGLE_APP_ID` must be replaced after registering the iOS app in Firebase (or run `flutterfire configure` on a Mac).
+  - `Info.plist`: push background modes, Google Sign-In `GIDClientID` + URL scheme (web client), photo library add usage, App Store encryption declaration, `LSApplicationQueriesSchemes` for URLs; display name RealtorOne. Deployment target 15.0 in Xcode and `AppFrameworkInfo.plist`.
+
 ### **Day 1: Connection & Infrastructure**
 - Setup React Web Admin Portal
 - Admin Vault Login System
@@ -851,3 +890,14 @@ Backend:
   - Added `GET /privacy` and `GET /terms` Blade views under `resources/views/legal/` for the same content when served from Laravel.
 Application (Mobile):
   - Settings Legal rows open the policy URLs in the external browser; `AppConfig` uses production `https://aanantbishthealing.com` in release and local Vite in debug (overridable with `LEGAL_PRIVACY_URL` / `LEGAL_TERMS_URL`).
+
+### Day 87f: Apr 7 - Google login enabled
+Application (Mobile):
+  - Enabled Google Sign-In button on login, added token-based auth call, and kept post-login profile routing identical to email/password flow.
+Backend:
+  - Added `POST /login/google` to verify Google ID tokens, auto-create first-time users, and return standard app auth token response.
+  - Login screen header icon now uses the Realtor logo image instead of the rocket icon.
+  - Added a one-time in-app guided tour in main navigation to explain Home, Tasks, Learning, and Profile sections for first-time entrants.
+  - Deal Room client panel now groups clients into “Not Attempted 4 Times”, “Nurture List”, and “Other Clients” for faster follow-up planning.
+  - Home screen now includes a compact “Today Focus” card with task completion progress, pipeline risk chips (hot leads, 4x no-attempt risk, nurture), and quick actions for Tasks/Pipeline.
+
