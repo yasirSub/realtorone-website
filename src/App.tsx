@@ -222,16 +222,36 @@ function App() {
         }
         if (usersRes.status === 'fulfilled') setUsers(usersRes.value);
 
-        Promise.all([
-          apiClient.getActivityTypes().then(res => res.success && setActivityTypes(res.data)).catch(() => { }),
-          apiClient.getUserActivityPoints().then(res => res.success && setUserActivityPoints(res.points)).catch(() => { }),
-          apiClient.getPackages().then(res => res.success && setPackages(res.data)).catch(() => { }),
-          apiClient.getSubscriptions().then(res => res.success && setActiveSubscriptions(res.data)).catch(() => { }),
-          apiClient.getCoupons().then(res => res.success && setCoupons(res.data)).catch(() => { }),
-          apiClient.getCourses().then(res => res.success && setCourses(res.data)).catch(() => { }),
+        const auxResults = await Promise.allSettled([
+          apiClient.getActivityTypes(),
+          apiClient.getUserActivityPoints(),
+          apiClient.getPackages(),
+          apiClient.getSubscriptions(),
+          apiClient.getCoupons(),
+          apiClient.getCourses(),
         ]);
 
-        if (isInitial) {
+        if (auxResults[0].status === 'fulfilled' && auxResults[0].value.success) setActivityTypes(auxResults[0].value.data);
+        if (auxResults[1].status === 'fulfilled' && auxResults[1].value.success) setUserActivityPoints(auxResults[1].value.points);
+        if (auxResults[2].status === 'fulfilled' && auxResults[2].value.success) setPackages(auxResults[2].value.data);
+        if (auxResults[3].status === 'fulfilled' && auxResults[3].value.success) setActiveSubscriptions(auxResults[3].value.data);
+        if (auxResults[4].status === 'fulfilled' && auxResults[4].value.success) setCoupons(auxResults[4].value.data);
+        if (auxResults[5].status === 'fulfilled' && auxResults[5].value.success) setCourses(auxResults[5].value.data);
+
+        const auxErrors = auxResults
+          .filter((r) => r.status === 'rejected')
+          .map((r) => (r as PromiseRejectedResult).reason?.message || 'Request failed');
+        if (auxErrors.length > 0 && isInitial) {
+          addNotification({
+            type: 'warning',
+            title: 'Partial data sync',
+            description: auxErrors[0],
+            meta: 'RETRY ADVISED',
+            actions: [{ label: 'Dismiss', onClick: () => { } }]
+          });
+        }
+
+        if (isInitial && !sessionStorage.getItem('admin_boot_notice_seen')) {
           addNotification({
             type: 'success',
             title: 'Neural Core Synchronized',
@@ -242,6 +262,7 @@ function App() {
               { label: 'Done', onClick: () => { } }
             ]
           });
+          sessionStorage.setItem('admin_boot_notice_seen', '1');
         }
       } finally {
         if (isInitial) setIsLoading(false);

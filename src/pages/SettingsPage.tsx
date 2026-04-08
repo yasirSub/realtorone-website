@@ -28,6 +28,14 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
     // Backup State
     const [includeDb, setIncludeDb] = useState(true);
     const [includeMedia, setIncludeMedia] = useState(true);
+    const [includeModuleData] = useState(true);
+    const [includeUserData, setIncludeUserData] = useState(true);
+    const [includeVideoMedia, setIncludeVideoMedia] = useState(true);
+    const [includePdfMedia, setIncludePdfMedia] = useState(true);
+    const [backupModules, setBackupModules] = useState<Array<{ key: string; label: string; count: number }>>([]);
+    const [selectedBackupModules, setSelectedBackupModules] = useState<string[]>([]);
+    const [loadingBackupModules, setLoadingBackupModules] = useState(false);
+    const [backupValidationMessage, setBackupValidationMessage] = useState('');
     const [isBackingUp, setIsBackingUp] = useState(false);
     const [backupProgress, setBackupProgress] = useState(0);
     const [backupStage, setBackupStage] = useState('');
@@ -47,6 +55,36 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
     const [legalBody, setLegalBody] = useState('');
     const [legalLoading, setLegalLoading] = useState(false);
     const [legalSaving, setLegalSaving] = useState(false);
+    const [settingsLoadError, setSettingsLoadError] = useState('');
+
+    const buttonBase: React.CSSProperties = {
+        borderRadius: '12px',
+        border: '1px solid',
+        fontWeight: 800,
+        fontSize: '0.85rem',
+        letterSpacing: '0.2px',
+        cursor: 'pointer',
+        transition: 'all 0.18s ease',
+    };
+    const primaryButton: React.CSSProperties = {
+        ...buttonBase,
+        background: '#4F46E5',
+        borderColor: '#6366F1',
+        color: '#FFFFFF',
+    };
+    const secondaryButton: React.CSSProperties = {
+        ...buttonBase,
+        background: 'rgba(15, 23, 42, 0.9)',
+        borderColor: 'rgba(148, 163, 184, 0.38)',
+        color: '#E2E8F0',
+    };
+    const subtleButton: React.CSSProperties = {
+        ...buttonBase,
+        background: 'rgba(2, 6, 23, 0.55)',
+        borderColor: 'rgba(148, 163, 184, 0.24)',
+        color: '#CBD5E1',
+        fontSize: '0.75rem',
+    };
 
     const fetchBackups = async () => {
         try {
@@ -62,7 +100,20 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
         // Load settings
         apiClient.getPointsPerActivity().then((res: any) => {
             if (res.success) setPointsValue(res.data.points_per_activity);
-        });
+            else setSettingsLoadError('Failed to load points setting.');
+        }).catch((e) => setSettingsLoadError(e?.message || 'Failed to load points setting.'));
+        setLoadingBackupModules(true);
+        apiClient.getBackupModules().then((res: any) => {
+            if (!res?.success || !Array.isArray(res.data)) return;
+            const list = res.data.map((m: any) => ({
+                key: String(m.key),
+                label: String(m.label),
+                count: Number(m.count ?? 0),
+            }));
+            setBackupModules(list);
+            setSelectedBackupModules(list.map((m: any) => m.key));
+        }).catch((e) => setSettingsLoadError(e?.message || 'Failed to load backup modules.'))
+            .finally(() => setLoadingBackupModules(false));
 
         // Load app runtime config (maintenance + min versions)
         apiClient.getAdminAppConfig().then((res: any) => {
@@ -73,7 +124,7 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
             setMinIosVersion(String(res.data.min_ios_version ?? ''));
             setAndroidStoreUrl(String(res.data.android_store_url ?? ''));
             setIosStoreUrl(String(res.data.ios_store_url ?? ''));
-        });
+        }).catch((e) => setSettingsLoadError(e?.message || 'Failed to load app runtime config.'));
     }, []);
 
     useEffect(() => {
@@ -129,19 +180,22 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
         }
     };
 
-    const handleSaveAppConfig = async () => {
+    const saveAppConfig = async (
+        payload: {
+            maintenance_enabled?: boolean;
+            maintenance_message?: string;
+            min_android_version?: string;
+            min_ios_version?: string;
+            android_store_url?: string;
+            ios_store_url?: string;
+        },
+        successText: string
+    ) => {
         setSavingAppConfig(true);
         setMessage('');
         try {
-            const res = await apiClient.updateAdminAppConfig({
-                maintenance_enabled: maintenanceEnabled,
-                maintenance_message: maintenanceMessage,
-                min_android_version: minAndroidVersion,
-                min_ios_version: minIosVersion,
-                android_store_url: androidStoreUrl,
-                ios_store_url: iosStoreUrl,
-            });
-            if (res.success) setMessage('App runtime config saved. Mobile startup will reflect these settings.');
+            const res = await apiClient.updateAdminAppConfig(payload);
+            if (res.success) setMessage(successText);
             else setMessage(String(res.message ?? 'Failed to save app runtime config.'));
         } catch {
             setMessage('Network error saving app runtime config.');
@@ -150,6 +204,26 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
             setTimeout(() => setMessage(''), 5000);
         }
     };
+
+    const handleSaveMaintenanceConfig = async () =>
+        saveAppConfig(
+            {
+                maintenance_enabled: maintenanceEnabled,
+                maintenance_message: maintenanceMessage,
+            },
+            'Maintenance settings saved.'
+        );
+
+    const handleSaveVersionConfig = async () =>
+        saveAppConfig(
+            {
+                min_android_version: minAndroidVersion,
+                min_ios_version: minIosVersion,
+                android_store_url: androidStoreUrl,
+                ios_store_url: iosStoreUrl,
+            },
+            'Version control settings saved.'
+        );
 
     const handleSyncActivities = async () => {
         setMessage('Synchronizing database registries...');
@@ -163,8 +237,21 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
     };
 
     const handleDownloadBackup = async () => {
+        setBackupValidationMessage('');
         if (!includeDb && !includeMedia) {
-            setMessage('Select at least one archive component.');
+            setBackupValidationMessage('Select at least one archive component.');
+            return;
+        }
+        if (includeDb && !includeUserData) {
+            setBackupValidationMessage('Select User Data for Database Set backup.');
+            return;
+        }
+        if (includeMedia && selectedBackupModules.length === 0) {
+            setBackupValidationMessage('Select at least one module under Media Assets.');
+            return;
+        }
+        if (includeMedia && !includeVideoMedia && !includePdfMedia) {
+            setBackupValidationMessage('Select at least one media type (Video or PDF).');
             return;
         }
 
@@ -190,7 +277,19 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
         }, 150);
 
         try {
-            const res = await apiClient.getBackup({ db: includeDb, media: includeMedia });
+            const res = await apiClient.getBackup({
+                db: includeDb,
+                media: includeMedia,
+                moduleData: includeModuleData,
+                userData: includeUserData,
+                modules: includeMedia ? selectedBackupModules : [],
+                mediaTypes: includeMedia
+                    ? [
+                        ...(includeVideoMedia ? ['video'] : []),
+                        ...(includePdfMedia ? ['pdf'] : []),
+                    ]
+                    : [],
+            });
             if (backupTimerRef.current) clearInterval(backupTimerRef.current);
 
             if (res.success) {
@@ -216,7 +315,9 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
             setIsBackingUp(false);
             setBackupProgress(0);
             setBackupStage('');
-            setMessage(`Protocol error: ${error.message || 'Unknown failure'}`);
+            const errText = error?.message || 'Unknown failure';
+            setBackupValidationMessage(`Backup failed: ${errText}`);
+            setMessage(`Protocol error: ${errText}`);
         }
     };
 
@@ -302,29 +403,164 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                     <input type="checkbox" checked={includeDb} onChange={e => setIncludeDb(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
                                     <div>
                                         <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Database Set</div>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>MySQL Nodes</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>User data backup (users, activities, results, chat)</div>
                                     </div>
                                 </label>
                                 <label style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer', padding: '18px', borderRadius: '14px', background: includeMedia ? 'rgba(139, 92, 246, 0.05)' : 'rgba(255,255,255,0.02)', border: `1px solid ${includeMedia ? 'var(--primary)' : 'rgba(255,255,255,0.05)'}`, transition: 'all 0.2s' }}>
                                     <input type="checkbox" checked={includeMedia} onChange={e => setIncludeMedia(e.target.checked)} style={{ width: '20px', height: '20px', accentColor: 'var(--primary)' }} />
                                     <div>
                                         <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>Media Assets</div>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>public/* distribution</div>
+                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Module media list (updated modules)</div>
                                     </div>
                                 </label>
                             </div>
+                            {includeDb && (
+                                <div style={{ marginTop: '14px', display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '12px 14px', borderRadius: '10px', background: includeUserData ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.02)', border: `1px solid ${includeUserData ? 'rgba(99,102,241,0.45)' : 'rgba(255,255,255,0.06)'}` }}>
+                                        <input
+                                            type="checkbox"
+                                            checked={includeUserData}
+                                            onChange={e => setIncludeUserData(e.target.checked)}
+                                            style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                                        />
+                                        <div>
+                                            <div style={{ fontSize: '0.78rem', fontWeight: 700 }}>User Data</div>
+                                            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>users, activity logs, chat, results</div>
+                                        </div>
+                                    </label>
+                                </div>
+                            )}
+                            {includeMedia && (
+                                <div style={{ marginTop: '12px', padding: '12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.07)', background: 'rgba(2,6,23,0.45)' }}>
+                                    <div style={{ marginBottom: '12px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${includeVideoMedia ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)'}`, background: includeVideoMedia ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.02)' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={includeVideoMedia}
+                                                onChange={(e) => setIncludeVideoMedia(e.target.checked)}
+                                                style={{ width: '15px', height: '15px', accentColor: 'var(--primary)' }}
+                                            />
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>Video files</span>
+                                                <span style={{ fontSize: '0.63rem', color: 'var(--text-muted)' }}>.mp4, .mov, .avi, .mkv</span>
+                                            </div>
+                                        </label>
+                                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${includePdfMedia ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)'}`, background: includePdfMedia ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.02)' }}>
+                                            <input
+                                                type="checkbox"
+                                                checked={includePdfMedia}
+                                                onChange={(e) => setIncludePdfMedia(e.target.checked)}
+                                                style={{ width: '15px', height: '15px', accentColor: 'var(--primary)' }}
+                                            />
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>PDF files</span>
+                                                <span style={{ fontSize: '0.63rem', color: 'var(--text-muted)' }}>.pdf documents</span>
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                        <div style={{ fontSize: '0.68rem', fontWeight: 800, color: 'rgba(255,255,255,0.5)', letterSpacing: '1px' }}>
+                                            MODULE LIST (UPDATED MODULES)
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedBackupModules(backupModules.map((m) => m.key))}
+                                                disabled={backupModules.length === 0 || loadingBackupModules}
+                                                style={{ ...subtleButton, height: '28px', padding: '0 10px', fontSize: '0.63rem' }}
+                                            >
+                                                SELECT ALL
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => setSelectedBackupModules([])}
+                                                disabled={backupModules.length === 0 || loadingBackupModules}
+                                                style={{ ...subtleButton, height: '28px', padding: '0 10px', fontSize: '0.63rem' }}
+                                            >
+                                                CLEAR
+                                            </button>
+                                            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                                                {selectedBackupModules.length} selected / {backupModules.length}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {loadingBackupModules ? (
+                                        <div style={{ padding: '14px', borderRadius: '10px', border: '1px dashed rgba(148,163,184,0.35)', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                            Loading module list...
+                                        </div>
+                                    ) : backupModules.length === 0 ? (
+                                        <div style={{ padding: '14px', borderRadius: '10px', border: '1px dashed rgba(148,163,184,0.35)', color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                                            No module metadata found yet. Start backend API and refresh this page.
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                            {backupModules.map((module) => {
+                                                const checked = selectedBackupModules.includes(module.key);
+                                                return (
+                                                    <label key={module.key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '10px 12px', borderRadius: '10px', border: `1px solid ${checked ? 'rgba(99,102,241,0.5)' : 'rgba(255,255,255,0.08)'}`, background: checked ? 'rgba(99,102,241,0.12)' : 'rgba(255,255,255,0.02)' }}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={checked}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedBackupModules((prev) => Array.from(new Set([...prev, module.key])));
+                                                                } else {
+                                                                    setSelectedBackupModules((prev) => prev.filter((k) => k !== module.key));
+                                                                }
+                                                            }}
+                                                            style={{ width: '15px', height: '15px', accentColor: 'var(--primary)' }}
+                                                        />
+                                                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                            <span style={{ fontSize: '0.72rem', fontWeight: 700 }}>{module.label}</span>
+                                                            <span style={{ fontSize: '0.63rem', color: 'var(--text-muted)' }}>{module.count} tables</span>
+                                                        </div>
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
+                        {backupValidationMessage && (
+                            <div style={{ marginTop: '-24px', marginBottom: '24px', fontSize: '0.74rem', color: '#FCA5A5', fontWeight: 700 }}>
+                                {backupValidationMessage}
+                            </div>
+                        )}
+                        {settingsLoadError && (
+                            <div style={{ marginTop: '-12px', marginBottom: '20px', fontSize: '0.74rem', color: '#FCA5A5', fontWeight: 700 }}>
+                                {settingsLoadError}
+                            </div>
+                        )}
 
                         <div style={{ display: 'flex', gap: '20px', marginBottom: '40px' }}>
                             <button
                                 onClick={handleDownloadBackup}
-                                disabled={isBackingUp || isRestoring}
-                                className="btn-command primary"
-                                style={{ flex: 1.5, height: '60px', padding: 0 }}
+                                disabled={isBackingUp || isRestoring || (includeMedia && backupModules.length === 0)}
+                                style={{
+                                    ...primaryButton,
+                                    flex: 1.5,
+                                    height: '56px',
+                                    fontWeight: 900,
+                                    fontSize: '0.92rem',
+                                    cursor: isBackingUp || isRestoring ? 'not-allowed' : 'pointer',
+                                    opacity: isBackingUp || isRestoring ? 0.7 : 1,
+                                }}
                             >
                                 {isBackingUp ? 'Compiling Archive...' : 'Generate New Backup'}
                             </button>
-                            <label className="btn-command" style={{ flex: 1, height: '60px', padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <label
+                                style={{
+                                    ...secondaryButton,
+                                    flex: 1,
+                                    height: '56px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: isBackingUp || isRestoring ? 'not-allowed' : 'pointer',
+                                    opacity: isBackingUp || isRestoring ? 0.7 : 1,
+                                }}
+                            >
                                 Restore Sync
                                 <input type="file" accept=".zip" onChange={handleRestoreBackup} style={{ display: 'none' }} disabled={isBackingUp || isRestoring} />
                             </label>
@@ -390,8 +626,26 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                                     </div>
                                                 </div>
                                                 <div style={{ display: 'flex', gap: '10px' }}>
-                                                    <button onClick={() => apiClient.downloadBackup(bak.name)} style={{ padding: '8px 15px', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', color: '#fff', fontSize: '0.6rem', fontWeight: 900, cursor: 'pointer' }}>DNLD</button>
-                                                    <button onClick={async () => { if (window.confirm('Erase?')) { await apiClient.deleteBackup(bak.name); fetchBackups(); } }} style={{ padding: '8px 15px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', borderRadius: '8px', color: '#EF4444', fontSize: '0.6rem', fontWeight: 900, cursor: 'pointer' }}>DEL</button>
+                                                    <button
+                                                        onClick={() => apiClient.downloadBackup(bak.name)}
+                                                        style={{ ...secondaryButton, padding: '0 12px', height: '32px', fontSize: '0.64rem' }}
+                                                    >
+                                                        DNLD
+                                                    </button>
+                                                    <button
+                                                        onClick={async () => { if (window.confirm('Erase?')) { await apiClient.deleteBackup(bak.name); fetchBackups(); } }}
+                                                        style={{
+                                                            ...buttonBase,
+                                                            padding: '0 12px',
+                                                            height: '32px',
+                                                            fontSize: '0.64rem',
+                                                            background: 'rgba(127, 29, 29, 0.2)',
+                                                            borderColor: 'rgba(239, 68, 68, 0.38)',
+                                                            color: '#FCA5A5',
+                                                        }}
+                                                    >
+                                                        DEL
+                                                    </button>
                                                 </div>
                                             </div>
                                         ))
@@ -411,52 +665,103 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                 App Runtime Config
                             </h2>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                                    <div>
-                                        <div style={{ fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '6px' }}>
-                                            MAINTENANCE MODE
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                                <div style={{ fontSize: '0.62rem', fontWeight: 900, color: 'rgba(255,255,255,0.35)', letterSpacing: '1.2px' }}>
+                                    APP STARTUP RULES
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                                        <div>
+                                            <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#E2E8F0' }}>
+                                                Maintenance Mode
+                                            </div>
+                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                                Show maintenance screen to all mobile users on app launch.
+                                            </div>
                                         </div>
-                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                            When enabled, the mobile app shows a maintenance screen on startup.
+
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={maintenanceEnabled}
+                                            onClick={() => setMaintenanceEnabled((v) => !v)}
+                                            style={{
+                                                width: '64px',
+                                                height: '34px',
+                                                borderRadius: '999px',
+                                                border: maintenanceEnabled ? '1px solid rgba(99,102,241,0.8)' : '1px solid rgba(148,163,184,0.35)',
+                                                background: maintenanceEnabled ? 'linear-gradient(90deg, #6366F1, #4F46E5)' : 'rgba(15,23,42,0.9)',
+                                                cursor: 'pointer',
+                                                padding: '3px',
+                                                position: 'relative',
+                                                transition: 'all 0.2s ease',
+                                            }}
+                                        >
+                                            <span
+                                                style={{
+                                                    display: 'block',
+                                                    width: '26px',
+                                                    height: '26px',
+                                                    borderRadius: '50%',
+                                                    background: '#fff',
+                                                    boxShadow: '0 2px 8px rgba(0,0,0,0.35)',
+                                                    transform: maintenanceEnabled ? 'translateX(30px)' : 'translateX(0)',
+                                                    transition: 'transform 0.2s ease',
+                                                }}
+                                            />
+                                        </button>
+                                    </div>
+
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '10px' }}>
+                                            MAINTENANCE MESSAGE (OPTIONAL)
+                                        </label>
+                                        <textarea
+                                            value={maintenanceMessage}
+                                            onChange={(e) => setMaintenanceMessage(e.target.value)}
+                                            rows={3}
+                                            style={{
+                                                width: '100%',
+                                                padding: '14px',
+                                                borderRadius: '12px',
+                                                border: '1px solid var(--glass-border)',
+                                                background: 'rgba(0,0,0,0.35)',
+                                                color: 'var(--text-main)',
+                                                fontFamily: 'ui-sans-serif, system-ui',
+                                                fontSize: '0.8rem',
+                                                lineHeight: 1.4,
+                                                resize: 'vertical',
+                                            }}
+                                        />
+                                    </div>
+
+                                    <button
+                                        onClick={() => void handleSaveMaintenanceConfig()}
+                                        disabled={savingAppConfig}
+                                        style={{
+                                            ...primaryButton,
+                                            width: '100%',
+                                            height: '42px',
+                                            fontWeight: 900,
+                                            fontSize: '0.72rem',
+                                        }}
+                                    >
+                                        {savingAppConfig ? 'SAVING…' : 'SAVE MAINTENANCE'}
+                                    </button>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.76rem', fontWeight: 800, color: '#E2E8F0' }}>
+                                            Version Control
+                                        </div>
+                                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '4px' }}>
+                                            If app version is below minimum, the app shows update screen.
                                         </div>
                                     </div>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                                        <input
-                                            type="checkbox"
-                                            checked={maintenanceEnabled}
-                                            onChange={(e) => setMaintenanceEnabled(e.target.checked)}
-                                        />
-                                        <span style={{ fontSize: '0.7rem', fontWeight: 900, letterSpacing: '1px' }}>
-                                            {maintenanceEnabled ? 'ON' : 'OFF'}
-                                        </span>
-                                    </label>
-                                </div>
 
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '12px' }}>
-                                        MAINTENANCE MESSAGE (OPTIONAL)
-                                    </label>
-                                    <textarea
-                                        value={maintenanceMessage}
-                                        onChange={(e) => setMaintenanceMessage(e.target.value)}
-                                        rows={3}
-                                        style={{
-                                            width: '100%',
-                                            padding: '14px',
-                                            borderRadius: '12px',
-                                            border: '1px solid var(--glass-border)',
-                                            background: 'rgba(0,0,0,0.35)',
-                                            color: 'var(--text-main)',
-                                            fontFamily: 'ui-sans-serif, system-ui',
-                                            fontSize: '0.8rem',
-                                            lineHeight: 1.4,
-                                            resize: 'vertical',
-                                        }}
-                                    />
-                                </div>
-
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '10px' }}>
                                             MIN ANDROID VERSION
@@ -497,9 +802,9 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                             }}
                                         />
                                     </div>
-                                </div>
+                                    </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.6rem', fontWeight: 900, color: 'rgba(255,255,255,0.3)', letterSpacing: '1px', marginBottom: '10px' }}>
                                             ANDROID STORE URL
@@ -540,16 +845,22 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                             }}
                                         />
                                     </div>
-                                </div>
+                                    </div>
 
-                                <button
-                                    onClick={() => void handleSaveAppConfig()}
-                                    disabled={savingAppConfig}
-                                    className="btn-command primary"
-                                    style={{ width: '100%', padding: '14px', fontWeight: 900, fontSize: '0.75rem' }}
-                                >
-                                    {savingAppConfig ? 'SAVING…' : 'SAVE APP CONFIG'}
-                                </button>
+                                    <button
+                                        onClick={() => void handleSaveVersionConfig()}
+                                        disabled={savingAppConfig}
+                                        style={{
+                                            ...primaryButton,
+                                            width: '100%',
+                                            height: '42px',
+                                            fontWeight: 900,
+                                            fontSize: '0.72rem',
+                                        }}
+                                    >
+                                        {savingAppConfig ? 'SAVING…' : 'SAVE VERSION CONTROL'}
+                                    </button>
+                                </div>
 
                                 <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)' }} />
 
@@ -568,8 +879,7 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                         <button
                                             onClick={handleSavePoints}
                                             disabled={saving}
-                                            className="btn-command"
-                                            style={{ flex: 1, padding: 0 }}
+                                            style={{ ...secondaryButton, flex: 1, height: '48px' }}
                                         >
                                             {saving ? 'SYNCING...' : 'UPDATE REGISTRY'}
                                         </button>
@@ -579,10 +889,7 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                 <div style={{ paddingTop: '20px', borderTop: '1px solid rgba(255,255,255,0.03)' }}>
                                     <button
                                         onClick={handleSyncActivities}
-                                        style={{
-                                            width: '100%', padding: '18px', background: 'rgba(0,0,0,0.2)', border: '1px dashed rgba(255,255,255,0.1)',
-                                            borderRadius: '15px', color: 'rgba(255,255,255,0.6)', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer'
-                                        }}
+                                        style={{ ...subtleButton, width: '100%', height: '46px' }}
                                     >
                                         FORCE REGISTRY RE-SYNC (SEEDER)
                                     </button>
@@ -684,8 +991,13 @@ const SettingsPage: React.FC<SettingsPageProps> = (_props) => {
                                 type="button"
                                 onClick={() => void handleSaveLegal()}
                                 disabled={legalLoading || legalSaving || !legalBody.trim()}
-                                className="btn-command primary"
-                                style={{ width: '100%', padding: '14px', fontWeight: 900, fontSize: '0.75rem' }}
+                                style={{
+                                    ...primaryButton,
+                                    width: '100%',
+                                    height: '44px',
+                                    fontWeight: 900,
+                                    fontSize: '0.75rem',
+                                }}
                             >
                                 {legalSaving ? 'SAVING…' : legalLoading ? 'LOADING…' : 'SAVE TO API'}
                             </button>

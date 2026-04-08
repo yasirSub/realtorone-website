@@ -901,3 +901,31 @@ Backend:
   - Deal Room client panel now groups clients into “Not Attempted 4 Times”, “Nurture List”, and “Other Clients” for faster follow-up planning.
   - Home screen now includes a compact “Today Focus” card with task completion progress, pipeline risk chips (hot leads, 4x no-attempt risk, nurture), and quick actions for Tasks/Pipeline.
 
+### Day 95: Apr 8 - Security and reliability hardening
+Application (Mobile):
+  - Hardened splash startup flow: network failures no longer force logout, auth errors branch correctly, and app-config fetch now logs parse/fallback decisions.
+  - Added shared semantic-version normalization/comparison utility with unit tests for prefixed/build/prerelease version strings.
+Backend:
+  - Added Sanctum token support for admin login and protected critical admin settings/backup routes with scoped abilities.
+  - Hardened backup/restore operations with filename validation, invalid module-set rejection, restore guardrails, and audit-style logging for backup/app-config actions.
+Website:
+  - Added centralized authorized API wrapper for core admin fetch paths with session-expiry handling.
+  - Removed silent data-load failures in app bootstrap/settings and added visible warning/error feedback.
+  - Added Vitest + React Testing Library baseline with a login page smoke test and test runner configuration.
+
+### Day 95b: Apr 8 - Local Docker recovery and admin UX polish
+Backend:
+  - Restored local Docker runtime by aligning MySQL image version with existing data volume and rebuilding the app container.
+  - Registered Sanctum ability middleware aliases and API auth exception handling so protected routes return JSON 401 instead of server errors.
+  - Revalidated backup module route availability (`/api/admin/system/backup/modules`) under admin auth flow.
+Website:
+  - Stopped repeated startup success notifications on every page refresh by gating the boot notice to once per browser session.
+
+### Day 95c: Apr 8 - Lesson-level backup/restore in course editor
+Backend:
+  - Added lesson backup endpoints to export and restore full lesson package (lesson settings + materials metadata + attached video/PDF files).
+  - Restore now rehydrates course assets into storage and recreates lesson materials in one operation.
+Website:
+  - Added expandable Backup section in Curriculum Editor with `Download Backup` and `Restore Backup` actions for the selected lesson.
+  - Wired lesson backup/restore API client methods and post-restore editor refresh/status messaging.
+

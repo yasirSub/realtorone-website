@@ -13,6 +13,10 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
     const [activeLesson, setActiveLesson] = useState<any>(null);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [backupExpanded, setBackupExpanded] = useState(false);
+    const [backupDownloading, setBackupDownloading] = useState(false);
+    const [backupRestoring, setBackupRestoring] = useState(false);
+    const [backupStatus, setBackupStatus] = useState('');
     const [previewPdfId, setPreviewPdfId] = useState<number | null>(null);
     const [expandedModules, setExpandedModules] = useState<Record<number, boolean>>({});
     const [editingTitle, setEditingTitle] = useState(false);
@@ -140,6 +144,44 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
         await apiClient.updateLesson(id, updates);
         setActiveLesson((prev: any) => prev ? { ...prev, ...updates } : null);
         loadCourseDetails();
+    };
+
+    const handleDownloadLessonBackup = async () => {
+        if (!activeLesson?.id) return;
+        setBackupStatus('');
+        setBackupDownloading(true);
+        try {
+            await apiClient.downloadLessonBackup(activeLesson.id);
+            setBackupStatus('Backup downloaded successfully.');
+        } catch (e: any) {
+            setBackupStatus(e?.message || 'Backup download failed.');
+        } finally {
+            setBackupDownloading(false);
+        }
+    };
+
+    const handleRestoreLessonBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !activeLesson?.id) return;
+        if (!window.confirm('Restore this lesson backup? This will replace current lesson video/PDF and metadata.')) {
+            return;
+        }
+        setBackupStatus('');
+        setBackupRestoring(true);
+        try {
+            const res = await apiClient.restoreLessonBackup(activeLesson.id, file);
+            if (res.success) {
+                setBackupStatus('Lesson restored successfully.');
+                await loadCourseDetails();
+            } else {
+                setBackupStatus(res.message || 'Lesson restore failed.');
+            }
+        } catch (e: any) {
+            setBackupStatus(e?.message || 'Lesson restore failed.');
+        } finally {
+            setBackupRestoring(false);
+            event.target.value = '';
+        }
     };
 
     if (loading) return <div className="loader"></div>;
@@ -372,6 +414,51 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+
+                            <div className="editor-card" style={{ marginTop: '10px' }}>
+                                <div
+                                    className="card-header"
+                                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                                    onClick={() => setBackupExpanded((v) => !v)}
+                                >
+                                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span>🗂️</span>
+                                        Backup
+                                    </h3>
+                                    <span style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 800 }}>{backupExpanded ? '−' : '+'}</span>
+                                </div>
+                                {backupExpanded && (
+                                    <div className="card-body" style={{ paddingTop: '10px' }}>
+                                        <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: '12px' }}>
+                                            Download or restore this lesson package (metadata + video + PDF files).
+                                        </p>
+                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                            <button
+                                                className="btn-premium-primary"
+                                                onClick={handleDownloadLessonBackup}
+                                                disabled={backupDownloading || backupRestoring}
+                                            >
+                                                {backupDownloading ? 'Preparing Backup...' : 'Download Backup'}
+                                            </button>
+                                            <label className="btn-premium-ghost" style={{ cursor: backupDownloading || backupRestoring ? 'not-allowed' : 'pointer', opacity: backupDownloading || backupRestoring ? 0.6 : 1 }}>
+                                                {backupRestoring ? 'Restoring...' : 'Restore Backup'}
+                                                <input
+                                                    type="file"
+                                                    accept=".zip"
+                                                    onChange={handleRestoreLessonBackup}
+                                                    disabled={backupDownloading || backupRestoring}
+                                                    style={{ display: 'none' }}
+                                                />
+                                            </label>
+                                        </div>
+                                        {backupStatus && (
+                                            <div style={{ marginTop: '10px', fontSize: '12px', color: backupStatus.toLowerCase().includes('failed') ? 'var(--error)' : 'var(--text-main)' }}>
+                                                {backupStatus}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Resources Grid (Video twin-cards) */}

@@ -16,6 +16,32 @@ const parseJsonSafely = async <T>(response: Response, fallbackMessage: string): 
     }
 };
 
+const buildAuthHeaders = (): Record<string, string> => {
+    const token = localStorage.getItem('adminToken');
+    return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
+const authorizedFetch = async <T>(
+    path: string,
+    init: RequestInit = {},
+    fallbackMessage = 'Request failed'
+): Promise<T> => {
+    const headers: Record<string, string> = {
+        ...(init.headers as Record<string, string> ?? {}),
+        ...buildAuthHeaders(),
+    };
+    const response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+    const parsed = await parseJsonSafely<any>(response, fallbackMessage);
+    if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('adminToken');
+        throw new Error(parsed?.message || 'Session expired. Please log in again.');
+    }
+    if (!response.ok) {
+        throw new Error(parsed?.message || `${fallbackMessage} (HTTP ${response.status})`);
+    }
+    return parsed as T;
+};
+
 export const apiClient = {
     getBaseUrl: () => API_BASE_URL,
     login: async (email: string, password: string): Promise<{ status: string; token: string; message?: string }> => {
@@ -37,24 +63,10 @@ export const apiClient = {
         }
     },
     getStats: async (): Promise<{ total_users: number; active_today: number; total_activities: number; db_connected: boolean; pending_deletion_requests?: number }> => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/admin/stats`);
-            if (!response.ok) throw new Error('Network response was not ok');
-            return response.json();
-        } catch (error) {
-            console.error('Failed to fetch stats:', error);
-            throw error;
-        }
+        return authorizedFetch('/admin/stats', {}, 'Failed to fetch stats');
     },
     getUsers: async (): Promise<User[]> => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/admin/users`);
-            if (!response.ok) throw new Error('Network response was not ok');
-            return response.json();
-        } catch (error) {
-            console.error('Failed to fetch users:', error);
-            throw error;
-        }
+        return authorizedFetch('/admin/users', {}, 'Failed to fetch users');
     },
     toggleUserStatus: async (userId: number): Promise<{ status: string; message: string }> => {
         try {
@@ -146,8 +158,7 @@ export const apiClient = {
         }
     },
     getPackages: async (): Promise<{ success: boolean; data: SubscriptionPackage[] }> => {
-        const response = await fetch(`${API_BASE_URL}/admin/packages`);
-        return response.json();
+        return authorizedFetch('/admin/packages', {}, 'Failed to fetch packages');
     },
     createPackage: async (data: Partial<SubscriptionPackage>): Promise<{ success: boolean; data: SubscriptionPackage }> => {
         const response = await fetch(`${API_BASE_URL}/admin/packages`, {
@@ -172,12 +183,10 @@ export const apiClient = {
         return response.json();
     },
     getSubscriptions: async (): Promise<{ success: boolean; data: UserSubscription[] }> => {
-        const response = await fetch(`${API_BASE_URL}/admin/subscriptions`);
-        return response.json();
+        return authorizedFetch('/admin/subscriptions', {}, 'Failed to fetch subscriptions');
     },
     getCoupons: async (): Promise<{ success: boolean; data: Coupon[] }> => {
-        const response = await fetch(`${API_BASE_URL}/admin/coupons`);
-        return response.json();
+        return authorizedFetch('/admin/coupons', {}, 'Failed to fetch coupons');
     },
     createCoupon: async (data: Partial<Coupon>): Promise<{ success: boolean; data: Coupon }> => {
         const response = await fetch(`${API_BASE_URL}/admin/coupons`, {
@@ -239,11 +248,7 @@ export const apiClient = {
         }
     },
     getActivityTypes: async (): Promise<{ success: boolean; data: ActivityType[] }> => {
-        const token = localStorage.getItem('adminToken');
-        const response = await fetch(`${API_BASE_URL}/activity-types`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        return response.json();
+        return authorizedFetch('/activity-types', {}, 'Failed to fetch activity types');
     },
     createActivityType: async (data: Partial<ActivityType>, isAdmin = false): Promise<{ success: boolean; data: ActivityType }> => {
         const token = localStorage.getItem('adminToken');
@@ -326,8 +331,7 @@ export const apiClient = {
         return response.json();
     },
     getUserActivityPoints: async (): Promise<{ success: boolean; points: number }> => {
-        const response = await fetch(`${API_BASE_URL}/admin/settings/user-activity-points`);
-        return response.json();
+        return authorizedFetch('/admin/settings/user-activity-points', {}, 'Failed to load activity points');
     },
     setUserActivityPoints: async (points: number): Promise<{ success: boolean; points: number }> => {
         const response = await fetch(`${API_BASE_URL}/admin/settings/user-activity-points`, {
@@ -339,8 +343,7 @@ export const apiClient = {
     },
     // Courses
     getCourses: async (): Promise<{ success: boolean; data: Course[] }> => {
-        const response = await fetch(`${API_BASE_URL}/admin/courses`);
-        return response.json();
+        return authorizedFetch('/admin/courses', {}, 'Failed to fetch courses');
     },
     createCourse: async (data: Partial<Course>): Promise<{ success: boolean; data: Course }> => {
         const response = await fetch(`${API_BASE_URL}/admin/courses`, {
@@ -991,23 +994,53 @@ export const apiClient = {
         return response.json();
     },
 
-    getBackup: async (options: { db: boolean; media: boolean }): Promise<{ success: boolean; data: any; message?: string }> => {
+    getBackup: async (options: {
+        db: boolean;
+        media: boolean;
+        moduleData?: boolean;
+        userData?: boolean;
+        modules?: string[];
+        mediaTypes?: string[];
+    }): Promise<{ success: boolean; data: any; message?: string }> => {
         const token = localStorage.getItem('adminToken');
         const query = new URLSearchParams({
             db: options.db ? '1' : '0',
-            media: options.media ? '1' : '0'
+            media: options.media ? '1' : '0',
+            module_data: options.moduleData ? '1' : '0',
+            user_data: options.userData ? '1' : '0',
         });
+        if (options.modules?.length) {
+            options.modules.forEach((key) => query.append('modules[]', key));
+        }
+        if (options.mediaTypes?.length) {
+            options.mediaTypes.forEach((type) => query.append('media_types[]', type));
+        }
         const response = await fetch(`${API_BASE_URL}/admin/system/backup?${query}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
-        if (!response.ok) throw new Error('Backup failed');
-        return response.json();
+        const parsed = await parseJsonSafely<{ success?: boolean; data?: any; message?: string }>(
+            response,
+            'Backup failed'
+        );
+        if (!response.ok || !parsed.success) {
+            throw new Error(parsed.message || `Backup failed (HTTP ${response.status})`);
+        }
+        return { success: true, data: parsed.data, message: parsed.message };
+    },
+
+    getBackupModules: async (): Promise<{ success: boolean; data: Array<{ key: string; label: string; count: number; tables: string[] }>; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/system/backup/modules`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+        });
+        return await parseJsonSafely(response, 'Failed to load backup modules');
     },
 
     restoreBackup: async (file: File): Promise<{ success: boolean; message: string }> => {
         const token = localStorage.getItem('adminToken');
         const formData = new FormData();
         formData.append('backup_file', file);
+        formData.append('confirm_restore', '1');
         const response = await fetch(`${API_BASE_URL}/admin/system/restore`, {
             method: 'POST',
             headers: token ? { 'Authorization': `Bearer ${token}` } : {},
@@ -1022,6 +1055,7 @@ export const apiClient = {
             const formData = new FormData();
             const token = localStorage.getItem('adminToken');
             formData.append('backup_file', file);
+            formData.append('confirm_restore', '1');
 
             xhr.upload.addEventListener('progress', (e) => {
                 if (e.lengthComputable) {
@@ -1050,6 +1084,37 @@ export const apiClient = {
             }
             xhr.send(formData);
         });
+    },
+
+    downloadLessonBackup: async (lessonId: number) => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/lessons/${lessonId}/backup`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!response.ok) throw new Error('Lesson backup download failed');
+        const blob = await response.blob();
+        const disposition = response.headers.get('content-disposition') || '';
+        const matched = disposition.match(/filename="?([^"]+)"?/i);
+        const filename = matched?.[1] || `lesson_${lessonId}_backup.zip`;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    },
+
+    restoreLessonBackup: async (lessonId: number, file: File): Promise<{ success: boolean; message?: string; data?: any }> => {
+        const token = localStorage.getItem('adminToken');
+        const formData = new FormData();
+        formData.append('backup_file', file);
+        const response = await fetch(`${API_BASE_URL}/admin/lessons/${lessonId}/backup/restore`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: formData,
+        });
+        return parseJsonSafely(response, 'Lesson restore failed');
     },
 
     getPointsPerActivity: async (): Promise<{ success: boolean; data: { points_per_activity: number } }> => {
