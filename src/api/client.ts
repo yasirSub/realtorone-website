@@ -1105,6 +1105,37 @@ export const apiClient = {
         a.remove();
     },
 
+    downloadCourseBackup: async (courseId: number) => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/courses/${courseId}/backup`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        if (!response.ok) throw new Error('Course backup download failed');
+        const blob = await response.blob();
+        const disposition = response.headers.get('content-disposition') || '';
+        const matched = disposition.match(/filename="?([^"]+)"?/i);
+        const filename = matched?.[1] || `course_${courseId}_backup.zip`;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    },
+
+    restoreCourseBackup: async (courseId: number, file: File): Promise<{ success: boolean; message?: string }> => {
+        const token = localStorage.getItem('adminToken');
+        const formData = new FormData();
+        formData.append('backup_file', file);
+        const response = await fetch(`${API_BASE_URL}/admin/courses/${courseId}/backup/restore`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+            body: formData,
+        });
+        return parseJsonSafely(response, 'Course restore failed');
+    },
+
     restoreLessonBackup: async (lessonId: number, file: File): Promise<{ success: boolean; message?: string; data?: any }> => {
         const token = localStorage.getItem('adminToken');
         const formData = new FormData();

@@ -184,6 +184,45 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
         }
     };
 
+    const handleDownloadCourseBackup = async () => {
+        if (!courseId) return;
+        setBackupStatus('');
+        setBackupDownloading(true);
+        try {
+            await apiClient.downloadCourseBackup(Number(courseId));
+            setBackupStatus('Course backup downloaded successfully.');
+        } catch (e: any) {
+            setBackupStatus(e?.message || 'Course backup failed.');
+        } finally {
+            setBackupDownloading(false);
+        }
+    };
+
+    const handleRestoreCourseBackup = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !courseId) return;
+        if (!window.confirm('Restore this FULL COURSE backup? This will DELETE all current modules/lessons and replace them.')) {
+            return;
+        }
+        setBackupStatus('');
+        setBackupRestoring(true);
+        try {
+            const res = await apiClient.restoreCourseBackup(Number(courseId), file);
+            if (res.success) {
+                setBackupStatus('Course restored successfully.');
+                await loadCourseDetails();
+                setActiveLesson(null);
+            } else {
+                setBackupStatus(res.message || 'Course restore failed.');
+            }
+        } catch (e: any) {
+            setBackupStatus(e?.message || 'Course restore failed.');
+        } finally {
+            setBackupRestoring(false);
+            event.target.value = '';
+        }
+    };
+
     if (loading) return <div className="loader"></div>;
 
     const getTierColor = (tier?: string) => {
@@ -201,7 +240,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
             ['--tier-color' as any]: tierColor,
             ['--tier-shadow' as any]: tierShadow
         }}>
-            <div className="curriculum-header" style={{ display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'flex-start' }}>
+            <div className="curriculum-header" style={{ display: 'flex', alignItems: 'center', gap: '20px', justifyContent: 'space-between', paddingRight: '20px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
                     <button
                         onClick={onBack}
@@ -211,6 +250,37 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                         ←
                     </button>
                     <h1 style={{ margin: 0, fontSize: 'clamp(1.1rem, 2vw, 1.8rem)', lineHeight: 1.2, overflowWrap: 'anywhere' }}>{course?.title}</h1>
+                </div>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <button
+                        className="btn-premium-primary"
+                        style={{ padding: '8px 16px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}
+                        onClick={handleDownloadCourseBackup}
+                        disabled={backupDownloading || backupRestoring}
+                    >
+                        <span>{backupDownloading ? 'Preparing...' : '📦 Backup Course'}</span>
+                    </button>
+                    <label 
+                        className="btn-premium-ghost" 
+                        style={{ 
+                            padding: '8px 16px', 
+                            fontSize: '12px', 
+                            cursor: 'pointer', 
+                            margin: 0,
+                            background: 'rgba(var(--text-main-rgb), 0.03)',
+                            border: '1px solid var(--glass-border)',
+                            borderRadius: '10px'
+                        }}
+                    >
+                        {backupRestoring ? 'Restoring...' : 'Restore'}
+                        <input
+                            type="file"
+                            accept=".zip"
+                            onChange={handleRestoreCourseBackup}
+                            disabled={backupDownloading || backupRestoring}
+                            style={{ display: 'none' }}
+                        />
+                    </label>
                 </div>
             </div>
 
