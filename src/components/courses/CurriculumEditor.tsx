@@ -486,50 +486,52 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                 </div>
                             </div>
 
-                            <div className="editor-card" style={{ marginTop: '10px' }}>
-                                <div
-                                    className="card-header"
-                                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                                    onClick={() => setBackupExpanded((v) => !v)}
-                                >
-                                    <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span>🗂️</span>
-                                        Backup
-                                    </h3>
-                                    <span style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 800 }}>{backupExpanded ? '−' : '+'}</span>
-                                </div>
-                                {backupExpanded && (
-                                    <div className="card-body" style={{ paddingTop: '10px' }}>
-                                        <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: '12px' }}>
-                                            Download or restore this lesson package (metadata + video + PDF files).
-                                        </p>
-                                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                                            <button
-                                                className="btn-premium-primary"
-                                                onClick={handleDownloadLessonBackup}
-                                                disabled={backupDownloading || backupRestoring}
-                                            >
-                                                {backupDownloading ? 'Preparing Backup...' : 'Download Backup'}
-                                            </button>
-                                            <label className="btn-premium-ghost" style={{ cursor: backupDownloading || backupRestoring ? 'not-allowed' : 'pointer', opacity: backupDownloading || backupRestoring ? 0.6 : 1 }}>
-                                                {backupRestoring ? 'Restoring...' : 'Restore Backup'}
-                                                <input
-                                                    type="file"
-                                                    accept=".zip"
-                                                    onChange={handleRestoreLessonBackup}
-                                                    disabled={backupDownloading || backupRestoring}
-                                                    style={{ display: 'none' }}
-                                                />
-                                            </label>
-                                        </div>
-                                        {backupStatus && (
-                                            <div style={{ marginTop: '10px', fontSize: '12px', color: backupStatus.toLowerCase().includes('failed') ? 'var(--error)' : 'var(--text-main)' }}>
-                                                {backupStatus}
-                                            </div>
-                                        )}
+                            {false && (
+                                <div className="editor-card" style={{ marginTop: '10px' }}>
+                                    <div
+                                        className="card-header"
+                                        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+                                        onClick={() => setBackupExpanded((v) => !v)}
+                                    >
+                                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <span>🗂️</span>
+                                            Backup
+                                        </h3>
+                                        <span style={{ color: 'var(--text-muted)', fontSize: '12px', fontWeight: 800 }}>{backupExpanded ? '−' : '+'}</span>
                                     </div>
-                                )}
-                            </div>
+                                    {backupExpanded && (
+                                        <div className="card-body" style={{ paddingTop: '10px' }}>
+                                            <p style={{ margin: '0 0 12px', color: 'var(--text-secondary)', fontSize: '12px' }}>
+                                                Download or restore this lesson package (metadata + video + PDF files).
+                                            </p>
+                                            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                                <button
+                                                    className="btn-premium-primary"
+                                                    onClick={handleDownloadLessonBackup}
+                                                    disabled={backupDownloading || backupRestoring}
+                                                >
+                                                    {backupDownloading ? 'Preparing Backup...' : 'Download Backup'}
+                                                </button>
+                                                <label className="btn-premium-ghost" style={{ cursor: backupDownloading || backupRestoring ? 'not-allowed' : 'pointer', opacity: backupDownloading || backupRestoring ? 0.6 : 1 }}>
+                                                    {backupRestoring ? 'Restoring...' : 'Restore Backup'}
+                                                    <input
+                                                        type="file"
+                                                        accept=".zip"
+                                                        onChange={handleRestoreLessonBackup}
+                                                        disabled={backupDownloading || backupRestoring}
+                                                        style={{ display: 'none' }}
+                                                    />
+                                                </label>
+                                            </div>
+                                            {backupStatus && (
+                                                <div style={{ marginTop: '10px', fontSize: '12px', color: backupStatus.toLowerCase().includes('failed') ? 'var(--error)' : 'var(--text-main)' }}>
+                                                    {backupStatus}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Resources Grid (Video twin-cards) */}
                             {(() => {
