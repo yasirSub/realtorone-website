@@ -202,6 +202,7 @@ function App() {
 
 
   const [courses, setCourses] = useState<any[]>([]);
+  const [ebooks, setEbooks] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async (isInitial = true) => {
@@ -229,6 +230,7 @@ function App() {
           apiClient.getSubscriptions(),
           apiClient.getCoupons(),
           apiClient.getCourses(),
+          (apiClient as any).getEbooks(),
         ]);
 
         if (auxResults[0].status === 'fulfilled' && auxResults[0].value.success) setActivityTypes(auxResults[0].value.data);
@@ -237,6 +239,7 @@ function App() {
         if (auxResults[3].status === 'fulfilled' && auxResults[3].value.success) setActiveSubscriptions(auxResults[3].value.data);
         if (auxResults[4].status === 'fulfilled' && auxResults[4].value.success) setCoupons(auxResults[4].value.data);
         if (auxResults[5].status === 'fulfilled' && auxResults[5].value.success) setCourses(auxResults[5].value.data);
+        if (auxResults[6].status === 'fulfilled' && auxResults[6].value.success) setEbooks(auxResults[6].value.data);
 
         const auxErrors = auxResults
           .filter((r) => r.status === 'rejected')
@@ -373,7 +376,7 @@ function App() {
               users={users}
             />
           )}
-          {activeTab === 'courses' && <CoursesPage courses={courses} setCourses={setCourses} />}
+          {activeTab === 'courses' && <CoursesPage courses={courses} setCourses={setCourses} ebooks={ebooks} setEbooks={setEbooks} />}
           {activeTab === 'settings' && (
             <SettingsPage
               activityTypes={activityTypes}

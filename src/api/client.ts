@@ -1,4 +1,4 @@
-import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge, NotificationBroadcast, ChatSession, ChatMessage, AdminAiUserSummary, AiHumanTicket, DiagnosisQuestion, DiagnosisQuestionOption } from '../types';
+import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge, NotificationBroadcast, ChatSession, ChatMessage, AdminAiUserSummary, AiHumanTicket, DiagnosisQuestion, DiagnosisQuestionOption, DailyLogEntry } from '../types';
 
 /** Default `/api` uses Vite dev proxy → http://127.0.0.1:8000 (see vite.config.ts). Override with VITE_API_BASE_URL for production or a remote API. */
 const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
@@ -285,14 +285,33 @@ export const apiClient = {
         });
         return response.json();
     },
-    getActivityTypeDailyLogs: async (id: number, fromDay = 1, toDay = 60): Promise<{ success: boolean; data: Array<{ day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null; required_listen_percent: number | null; require_user_response: boolean | null; notification_enabled: boolean | null; morning_reminder_enabled: boolean | null; evening_reminder_enabled: boolean | null; morning_reminder_time: string | null; evening_reminder_time: string | null }> }> => {
+    getActivityTypeDailyLogs: async (id: number, fromDay = 1, toDay = 60): Promise<{ success: boolean; data: DailyLogEntry[] }> => {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs?from_day=${fromDay}&to_day=${toDay}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         return response.json();
     },
-    upsertActivityTypeDailyLog: async (id: number, day: number, data: { task_description?: string; script_idea?: string; feedback?: string; audio_url?: string | null; required_listen_percent?: number; require_user_response?: boolean; notification_enabled?: boolean; morning_reminder_enabled?: boolean; evening_reminder_enabled?: boolean; morning_reminder_time?: string | null; evening_reminder_time?: string | null }): Promise<{ success: boolean; data: any }> => {
+    upsertActivityTypeDailyLog: async (id: number, day: number, data: {
+        day_title?: string | null;
+        task_title?: string | null;
+        script_title?: string | null;
+        task_description?: string;
+        script_idea?: string;
+        feedback?: string;
+        audio_url?: string | null;
+        required_listen_percent?: number;
+        require_user_response?: boolean;
+        notification_enabled?: boolean;
+        morning_reminder_enabled?: boolean;
+        evening_reminder_enabled?: boolean;
+        morning_reminder_time?: string | null;
+        evening_reminder_time?: string | null;
+        is_mcq?: boolean;
+        mcq_question?: string | null;
+        mcq_options?: string[] | null;
+        mcq_correct_option?: number | null;
+    }): Promise<{ success: boolean; data: any }> => {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/${day}`, {
             method: 'PUT',
@@ -321,7 +340,27 @@ export const apiClient = {
             };
         }
     },
-    bulkUpsertActivityTypeDailyLogs: async (id: number, entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string; required_listen_percent?: number; require_user_response?: boolean; notification_enabled?: boolean; morning_reminder_enabled?: boolean; evening_reminder_enabled?: boolean; morning_reminder_time?: string; evening_reminder_time?: string }>): Promise<{ success: boolean; count: number }> => {
+    bulkUpsertActivityTypeDailyLogs: async (id: number, entries: Array<{
+        day_number: number;
+        day_title?: string | null;
+        task_title?: string | null;
+        script_title?: string | null;
+        task_description?: string;
+        script_idea?: string;
+        feedback?: string;
+        audio_url?: string;
+        required_listen_percent?: number;
+        require_user_response?: boolean;
+        notification_enabled?: boolean;
+        morning_reminder_enabled?: boolean;
+        evening_reminder_enabled?: boolean;
+        morning_reminder_time?: string;
+        evening_reminder_time?: string;
+        is_mcq?: boolean;
+        mcq_question?: string | null;
+        mcq_options?: string[] | null;
+        mcq_correct_option?: number | null;
+    }>): Promise<{ success: boolean; count: number }> => {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/bulk`, {
             method: 'POST',
@@ -756,6 +795,29 @@ export const apiClient = {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         return response.json();
+    },
+
+    getEbooks: async (): Promise<{ success: boolean; data: any[] }> => {
+        return authorizedFetch<{ success: boolean; data: any[] }>('/admin/ebooks', {}, 'Failed to fetch ebooks');
+    },
+    createEbook: async (data: any): Promise<{ success: boolean; data: any }> => {
+        return authorizedFetch<{ success: boolean; data: any }>('/admin/ebooks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }, 'Failed to create ebook');
+    },
+    updateEbook: async (id: number, data: any): Promise<{ success: boolean; data: any }> => {
+        return authorizedFetch<{ success: boolean; data: any }>(`/admin/ebooks/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }, 'Failed to update ebook');
+    },
+    deleteEbook: async (id: number): Promise<{ success: boolean }> => {
+        return authorizedFetch<{ success: boolean }>(`/admin/ebooks/${id}`, {
+            method: 'DELETE'
+        }, 'Failed to delete ebook');
     },
 
     sendAiChatMessage: async (payload: { message: string; session_id?: number | null }): Promise<{

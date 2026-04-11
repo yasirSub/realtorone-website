@@ -929,3 +929,13 @@ Website:
   - Added expandable Backup section in Curriculum Editor with `Download Backup` and `Restore Backup` actions for the selected lesson.
   - Wired lesson backup/restore API client methods and post-restore editor refresh/status messaging.
 
+
+### Day 96: Apr 11 - Premium Learning UI & Dynamic Day Titles
+Application (Mobile):
+  - Activity Log: Redesigned task list and modal headers to always show "DAY X • [TITLE]" for consistent tracking. Added a premium "DAILY ROUTINE ACTIVE" panel with a checkmark icon to replace the generic "not set" message for days without custom instructions.
+  - Learning Hub: Complete UI overhaul to match the Activity Log design. Added a high-contrast indigo-purple gradient header, atmospheric lightning bolt motifs, and real-time STREAK and RANK (Titan/Rainmaker/Consultant) badges. Modernized the tab system with a pinned Sliver header and removed top container curves for a cleaner edge-to-edge look.
+Backend:
+  - Updated /activity-types endpoint to use optimized day-title fallback logic and ensure the program_current_day cycle is accurately reflected in individual task metadata.
+Website:
+  - Security Dashboard: Fixed "Last Activity" precision in UserProfilePage by switching from stale date strings to real-time `updated_at` timestamps. Redesigned the security verification panel with an glass-morphic HUD style.
+  - Momentum Management: Renamed confusing "VIDEO/REEL SCRIPT IDEA" labels to "QUESTION / PROMPT (OPTIONAL)" across the whole editor. Improved day-log headers with a clearer "Routine Content / Title" placeholder and smarter default-drafting logic.

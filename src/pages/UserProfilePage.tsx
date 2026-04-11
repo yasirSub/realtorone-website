@@ -1279,37 +1279,45 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                                 {[
                                     { label: 'Account Integrity', value: 'VERIFIED', color: 'var(--success)', icon: '✓' },
                                     { label: 'Login Context', value: 'MOBILE_GATEWAY', color: getTierColor(user.membership_tier), icon: '📱' },
-                                    { label: 'Last Activity', value: user.last_activity_date ? new Date(user.last_activity_date).toLocaleTimeString() : 'LIVE_SYNC', color: 'var(--text-main)', icon: '🔄' }
+                                    { label: 'Last Activity', value: user.updated_at ? new Date(user.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'LIVE_SYNC', color: 'var(--text-main)', icon: '🔄' }
                                 ].map((row, idx) => (
                                     <div key={idx} style={{ 
                                         display: 'flex', 
                                         justifyContent: 'space-between', 
                                         alignItems: 'center', 
-                                        padding: '12px 15px',
-                                        paddingBottom: '12px', 
-                                        borderBottom: idx < 2 ? '1px solid var(--glass-border)' : 'none',
-                                        background: idx === 0 ? `${row.color}10` : 'transparent',
-                                        borderRadius: idx === 0 ? '12px' : '0',
-                                        border: idx === 0 ? `1px solid ${row.color}30` : 'none'
+                                        padding: '14px 18px',
+                                        background: idx === 0 ? 'rgba(16, 185, 129, 0.05)' : 'rgba(255, 255, 255, 0.02)',
+                                        border: idx === 0 ? '1px solid rgba(16, 185, 129, 0.15)' : '1px solid var(--glass-border)',
+                                        borderRadius: '16px',
+                                        marginBottom: idx < 2 ? '12px' : '0'
                                     }}>
-                                        <span style={{ 
-                                            fontSize: '0.8rem', 
-                                            color: 'var(--text-muted)', 
-                                            fontWeight: 700,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '8px'
-                                        }}>
-                                            <span>{row.icon}</span>
-                                            {row.label}
-                                        </span>
-                                        <span style={{ 
-                                            fontSize: '0.8rem', 
-                                            fontWeight: 950, 
-                                            color: row.color,
-                                            textTransform: idx === 0 ? 'uppercase' : 'none',
-                                            letterSpacing: idx === 0 ? '0.5px' : '0'
-                                        }}>{row.value}</span>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                            <div style={{ 
+                                                width: '32px', 
+                                                height: '32px', 
+                                                borderRadius: '10px', 
+                                                background: idx === 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(255, 255, 255, 0.03)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                fontSize: '1rem',
+                                                color: row.color
+                                            }}>
+                                                {row.icon}
+                                            </div>
+                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 800 }}>{row.label}</span>
+                                                <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', opacity: 0.6, fontWeight: 600 }}>{idx === 0 ? 'Active & Secured' : idx === 1 ? 'Authorized Access' : 'Device Sync'}</span>
+                                            </div>
+                                        </div>
+                                        <div style={{ textAlign: 'right' }}>
+                                            <span style={{ 
+                                                fontSize: '0.8rem', 
+                                                fontWeight: 950, 
+                                                color: row.color,
+                                                letterSpacing: '0.5px'
+                                            }}>{row.value}</span>
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -1726,47 +1734,60 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                                                         </h5>
                                                         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                                             {dayActivities.filter(a => a.category === 'task' || a.category === 'conscious').map((a, i) => (
-                                                                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 15px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
-                                                                    <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: a.is_completed ? 'var(--success)' : 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
-                                                                        {a.is_completed && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
-                                                                    </div>
-                                                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                                                        <span style={{ fontWeight: 800, fontSize: '0.8rem', opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
-                                                                        {(() => {
-                                                                            let notes: Record<string, unknown> = {};
-                                                                            try {
-                                                                                notes = typeof a.notes === 'string'
-                                                                                    ? JSON.parse(a.notes || '{}')
-                                                                                    : (a.notes || {});
-                                                                            } catch {
-                                                                                notes = {};
-                                                                            }
-                                                                            const listened = Number(notes.audio_listened_percent ?? NaN);
-                                                                            const required = Number(notes.audio_required_percent ?? NaN);
-                                                                            const hasListenData = (Number.isFinite(listened) && listened > 0) || (Number.isFinite(required) && required > 0);
-                                                                            const met = Boolean(notes.audio_requirement_met);
-                                                                            if (!hasListenData) return null;
-                                                                            return (
-                                                                                <div style={{
-                                                                                    marginTop: 6,
-                                                                                    fontSize: '0.68rem',
-                                                                                    fontWeight: 800,
-                                                                                    color: met ? '#10b981' : '#f59e0b',
-                                                                                    padding: '6px 8px',
-                                                                                    background: met ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
-                                                                                    border: met ? '1px solid rgba(16,185,129,0.28)' : '1px solid rgba(245,158,11,0.28)',
-                                                                                    borderRadius: 8,
-                                                                                    display: 'inline-block',
-                                                                                }}>
-                                                                                    Audio: {Number.isFinite(listened) ? `${Math.max(0, Math.min(100, Math.round(listened)))}%` : '--'}
-                                                                                    {' / '}required {Number.isFinite(required) ? `${Math.max(0, Math.min(100, Math.round(required)))}%` : '--'}
-                                                                                    {Number.isFinite(required) && required > 0 ? (met ? '  (met)' : '  (below)') : ''}
-                                                                                </div>
-                                                                            );
-                                                                        })()}
-                                                                        {a.description && (
-                                                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, padding: '8px 10px', background: 'rgba(0,0,0,0.08)', borderRadius: 8, lineHeight: 1.4, fontStyle: 'italic' }}>
-                                                                                <span style={{ fontWeight: 700, color: 'var(--text-muted)', marginRight: 4 }}>Response:</span>{a.description}
+                                                                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '10px 15px', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
+                                                                     <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: a.is_completed ? 'var(--success)' : 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                                                                         {a.is_completed && <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                                                                     </div>
+                                                                     <div style={{ flex: 1, minWidth: 0 }}>
+                                                                         <span style={{ fontWeight: 800, fontSize: '0.8rem', opacity: a.is_completed ? 1 : 0.6 }}>{a.title}</span>
+                                                                         {(() => {
+                                                                             let notes: Record<string, unknown> = {};
+                                                                             try {
+                                                                                 notes = typeof a.notes === 'string'
+                                                                                     ? JSON.parse(a.notes || '{}')
+                                                                                     : (a.notes || {});
+                                                                             } catch {
+                                                                                 notes = {};
+                                                                             }
+                                                                             const listened = Number(notes.audio_listened_percent ?? NaN);
+                                                                             const required = Number(notes.audio_required_percent ?? NaN);
+                                                                             const hasListenData = (Number.isFinite(listened) && listened > 0) || (Number.isFinite(required) && required > 0);
+                                                                             const met = Boolean(notes.audio_requirement_met);
+                                                                             if (!hasListenData) return null;
+                                                                             return (
+                                                                                 <div style={{
+                                                                                     marginTop: 6,
+                                                                                     fontSize: '0.68rem',
+                                                                                     fontWeight: 800,
+                                                                                     color: met ? '#10b981' : '#f59e0b',
+                                                                                     padding: '6px 8px',
+                                                                                     background: met ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+                                                                                     border: met ? '1px solid rgba(16,185,129,0.28)' : '1px solid rgba(245,158,11,0.28)',
+                                                                                     borderRadius: 8,
+                                                                                     display: 'inline-block',
+                                                                                 }}>
+                                                                                     Audio: {Number.isFinite(listened) ? `${Math.max(0, Math.min(100, Math.round(listened)))}%` : '--'}
+                                                                                     {' / '}required {Number.isFinite(required) ? `${Math.max(0, Math.min(100, Math.round(required)))}%` : '--'}
+                                                                                     {Number.isFinite(required) && required > 0 ? (met ? '  (met)' : '  (below)') : ''}
+                                                                                 </div>
+                                                                             );
+                                                                         })()}
+                                                                         {a.description && (
+                                                                            <div style={{ fontSize: '0.74rem', color: 'var(--text-main)', marginTop: 10, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: 10, lineHeight: 1.5 }}>
+                                                                                {(() => {
+                                                                                    const isMcq = a.description.includes('MCQ:');
+                                                                                    if (isMcq) {
+                                                                                        return (
+                                                                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                                                <span style={{ fontSize: '0.55rem', fontWeight: 950, background: '#7e22ce', color: 'white', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.5px', marginBottom: '8px', width: 'fit-content' }}>MCQ SESSION</span>
+                                                                                                <div style={{ color: 'var(--text-main)', fontWeight: 700, whiteSpace: 'pre-wrap', fontStyle: 'italic', opacity: 0.9 }}>
+                                                                                                    {a.description}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    }
+                                                                                    return <div><span style={{ fontWeight: 700, opacity: 0.6, marginRight: 6 }}>Response:</span>{a.description}</div>;
+                                                                                })()}
                                                                             </div>
                                                                         )}
                                                                     </div>
@@ -1845,8 +1866,21 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                                                                             );
                                                                         })()}
                                                                         {a.description && (
-                                                                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6, padding: '8px 10px', background: 'rgba(0,0,0,0.08)', borderRadius: 8, lineHeight: 1.4, fontStyle: 'italic' }}>
-                                                                                <span style={{ fontWeight: 700, color: 'var(--text-muted)', marginRight: 4 }}>Response:</span>{a.description}
+                                                                            <div style={{ fontSize: '0.74rem', color: 'var(--text-main)', marginTop: 10, padding: '12px 14px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: 10, lineHeight: 1.5 }}>
+                                                                                {(() => {
+                                                                                    const isMcq = a.description.includes('MCQ:');
+                                                                                    if (isMcq) {
+                                                                                        return (
+                                                                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                                                <span style={{ fontSize: '0.55rem', fontWeight: 950, background: '#d946ef', color: 'white', padding: '2px 7px', borderRadius: '4px', letterSpacing: '0.5px', marginBottom: '8px', width: 'fit-content' }}>MCQ SESSION</span>
+                                                                                                <div style={{ color: 'var(--text-main)', fontWeight: 700, whiteSpace: 'pre-wrap', fontStyle: 'italic', opacity: 0.9 }}>
+                                                                                                    {a.description}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        );
+                                                                                    }
+                                                                                    return <div><span style={{ fontWeight: 700, opacity: 0.6, marginRight: 6 }}>Response:</span>{a.description}</div>;
+                                                                                })()}
                                                                             </div>
                                                                         )}
                                                                     </div>

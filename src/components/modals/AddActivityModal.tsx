@@ -89,7 +89,7 @@ const AddActivityModal: React.FC<AddActivityModalProps> = ({
                         </div>
 
                         <div>
-                            <label className="form-label">VIDEO/REEL SCRIPT IDEA</label>
+                            <label className="form-label">QUESTION / PROMPT</label>
                             <textarea
                                 rows={3}
                                 value={newActivity.script_idea ?? ''}

@@ -135,6 +135,7 @@ export interface User {
     /** ISO timestamp when user requested account deletion from the app (admin queue). */
     deletion_requested_at?: string | null;
     created_at?: string;
+    updated_at?: string;
     diagnosis_scores?: {
         branding: number;
         lead_gen: number;
@@ -264,3 +265,25 @@ export interface LeaderboardEntry {
     is_me?: boolean;
 }
 
+
+export interface DailyLogEntry {
+    day_number: number;
+    day_title: string | null;
+    task_title: string | null;
+    script_title: string | null;
+    task_description: string | null;
+    script_idea: string | null;
+    feedback: string | null;
+    audio_url: string | null;
+    required_listen_percent: number | null;
+    require_user_response: boolean | null;
+    notification_enabled: boolean | null;
+    morning_reminder_enabled: boolean | null;
+    evening_reminder_enabled: boolean | null;
+    morning_reminder_time: string | null;
+    evening_reminder_time: string | null;
+    is_mcq: boolean | null;
+    mcq_question: string | null;
+    mcq_options: string[] | null;
+    mcq_correct_option: number | null;
+}

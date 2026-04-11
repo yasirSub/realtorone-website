@@ -1,5 +1,5 @@
 import React from 'react';
-import type { ActivityType } from '../types';
+import type { ActivityType, DailyLogEntry } from '../types';
 import { apiClient } from '../api/client';
 import '../components/courses/CurriculumEditor.css';
 
@@ -14,8 +14,27 @@ interface MomentumPageProps {
 
 type CategoryKey = 'subconscious' | 'conscious';
 type SectionGroup = { title: string; order: number; items: ActivityType[] };
-type DailyLogEntry = { day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null; required_listen_percent: number | null; require_user_response: boolean | null; notification_enabled: boolean | null; morning_reminder_time: string | null; evening_reminder_time: string | null };
-type DailyLogDraft = { task_description: string; script_idea: string; feedback: string; audio_url: string; required_listen_percent: number; require_user_response: boolean; notification_enabled: boolean; morning_reminder_enabled: boolean; evening_reminder_enabled: boolean; morning_reminder_time: string; evening_reminder_time: string };
+
+type DailyLogDraft = {
+    day_title: string;
+    task_title: string;
+    script_title: string;
+    task_description: string;
+    script_idea: string;
+    feedback: string;
+    audio_url: string;
+    required_listen_percent: number;
+    require_user_response: boolean;
+    notification_enabled: boolean;
+    morning_reminder_enabled: boolean;
+    evening_reminder_enabled: boolean;
+    morning_reminder_time: string;
+    evening_reminder_time: string;
+    is_mcq: boolean;
+    mcq_question: string;
+    mcq_options: string[];
+    mcq_correct_option: number | null;
+};
 type UiDialog =
     | null
     | { kind: 'confirm'; title: string; message: string; onConfirm: () => void }
@@ -285,12 +304,19 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             const storedUrl = raw.startsWith('http') ? raw : raw.startsWith('/') ? raw : `/${raw}`;
 
             const defaultDraft: DailyLogDraft = {
+                day_title: '',
+                task_title: 'TASK DESCRIPTION',
+                script_title: 'QUESTION / PROMPT (OPTIONAL)',
                 task_description: (selectedActivity.description ?? '').toString(),
                 script_idea: (selectedActivity.script_idea ?? '').toString(),
                 feedback: '',
                 audio_url: '',
                 required_listen_percent: 0,
                 require_user_response: false,
+                is_mcq: false,
+                mcq_question: '',
+                mcq_options: [],
+                mcq_correct_option: null,
                 notification_enabled: true,
                 morning_reminder_enabled: true,
                 evening_reminder_enabled: true,
@@ -305,12 +331,19 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             }));
 
             const saveRes = await apiClient.upsertActivityTypeDailyLog(selectedActivity.id, day, {
+                day_title: merged.day_title || `DAY ${day}`,
+                task_title: merged.task_title || 'TASK DESCRIPTION',
+                script_title: merged.script_title || 'QUESTION / PROMPT (OPTIONAL)',
                 task_description: merged.task_description.trim(),
                 script_idea: merged.script_idea.trim(),
                 feedback: merged.feedback.trim(),
                 audio_url: storedUrl,
                 required_listen_percent: Math.max(0, Math.min(100, Number(merged.required_listen_percent || 0))),
                 require_user_response: Boolean(merged.require_user_response),
+                is_mcq: Boolean(merged.is_mcq),
+                mcq_question: (merged.mcq_question ?? '').trim(),
+                mcq_options: merged.mcq_options || [],
+                mcq_correct_option: merged.mcq_correct_option,
                 notification_enabled: Boolean(merged.notification_enabled),
                 morning_reminder_enabled: Boolean(merged.morning_reminder_enabled),
                 evening_reminder_enabled: Boolean(merged.evening_reminder_enabled),
@@ -428,6 +461,9 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             const normalized = (res.data || [])
                 .map((entry) => ({
                     day_number: Number(entry.day_number ?? 0),
+                    day_title: entry.day_title ?? null,
+                    task_title: entry.task_title ?? null,
+                    script_title: entry.script_title ?? null,
                     task_description: entry.task_description ?? null,
                     script_idea: entry.script_idea ?? null,
                     feedback: entry.feedback ?? null,
@@ -439,6 +475,10 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     evening_reminder_enabled: Boolean(entry.evening_reminder_enabled ?? true),
                     morning_reminder_time: entry.morning_reminder_time ?? '09:00',
                     evening_reminder_time: entry.evening_reminder_time ?? '18:00',
+                    is_mcq: Boolean(entry.is_mcq ?? false),
+                    mcq_question: entry.mcq_question ?? null,
+                    mcq_options: typeof entry.mcq_options === 'string' ? JSON.parse(entry.mcq_options) : (entry.mcq_options ?? []),
+                    mcq_correct_option: entry.mcq_correct_option != null ? Number(entry.mcq_correct_option) : null,
                 }))
                 .sort((a, b) => a.day_number - b.day_number);
             setSavedDayLogs(normalized);
@@ -466,6 +506,9 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
         setDayDrafts((prev) => ({
             ...prev,
             [day]: {
+                day_title: (entry?.day_title ?? '').toString(),
+                task_title: (entry?.task_title ?? '').toString(),
+                script_title: (entry?.script_title ?? '').toString(),
                 task_description: (entry?.task_description ?? defaultTaskDesc).toString(),
                 script_idea: (entry?.script_idea ?? selectedActivity.script_idea ?? '').toString(),
                 feedback: (entry?.feedback ?? '').toString(),
@@ -477,6 +520,10 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 evening_reminder_enabled: Boolean(entry?.evening_reminder_enabled ?? true),
                 morning_reminder_time: formatTimeForInput(entry?.morning_reminder_time ?? '09:00'),
                 evening_reminder_time: formatTimeForInput(entry?.evening_reminder_time ?? '18:00'),
+                is_mcq: Boolean(entry?.is_mcq ?? false),
+                mcq_question: (entry?.mcq_question ?? '').toString(),
+                mcq_options: typeof entry?.mcq_options === 'string' ? JSON.parse(entry.mcq_options) : (entry?.mcq_options ?? []),
+                mcq_correct_option: entry?.mcq_correct_option != null ? Number(entry.mcq_correct_option) : null,
             },
         }));
     }, [selectedActivity, dayDrafts, savedDayLogs]);
@@ -485,6 +532,9 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
         setDayDrafts((prev) => ({
             ...prev,
             [day]: {
+                day_title: prev[day]?.day_title ?? '',
+                task_title: prev[day]?.task_title ?? '',
+                script_title: prev[day]?.script_title ?? '',
                 task_description: prev[day]?.task_description ?? '',
                 script_idea: prev[day]?.script_idea ?? '',
                 feedback: prev[day]?.feedback ?? '',
@@ -496,6 +546,10 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 evening_reminder_enabled: prev[day]?.evening_reminder_enabled ?? true,
                 morning_reminder_time: prev[day]?.morning_reminder_time ?? '09:00',
                 evening_reminder_time: prev[day]?.evening_reminder_time ?? '18:00',
+                is_mcq: prev[day]?.is_mcq ?? false,
+                mcq_question: prev[day]?.mcq_question ?? '',
+                mcq_options: prev[day]?.mcq_options ?? [],
+                mcq_correct_option: prev[day]?.mcq_correct_option ?? null,
                 ...patch,
             },
         }));
@@ -504,6 +558,9 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
     const saveDailyLogForDay = async (day: number) => {
         if (!selectedActivity) return;
         const draft = dayDraftsRef.current[day] ?? {
+            day_title: '',
+            task_title: '',
+            script_title: '',
             task_description: '',
             script_idea: '',
             feedback: '',
@@ -515,10 +572,17 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             evening_reminder_enabled: true,
             morning_reminder_time: '09:00',
             evening_reminder_time: '18:00',
+            is_mcq: false,
+            mcq_question: '',
+            mcq_options: [],
+            mcq_correct_option: null,
         };
         setSavingDay(day);
         try {
             const res = await apiClient.upsertActivityTypeDailyLog(selectedActivity.id, day, {
+                day_title: draft.day_title.trim(),
+                task_title: draft.task_title.trim(),
+                script_title: draft.script_title.trim(),
                 task_description: draft.task_description.trim(),
                 script_idea: draft.script_idea.trim(),
                 feedback: draft.feedback.trim(),
@@ -531,6 +595,10 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 evening_reminder_enabled: draft.evening_reminder_enabled,
                 morning_reminder_time: draft.morning_reminder_time || '09:00',
                 evening_reminder_time: draft.evening_reminder_time || '18:00',
+                is_mcq: Boolean(draft.is_mcq),
+                mcq_question: draft.mcq_question.trim() || null,
+                mcq_options: draft.mcq_options,
+                mcq_correct_option: draft.mcq_correct_option,
             });
             if (!res.success) {
                 showSaveToast('Could not save this day. Try again or check the console.', 'error');
@@ -556,7 +624,27 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             .map((line) => line.trim())
             .filter(Boolean);
 
-        const entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string; required_listen_percent?: number; require_user_response?: boolean; notification_enabled?: boolean; morning_reminder_enabled?: boolean; evening_reminder_enabled?: boolean; morning_reminder_time?: string; evening_reminder_time?: string }> = [];
+        const entries: Array<{
+            day_number: number;
+            day_title?: string;
+            task_title?: string;
+            script_title?: string;
+            task_description?: string;
+            script_idea?: string;
+            feedback?: string;
+            audio_url?: string;
+            required_listen_percent?: number;
+            require_user_response?: boolean;
+            notification_enabled?: boolean;
+            morning_reminder_enabled?: boolean;
+            evening_reminder_enabled?: boolean;
+            morning_reminder_time?: string;
+            evening_reminder_time?: string;
+            is_mcq?: boolean;
+            mcq_question?: string | null;
+            mcq_options?: string[] | null;
+            mcq_correct_option?: number | null;
+        }> = [];
         for (const row of rows) {
             const cols = row.split('\t').map((x) => x.trim());
             if (cols.length < 2) continue;
@@ -571,12 +659,17 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             if (cols.length === 2) {
                 entries.push({
                     day_number: day,
+                    day_title: `DAY ${day}`,
+                    task_title: 'TASK DESCRIPTION',
+                    script_title: 'QUESTION / PROMPT (OPTIONAL)',
                     task_description: (selectedActivity?.description || '').toString(),
                     script_idea: cols[1],
                     feedback: '',
                     audio_url: '',
                     required_listen_percent: 0,
                     require_user_response: false,
+                    is_mcq: false,
+                    notification_enabled: true,
                     morning_reminder_enabled: true,
                     evening_reminder_enabled: true,
                     morning_reminder_time: '09:00',
@@ -585,12 +678,17 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             } else {
                 entries.push({
                     day_number: day,
-                    task_description: cols[1] || '',
+                    day_title: cols[1] || `DAY ${day}`,
+                    task_title: cols[2] || 'TASK DESCRIPTION',
+                    script_title: cols[3] || 'QUESTION / PROMPT (OPTIONAL)',
+                    task_description: cols[1] ?? (selectedActivity?.description || '').toString(),
                     script_idea: cols[2] || '',
                     feedback: cols[3] || '',
                     audio_url: cols[4] || '',
                     required_listen_percent: Math.max(0, Math.min(100, Number(cols[5] || 0))),
                     require_user_response: /^(1|true|yes|y)$/i.test((cols[6] || '').trim()),
+                    is_mcq: false,
+                    notification_enabled: true,
                     morning_reminder_enabled: /^(1|true|yes|y)$/i.test((cols[7] || 'true').trim()),
                     evening_reminder_enabled: /^(1|true|yes|y)$/i.test((cols[8] || 'true').trim()),
                     morning_reminder_time: formatTimeForInput(cols[9] || '09:00'),
@@ -724,6 +822,9 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             setDayDrafts((prev) => ({
                 ...prev,
                 [nextDay]: {
+                    day_title: '',
+                    task_title: '',
+                    script_title: '',
                     task_description: prevTaskDesc || (selectedActivity?.description ?? ''),
                     script_idea: selectedActivity?.script_idea ?? '',
                     feedback: '',
@@ -735,6 +836,10 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     evening_reminder_enabled: true,
                     morning_reminder_time: '09:00',
                     evening_reminder_time: '18:00',
+                    is_mcq: false,
+                    mcq_question: '',
+                    mcq_options: [],
+                    mcq_correct_option: null,
                 },
             }));
         }
@@ -1144,14 +1249,21 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                             >
                                                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 160px', minWidth: 0 }}>
                                                                     <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '1px', color: 'var(--text-muted)', flexShrink: 0 }}>
-                                                                        NEW DAY
+                                                                        DAY NUMBER
                                                                     </div>
                                                                     <input
                                                                         className="premium-input"
                                                                         type="number"
                                                                         value={newDayNumber}
                                                                         onChange={(e) => setNewDayNumber(Math.max(1, Number(e.target.value || 1)))}
-                                                                        style={{ width: 120, height: 36, flexShrink: 0 }}
+                                                                        style={{ width: 100, height: 36, flexShrink: 0 }}
+                                                                    />
+                                                                    <input
+                                                                        className="premium-input"
+                                                                        value={dayDrafts[newDayNumber]?.day_title ?? ''}
+                                                                        onChange={(e) => updateDayDraft(newDayNumber, { day_title: e.target.value })}
+                                                                        placeholder="Custom Day Title (e.g. Identity Re-Awakening)"
+                                                                        style={{ flex: 1, height: 36, fontWeight: 900, fontSize: '13px' }}
                                                                     />
                                                                 </div>
                                                                 <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignItems: 'center' }}>
@@ -1190,7 +1302,14 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                     <span style={{ color: 'var(--text-main)' }}>
                                                                         {taskDescExpandedByDay[newDayNumber] === true ? '▾' : '▸'}
                                                                     </span>
-                                                                    TASK DESCRIPTION
+                                                                    <input
+                                                                        className="premium-input-minimal"
+                                                                        value={dayDrafts[newDayNumber]?.task_title || 'TASK DESCRIPTION'}
+                                                                        onChange={(e) => updateDayDraft(newDayNumber, { task_title: e.target.value })}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        placeholder="TASK DESCRIPTION"
+                                                                        style={{ background: 'none', border: 'none', padding: 0, fontWeight: 'inherit', color: 'inherit', width: 'auto', flex: 1, letterSpacing: 'inherit' }}
+                                                                    />
                                                                 </button>
                                                                 {taskDescExpandedByDay[newDayNumber] === true ? (
                                                                     <textarea
@@ -1219,9 +1338,16 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                     style={momentumCollapsibleHeaderStyle}
                                                                 >
                                                                     <span style={{ color: 'var(--text-main)' }}>
-                                                                        {scriptIdeaExpandedByDay[newDayNumber] === true ? '▾' : '▸'}
+                                                                        {taskDescExpandedByDay[newDayNumber] === true ? '▾' : '▸'}
                                                                     </span>
-                                                                    VIDEO/REEL SCRIPT IDEA
+                                                                    <input
+                                                                        className="premium-input-minimal"
+                                                                        value={dayDrafts[newDayNumber]?.script_title || 'QUESTION / PROMPT (OPTIONAL)'}
+                                                                        onChange={(e) => updateDayDraft(newDayNumber, { script_title: e.target.value })}
+                                                                        onClick={(e) => e.stopPropagation()}
+                                                                        placeholder="QUESTION / PROMPT (OPTIONAL)"
+                                                                        style={{ background: 'none', border: 'none', padding: 0, fontWeight: 'inherit', color: 'inherit', width: 'auto', flex: 1, letterSpacing: 'inherit' }}
+                                                                    />
                                                                 </button>
                                                                 {scriptIdeaExpandedByDay[newDayNumber] === true ? (
                                                                     <textarea
@@ -1241,6 +1367,81 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                     </div>
                                                                 )}
                                                             </div>
+
+                                                            {/* MCQ Section Start */}
+                                                            <div style={{ background: 'rgba(102,126,234,0.05)', borderRadius: 12, padding: 12, border: '1px solid rgba(102,126,234,0.15)' }}>
+                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            id={`is_mcq_new`}
+                                                                            checked={dayDrafts[newDayNumber]?.is_mcq || false}
+                                                                            onChange={(e) => updateDayDraft(newDayNumber, { is_mcq: e.target.checked })}
+                                                                        />
+                                                                        <label htmlFor={`is_mcq_new`} style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-main)', cursor: 'pointer' }}>
+                                                                            ENABLE MCQ FOR THIS DAY
+                                                                        </label>
+                                                                    </div>
+                                                                </div>
+
+                                                                {dayDrafts[newDayNumber]?.is_mcq && (
+                                                                    <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+                                                                        <textarea
+                                                                            className="premium-input"
+                                                                            rows={2}
+                                                                            placeholder="Enter MCQ Question..."
+                                                                            value={dayDrafts[newDayNumber]?.mcq_question || ''}
+                                                                            onChange={(e) => updateDayDraft(newDayNumber, { mcq_question: e.target.value })}
+                                                                        />
+                                                                        <div style={{ display: 'grid', gap: 6 }}>
+                                                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>OPTIONS (SELECT CIRCLE FOR CORRECT ANSWER)</span>
+                                                                            {(dayDrafts[newDayNumber]?.mcq_options || []).map((opt, idx) => (
+                                                                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                                    <input
+                                                                                        type="radio"
+                                                                                        name={`mcq_correct_new`}
+                                                                                        checked={dayDrafts[newDayNumber]?.mcq_correct_option === idx}
+                                                                                        onChange={() => updateDayDraft(newDayNumber, { mcq_correct_option: idx })}
+                                                                                    />
+                                                                                    <input
+                                                                                        className="premium-input"
+                                                                                        style={{ flex: 1, height: 32, fontSize: '13px' }}
+                                                                                        value={opt}
+                                                                                        onChange={(e) => {
+                                                                                            const next = [...(dayDrafts[newDayNumber]?.mcq_options || [])];
+                                                                                            next[idx] = e.target.value;
+                                                                                            updateDayDraft(newDayNumber, { mcq_options: next });
+                                                                                        }}
+                                                                                    />
+                                                                                    <button
+                                                                                        className="btn-sidebar-delete"
+                                                                                        onClick={() => {
+                                                                                            const next = (dayDrafts[newDayNumber]?.mcq_options || []).filter((_, i) => i !== idx);
+                                                                                            let nextCorrect = dayDrafts[newDayNumber]?.mcq_correct_option;
+                                                                                            if (nextCorrect === idx) nextCorrect = null;
+                                                                                            else if (nextCorrect != null && nextCorrect > idx) nextCorrect--;
+                                                                                            updateDayDraft(newDayNumber, { mcq_options: next, mcq_correct_option: nextCorrect });
+                                                                                        }}
+                                                                                    >
+                                                                                        ×
+                                                                                    </button>
+                                                                                </div>
+                                                                            ))}
+                                                                            <button
+                                                                                className="btn-premium-ghost"
+                                                                                style={{ padding: '4px 8px', fontSize: '11px', alignSelf: 'flex-start' }}
+                                                                                onClick={() => {
+                                                                                    const next = [...(dayDrafts[newDayNumber]?.mcq_options || []), ''];
+                                                                                    updateDayDraft(newDayNumber, { mcq_options: next });
+                                                                                }}
+                                                                            >
+                                                                                + Add Option
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            {/* MCQ Section End */}
 
                                                             <div
                                                                 style={{
@@ -1725,7 +1926,17 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                         <span style={{ color: 'var(--text-muted)', fontWeight: 900 }}>
                                                                             {expandedSavedDay === entry.day_number ? '▾' : '▸'}
                                                                         </span>
-                                                                        Day {entry.day_number}
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                                            <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Day {entry.day_number} •</span>
+                                                                             <input
+                                                                                 className="premium-input-minimal"
+                                                                                 value={dayDrafts[entry.day_number]?.day_title ?? entry.day_title ?? ''}
+                                                                                 onChange={(e) => updateDayDraft(entry.day_number, { day_title: e.target.value })}
+                                                                                 onClick={(e) => e.stopPropagation()}
+                                                                                 placeholder="Routine Content / Title"
+                                                                                 style={{ background: 'none', border: 'none', padding: 0, fontWeight: 900, fontSize: '15px', color: 'var(--text-main)', width: 'auto', minWidth: 200 }}
+                                                                             />
+                                                                        </div>
                                                                     </button>
 
                                                                     <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
@@ -1745,7 +1956,14 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                                 <span style={{ color: 'var(--text-main)' }}>
                                                                                     {taskDescExpandedByDay[entry.day_number] === true ? '▾' : '▸'}
                                                                                 </span>
-                                                                                TASK DESCRIPTION
+                                                                                <input
+                                                                                    className="premium-input-minimal"
+                                                                                    value={dayDrafts[entry.day_number]?.task_title || entry.task_title || 'TASK DESCRIPTION'}
+                                                                                    onChange={(e) => updateDayDraft(entry.day_number, { task_title: e.target.value })}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    placeholder="TASK DESCRIPTION"
+                                                                                    style={{ background: 'none', border: 'none', padding: 0, fontWeight: 'inherit', color: 'inherit', width: 'auto', flex: 1, letterSpacing: 'inherit' }}
+                                                                                />
                                                                             </button>
                                                                             {taskDescExpandedByDay[entry.day_number] === true ? (
                                                                                 <textarea
@@ -1776,7 +1994,14 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                                 <span style={{ color: 'var(--text-main)' }}>
                                                                                     {scriptIdeaExpandedByDay[entry.day_number] === true ? '▾' : '▸'}
                                                                                 </span>
-                                                                                VIDEO/REEL SCRIPT IDEA
+                                                                                <input
+                                                                                    className="premium-input-minimal"
+                                                                                    value={dayDrafts[entry.day_number]?.script_title || entry.script_title || 'QUESTION / PROMPT (OPTIONAL)'}
+                                                                                    onChange={(e) => updateDayDraft(entry.day_number, { script_title: e.target.value })}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    placeholder="QUESTION / PROMPT (OPTIONAL)"
+                                                                                    style={{ background: 'none', border: 'none', padding: 0, fontWeight: 'inherit', color: 'inherit', width: 'auto', flex: 1, letterSpacing: 'inherit' }}
+                                                                                />
                                                                             </button>
                                                                             {scriptIdeaExpandedByDay[entry.day_number] === true ? (
                                                                                 <textarea
@@ -1796,6 +2021,81 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                                 </div>
                                                                             )}
                                                                         </div>
+
+                                                                        {/* MCQ Section for Saved Day Start */}
+                                                                        <div style={{ background: 'rgba(102,126,234,0.05)', borderRadius: 12, padding: 12, border: '1px solid rgba(102,126,234,0.15)' }}>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                                    <input
+                                                                                        type="checkbox"
+                                                                                        id={`is_mcq_${entry.day_number}`}
+                                                                                        checked={dayDrafts[entry.day_number]?.is_mcq || false}
+                                                                                        onChange={(e) => updateDayDraft(entry.day_number, { is_mcq: e.target.checked })}
+                                                                                    />
+                                                                                    <label htmlFor={`is_mcq_${entry.day_number}`} style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-main)', cursor: 'pointer' }}>
+                                                                                        ENABLE MCQ FOR THIS DAY
+                                                                                    </label>
+                                                                                </div>
+                                                                            </div>
+
+                                                                            {dayDrafts[entry.day_number]?.is_mcq && (
+                                                                                <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+                                                                                    <textarea
+                                                                                        className="premium-input"
+                                                                                        rows={2}
+                                                                                        placeholder="Enter MCQ Question..."
+                                                                                        value={dayDrafts[entry.day_number]?.mcq_question || ''}
+                                                                                        onChange={(e) => updateDayDraft(entry.day_number, { mcq_question: e.target.value })}
+                                                                                    />
+                                                                                    <div style={{ display: 'grid', gap: 6 }}>
+                                                                                        <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>OPTIONS (SELECT CIRCLE FOR CORRECT ANSWER)</span>
+                                                                                        {(dayDrafts[entry.day_number]?.mcq_options || []).map((opt, idx) => (
+                                                                                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                                                <input
+                                                                                                    type="radio"
+                                                                                                    name={`mcq_correct_${entry.day_number}`}
+                                                                                                    checked={dayDrafts[entry.day_number]?.mcq_correct_option === idx}
+                                                                                                    onChange={() => updateDayDraft(entry.day_number, { mcq_correct_option: idx })}
+                                                                                                />
+                                                                                                <input
+                                                                                                    className="premium-input"
+                                                                                                    style={{ flex: 1, height: 32, fontSize: '13px' }}
+                                                                                                    value={opt}
+                                                                                                    onChange={(e) => {
+                                                                                                        const next = [...(dayDrafts[entry.day_number]?.mcq_options || [])];
+                                                                                                        next[idx] = e.target.value;
+                                                                                                        updateDayDraft(entry.day_number, { mcq_options: next });
+                                                                                                    }}
+                                                                                                />
+                                                                                                <button
+                                                                                                    className="btn-sidebar-delete"
+                                                                                                    onClick={() => {
+                                                                                                        const next = (dayDrafts[entry.day_number]?.mcq_options || []).filter((_, i) => i !== idx);
+                                                                                                        let nextCorrect = dayDrafts[entry.day_number]?.mcq_correct_option;
+                                                                                                        if (nextCorrect === idx) nextCorrect = null;
+                                                                                                        else if (nextCorrect != null && nextCorrect > idx) nextCorrect--;
+                                                                                                        updateDayDraft(entry.day_number, { mcq_options: next, mcq_correct_option: nextCorrect });
+                                                                                                    }}
+                                                                                                >
+                                                                                                    ×
+                                                                                                </button>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                        <button
+                                                                                            className="btn-premium-ghost"
+                                                                                            style={{ padding: '4px 8px', fontSize: '11px', alignSelf: 'flex-start' }}
+                                                                                            onClick={() => {
+                                                                                                const next = [...(dayDrafts[entry.day_number]?.mcq_options || []), ''];
+                                                                                                updateDayDraft(entry.day_number, { mcq_options: next });
+                                                                                            }}
+                                                                                        >
+                                                                                            + Add Option
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        {/* MCQ Section for Saved Day End */}
 
                                                                         <div
                                                                             style={{
