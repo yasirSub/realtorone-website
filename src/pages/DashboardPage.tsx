@@ -51,7 +51,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ stats }) => {
     const pendingRemoval = stats.pending_deletion_requests ?? 0;
 
     return (
-        <div className="view-container fade-in" style={{ padding: '0 40px 60px 40px' }}>
+        <div className="view-container fade-in" style={{ padding: '0 10px 60px 10px' }}>
             {pendingRemoval > 0 ? (
                 <div
                     className="glass-panel"

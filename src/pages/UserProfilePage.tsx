@@ -60,6 +60,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
     const [hotLeadFlowModal, setHotLeadFlowModal] = useState<Record<string, unknown> | null>(null);
     const [dealRoomExcelMenuOpen, setDealRoomExcelMenuOpen] = useState(false);
     const [dealRoomExcelImporting, setDealRoomExcelImporting] = useState(false);
+    const [userTimezone, setUserTimezone] = useState(user.timezone || 'UTC');
+    const [savingTimezone, setSavingTimezone] = useState(false);
     const dealRoomExcelInputRef = useRef<HTMLInputElement>(null);
     const dealRoomExcelMenuRef = useRef<HTMLDivElement>(null);
 
@@ -194,6 +196,33 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
         setExpandedDays(prev =>
             prev.includes(date) ? prev.filter(d => d !== date) : [...prev, date]
         );
+    };
+
+    const handleTimezoneChange = async (newTz: string) => {
+        setUserTimezone(newTz);
+        setSavingTimezone(true);
+        try {
+            const token = localStorage.getItem('adminToken');
+            const res = await fetch(`${apiClient.getBaseUrl()}/admin/users/${user.id}`, {
+                method: 'PUT',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                },
+                body: JSON.stringify({ timezone: newTz })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // profile updated
+            } else {
+                alert('Failed to update timezone');
+            }
+        } catch (e) {
+            console.error(e);
+            alert('Error updating timezone');
+        } finally {
+            setSavingTimezone(false);
+        }
     };
 
     const getChartData = () => {
@@ -586,6 +615,42 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                             <div style={{ opacity: 0.8 }}>
                                 <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Registry Entry</span>
                                 <div style={{ fontSize: '1rem', fontWeight: 950, letterSpacing: '0.5px' }}>{user.created_at ? new Date(user.created_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : 'LEGACY_ARCHIVE'}</div>
+                            </div>
+                            <div style={{ opacity: 0.9 }}>
+                                <span style={{ display: 'block', fontSize: '0.6rem', fontWeight: 950, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>Operational Timezone</span>
+                                <div style={{ position: 'relative' }}>
+                                    <select 
+                                        value={userTimezone} 
+                                        onChange={(e) => handleTimezoneChange(e.target.value)}
+                                        disabled={savingTimezone}
+                                        className="premium-input-mini"
+                                        style={{ 
+                                            width: '100%', 
+                                            fontSize: '0.85rem', 
+                                            fontWeight: 700,
+                                            background: 'rgba(255,255,255,0.05)',
+                                            border: '1px solid rgba(255,255,255,0.1)',
+                                            color: '#fff',
+                                            padding: '8px 12px',
+                                            borderRadius: '10px'
+                                        }}
+                                    >
+                                        <option value="UTC">UTC (Universal)</option>
+                                        <option value="America/New_York">Eastern (ET)</option>
+                                        <option value="America/Chicago">Central (CT)</option>
+                                        <option value="America/Denver">Mountain (MT)</option>
+                                        <option value="America/Los_Angeles">Pacific (PT)</option>
+                                        <option value="Europe/London">London (GMT/BST)</option>
+                                        <option value="Asia/Karachi">Karachi (PKT)</option>
+                                        <option value="Asia/Kolkata">India (IST)</option>
+                                        <option value="Asia/Dubai">Dubai (GST)</option>
+                                        <option value="Australia/Sydney">Sydney (AEST)</option>
+                                    </select>
+                                    {savingTimezone && (
+                                        <div style={{ position: 'absolute', right: 10, top: 10, fontSize: '10px', color: 'var(--primary)' }}>Saving...</div>
+                                    )}
+                                </div>
+                                <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: 4, fontWeight: 700 }}>Reminders will adjust to this local time</div>
                             </div>
                         </div>
                     </div>

@@ -532,11 +532,10 @@
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
-    padding: 0 clamp(4px, 1.5vw, 12px) 4px;
+    padding: 0 20px 100px 20px;
     display: flex;
     flex-direction: column;
-    /* Fill main column below app chrome (sidebar padding + header + content padding) */
-    min-height: calc(100vh - 96px);
+    min-height: calc(100vh - 70px);
 }
 
 @supports (height: 100dvh) {
@@ -564,13 +563,13 @@
     width: 100%;
     box-sizing: border-box;
     flex: 1 1 auto;
-    min-height: clamp(420px, 72vh, 820px);
+    min-height: calc(100vh - 120px);
     gap: clamp(10px, 2vw, 24px);
 }
 
 @supports (height: 100dvh) {
     .momentum-page .momentum-curriculum-layout {
-        min-height: clamp(420px, 72dvh, 820px);
+        min-height: calc(100dvh - 120px);
     }
 }
 

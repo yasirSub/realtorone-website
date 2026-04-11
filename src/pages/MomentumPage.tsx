@@ -14,8 +14,8 @@ interface MomentumPageProps {
 
 type CategoryKey = 'subconscious' | 'conscious';
 type SectionGroup = { title: string; order: number; items: ActivityType[] };
-type DailyLogEntry = { day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null; required_listen_percent: number | null; require_user_response: boolean | null };
-type DailyLogDraft = { task_description: string; script_idea: string; feedback: string; audio_url: string; required_listen_percent: number; require_user_response: boolean };
+type DailyLogEntry = { day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null; required_listen_percent: number | null; require_user_response: boolean | null; notification_enabled: boolean | null; morning_reminder_time: string | null; evening_reminder_time: string | null };
+type DailyLogDraft = { task_description: string; script_idea: string; feedback: string; audio_url: string; required_listen_percent: number; require_user_response: boolean; notification_enabled: boolean; morning_reminder_enabled: boolean; evening_reminder_enabled: boolean; morning_reminder_time: string; evening_reminder_time: string };
 type UiDialog =
     | null
     | { kind: 'confirm'; title: string; message: string; onConfirm: () => void }
@@ -169,6 +169,14 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
         dayDraftsRef.current = dayDrafts;
     }, [dayDrafts]);
 
+    const formatTimeForInput = (time: string | null | undefined) => {
+        if (!time) return '';
+        if (time.length > 5 && time.includes(':')) {
+            return time.split(':').slice(0, 2).join(':');
+        }
+        return time;
+    };
+
     const showSaveToast = React.useCallback((message: string, variant: 'success' | 'error' = 'success') => {
         if (saveToastTimeoutRef.current) {
             clearTimeout(saveToastTimeoutRef.current);
@@ -277,12 +285,17 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             const storedUrl = raw.startsWith('http') ? raw : raw.startsWith('/') ? raw : `/${raw}`;
 
             const defaultDraft: DailyLogDraft = {
-                task_description: '',
-                script_idea: '',
+                task_description: (selectedActivity.description ?? '').toString(),
+                script_idea: (selectedActivity.script_idea ?? '').toString(),
                 feedback: '',
                 audio_url: '',
                 required_listen_percent: 0,
                 require_user_response: false,
+                notification_enabled: true,
+                morning_reminder_enabled: true,
+                evening_reminder_enabled: true,
+                morning_reminder_time: '09:00',
+                evening_reminder_time: '18:00',
             };
             const base = dayDraftsRef.current[day] ?? defaultDraft;
             const merged: DailyLogDraft = { ...base, audio_url: storedUrl };
@@ -298,6 +311,11 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 audio_url: storedUrl,
                 required_listen_percent: Math.max(0, Math.min(100, Number(merged.required_listen_percent || 0))),
                 require_user_response: Boolean(merged.require_user_response),
+                notification_enabled: Boolean(merged.notification_enabled),
+                morning_reminder_enabled: Boolean(merged.morning_reminder_enabled),
+                evening_reminder_enabled: Boolean(merged.evening_reminder_enabled),
+                morning_reminder_time: merged.morning_reminder_time || '09:00',
+                evening_reminder_time: merged.evening_reminder_time || '18:00',
             });
             if (!saveRes.success) {
                 alert(
@@ -416,6 +434,11 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     audio_url: entry.audio_url ?? null,
                     required_listen_percent: Number(entry.required_listen_percent ?? 0),
                     require_user_response: Boolean(entry.require_user_response ?? false),
+                    notification_enabled: Boolean(entry.notification_enabled ?? false),
+                    morning_reminder_enabled: Boolean(entry.morning_reminder_enabled ?? true),
+                    evening_reminder_enabled: Boolean(entry.evening_reminder_enabled ?? true),
+                    morning_reminder_time: entry.morning_reminder_time ?? '09:00',
+                    evening_reminder_time: entry.evening_reminder_time ?? '18:00',
                 }))
                 .sort((a, b) => a.day_number - b.day_number);
             setSavedDayLogs(normalized);
@@ -449,6 +472,11 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 audio_url: (entry?.audio_url ?? '').toString(),
                 required_listen_percent: Number(entry?.required_listen_percent ?? 0),
                 require_user_response: Boolean(entry?.require_user_response ?? false),
+                notification_enabled: Boolean(entry?.notification_enabled ?? false),
+                morning_reminder_enabled: Boolean(entry?.morning_reminder_enabled ?? true),
+                evening_reminder_enabled: Boolean(entry?.evening_reminder_enabled ?? true),
+                morning_reminder_time: formatTimeForInput(entry?.morning_reminder_time ?? '09:00'),
+                evening_reminder_time: formatTimeForInput(entry?.evening_reminder_time ?? '18:00'),
             },
         }));
     }, [selectedActivity, dayDrafts, savedDayLogs]);
@@ -463,6 +491,11 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 audio_url: prev[day]?.audio_url ?? '',
                 required_listen_percent: prev[day]?.required_listen_percent ?? 0,
                 require_user_response: prev[day]?.require_user_response ?? false,
+                notification_enabled: prev[day]?.notification_enabled ?? false,
+                morning_reminder_enabled: prev[day]?.morning_reminder_enabled ?? true,
+                evening_reminder_enabled: prev[day]?.evening_reminder_enabled ?? true,
+                morning_reminder_time: prev[day]?.morning_reminder_time ?? '09:00',
+                evening_reminder_time: prev[day]?.evening_reminder_time ?? '18:00',
                 ...patch,
             },
         }));
@@ -477,6 +510,11 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             audio_url: '',
             required_listen_percent: 0,
             require_user_response: false,
+            notification_enabled: false,
+            morning_reminder_enabled: true,
+            evening_reminder_enabled: true,
+            morning_reminder_time: '09:00',
+            evening_reminder_time: '18:00',
         };
         setSavingDay(day);
         try {
@@ -487,7 +525,12 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 audio_url:
                     draft.audio_url.trim() === '' ? null : draft.audio_url.trim(),
                 required_listen_percent: Math.max(0, Math.min(100, Number(draft.required_listen_percent || 0))),
-                require_user_response: Boolean(draft.require_user_response),
+                require_user_response: draft.require_user_response,
+                notification_enabled: draft.notification_enabled,
+                morning_reminder_enabled: draft.morning_reminder_enabled,
+                evening_reminder_enabled: draft.evening_reminder_enabled,
+                morning_reminder_time: draft.morning_reminder_time || '09:00',
+                evening_reminder_time: draft.evening_reminder_time || '18:00',
             });
             if (!res.success) {
                 showSaveToast('Could not save this day. Try again or check the console.', 'error');
@@ -513,7 +556,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             .map((line) => line.trim())
             .filter(Boolean);
 
-        const entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string; required_listen_percent?: number; require_user_response?: boolean }> = [];
+        const entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string; required_listen_percent?: number; require_user_response?: boolean; notification_enabled?: boolean; morning_reminder_enabled?: boolean; evening_reminder_enabled?: boolean; morning_reminder_time?: string; evening_reminder_time?: string }> = [];
         for (const row of rows) {
             const cols = row.split('\t').map((x) => x.trim());
             if (cols.length < 2) continue;
@@ -528,12 +571,16 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
             if (cols.length === 2) {
                 entries.push({
                     day_number: day,
-                    task_description: selectedActivity?.description || '',
+                    task_description: (selectedActivity?.description || '').toString(),
                     script_idea: cols[1],
                     feedback: '',
                     audio_url: '',
                     required_listen_percent: 0,
                     require_user_response: false,
+                    morning_reminder_enabled: true,
+                    evening_reminder_enabled: true,
+                    morning_reminder_time: '09:00',
+                    evening_reminder_time: '18:00',
                 });
             } else {
                 entries.push({
@@ -544,12 +591,16 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     audio_url: cols[4] || '',
                     required_listen_percent: Math.max(0, Math.min(100, Number(cols[5] || 0))),
                     require_user_response: /^(1|true|yes|y)$/i.test((cols[6] || '').trim()),
+                    morning_reminder_enabled: /^(1|true|yes|y)$/i.test((cols[7] || 'true').trim()),
+                    evening_reminder_enabled: /^(1|true|yes|y)$/i.test((cols[8] || 'true').trim()),
+                    morning_reminder_time: formatTimeForInput(cols[9] || '09:00'),
+                    evening_reminder_time: formatTimeForInput(cols[10] || '18:00'),
                 });
             }
         }
 
         if (!entries.length) {
-            alert('No valid rows found. Use tab-separated rows: day, task(optional), script, feedback(optional), audio_url(optional), required_listen_percent(optional 0-100), require_user_response(optional true/false).');
+            alert('No valid rows found. Use tab-separated rows: day, task(optional), script, feedback(optional), audio_url(optional), listen%, has_resp, morning_en(true/false), evening_en(true/false), morning_time, evening_time.');
             return;
         }
 
@@ -679,6 +730,11 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     audio_url: '',
                     required_listen_percent: 0,
                     require_user_response: false,
+                    notification_enabled: true,
+                    morning_reminder_enabled: true,
+                    evening_reminder_enabled: true,
+                    morning_reminder_time: '09:00',
+                    evening_reminder_time: '18:00',
                 },
             }));
         }
@@ -1196,10 +1252,10 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                             >
                                                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
                                                                     <div style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '0.08em' }}>
-                                                                        AUDIO SETTINGS
+                                                                        INTERACTION & REMINDERS
                                                                     </div>
                                                                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                                                        Upload + listen rules
+                                                                        Audio, logic, and reminders
                                                                     </div>
                                                                 </div>
                                                                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -1331,6 +1387,112 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                         />
                                                                     </button>
                                                                 </div>
+                                                                <div
+                                                                    style={{
+                                                                        marginTop: 10,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'space-between',
+                                                                        gap: 12,
+                                                                        background: 'rgba(255,255,255,0.02)',
+                                                                        border: '1px solid var(--glass-border)',
+                                                                        borderRadius: 10,
+                                                                        padding: '10px 12px',
+                                                                    }}
+                                                                >
+                                                                    <div style={{ minWidth: 0 }}>
+                                                                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
+                                                                            Daily Notification Reminder
+                                                                        </div>
+                                                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
+                                                                            Remind user daily if task not completed
+                                                                        </div>
+                                                                    </div>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => updateDayDraft(newDayNumber, { notification_enabled: !dayDrafts[newDayNumber]?.notification_enabled })}
+                                                                        aria-label="Toggle notification reminder"
+                                                                        style={{
+                                                                            width: 54,
+                                                                            height: 30,
+                                                                            borderRadius: 999,
+                                                                            border: dayDrafts[newDayNumber]?.notification_enabled
+                                                                                ? '1px solid rgba(139,92,246,0.55)'
+                                                                                : '1px solid var(--glass-border)',
+                                                                            background: dayDrafts[newDayNumber]?.notification_enabled
+                                                                                ? 'linear-gradient(135deg, rgba(139,92,246,0.35), rgba(167,139,250,0.28))'
+                                                                                : 'rgba(255,255,255,0.05)',
+                                                                            position: 'relative',
+                                                                            cursor: 'pointer',
+                                                                            transition: 'all 0.2s ease',
+                                                                            flexShrink: 0,
+                                                                        }}
+                                                                    >
+                                                                        <span
+                                                                            style={{
+                                                                                position: 'absolute',
+                                                                                top: 3,
+                                                                                left: dayDrafts[newDayNumber]?.notification_enabled ? 27 : 3,
+                                                                                width: 22,
+                                                                                height: 22,
+                                                                                borderRadius: '50%',
+                                                                                background: dayDrafts[newDayNumber]?.notification_enabled ? '#8b5cf6' : 'rgba(255,255,255,0.75)',
+                                                                                boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                                                                                transition: 'all 0.2s ease',
+                                                                            }}
+                                                                        />
+                                                                    </button>
+                                                                </div>
+                                                                {dayDrafts[newDayNumber]?.notification_enabled && (
+                                                                    <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                                        <div style={{ opacity: dayDrafts[newDayNumber]?.morning_reminder_enabled ? 1 : 0.5, transition: 'opacity 0.2s' }}>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                                                <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, letterSpacing: '0.05em' }}>
+                                                                                    <span>🌅</span> MORNING
+                                                                                </label>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => updateDayDraft(newDayNumber, { morning_reminder_enabled: !dayDrafts[newDayNumber]?.morning_reminder_enabled })}
+                                                                                    className={`btn-toggle-mini ${dayDrafts[newDayNumber]?.morning_reminder_enabled ? 'active' : ''}`}
+                                                                                    style={{ padding: '2px 8px', fontSize: '9px' }}
+                                                                                >
+                                                                                    {dayDrafts[newDayNumber]?.morning_reminder_enabled ? 'ON' : 'OFF'}
+                                                                                </button>
+                                                                            </div>
+                                                                            <input
+                                                                                type="time"
+                                                                                className="premium-input clock-input"
+                                                                                style={{ width: '100%', height: 42, fontSize: '16px', fontWeight: 700, textAlign: 'center', color: '#fff', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
+                                                                                value={dayDrafts[newDayNumber]?.morning_reminder_time || '09:00'}
+                                                                                disabled={!dayDrafts[newDayNumber]?.morning_reminder_enabled}
+                                                                                onChange={(e) => updateDayDraft(newDayNumber, { morning_reminder_time: e.target.value })}
+                                                                            />
+                                                                        </div>
+                                                                        <div style={{ opacity: dayDrafts[newDayNumber]?.evening_reminder_enabled ? 1 : 0.5, transition: 'opacity 0.2s' }}>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                                                <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, letterSpacing: '0.05em' }}>
+                                                                                    <span>🌆</span> EVENING
+                                                                                </label>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => updateDayDraft(newDayNumber, { evening_reminder_enabled: !dayDrafts[newDayNumber]?.evening_reminder_enabled })}
+                                                                                    className={`btn-toggle-mini ${dayDrafts[newDayNumber]?.evening_reminder_enabled ? 'active' : ''}`}
+                                                                                    style={{ padding: '2px 8px', fontSize: '9px' }}
+                                                                                >
+                                                                                    {dayDrafts[newDayNumber]?.evening_reminder_enabled ? 'ON' : 'OFF'}
+                                                                                </button>
+                                                                            </div>
+                                                                            <input
+                                                                                type="time"
+                                                                                className="premium-input clock-input"
+                                                                                style={{ width: '100%', height: 42, fontSize: '16px', fontWeight: 700, textAlign: 'center', color: '#fff', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
+                                                                                value={dayDrafts[newDayNumber]?.evening_reminder_time || '18:00'}
+                                                                                disabled={!dayDrafts[newDayNumber]?.evening_reminder_enabled}
+                                                                                onChange={(e) => updateDayDraft(newDayNumber, { evening_reminder_time: e.target.value })}
+                                                                            />
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                                 {(dayDrafts[newDayNumber]?.audio_url ?? '').trim() && (
                                                                     <div style={{ marginTop: 12 }}>
                                                                         <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 6 }}>PREVIEW</div>
@@ -1369,6 +1531,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                     </div>
                                                                 )}
                                                             </div>
+                                                            <div style={{ height: 16 }}></div>
 
                                                             <div
                                                                 style={{
@@ -1475,7 +1638,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                         No saved days yet. Click “+ Add Day” to create one, or “Bulk Add” to import many days.
                                                     </div>
                                                 ) : (
-                                                    <div style={{ maxHeight: 420, overflowY: 'auto', display: 'grid', gap: 8 }}>
+                                                    <div style={{ display: 'grid', gap: 12 }}>
                                                         {(() => {
                                                             const maxDay = savedDayLogs.reduce((acc, x) => Math.max(acc, Number(x.day_number || 0)), 0);
                                                             const periodSize = dayFilterMode === 'week' ? 7 : dayFilterMode === 'month' ? 30 : 0;
@@ -1528,12 +1691,15 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                             <div
                                                                 key={entry.day_number}
                                                                 style={{
-                                                                    background: selectedDayNumber === entry.day_number ? 'rgba(102,126,234,0.12)' : 'rgba(255,255,255,0.02)',
-                                                                    border: selectedDayNumber === entry.day_number ? '1px solid rgba(102,126,234,0.5)' : '1px solid var(--glass-border)',
-                                                                    borderRadius: 10,
+                                                                    background: selectedDayNumber === entry.day_number ? 'rgba(102,126,234,0.18)' : 'rgba(255,255,255,0.04)',
+                                                                    border: selectedDayNumber === entry.day_number ? '2.5px solid rgba(102,126,234,0.7)' : '1px solid var(--glass-border)',
+                                                                    borderRadius: 20,
                                                                     textAlign: 'left',
-                                                                    padding: '10px 12px',
+                                                                    padding: '30px 35px',
                                                                     color: 'var(--text-main)',
+                                                                    marginBottom: 20,
+                                                                    boxShadow: selectedDayNumber === entry.day_number ? '0 10px 40px -10px rgba(102,126,234,0.3)' : '0 4px 20px -5px rgba(0,0,0,0.2)',
+                                                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                                 }}
                                                             >
                                                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -1584,7 +1750,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                             {taskDescExpandedByDay[entry.day_number] === true ? (
                                                                                 <textarea
                                                                                     className="premium-input"
-                                                                                    rows={3}
+                                                                                    rows={6}
                                                                                     value={(dayDrafts[entry.day_number]?.task_description ?? '').toString()}
                                                                                     onChange={(e) => updateDayDraft(entry.day_number, { task_description: e.target.value })}
                                                                                     placeholder="Write task for this day..."
@@ -1615,7 +1781,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                             {scriptIdeaExpandedByDay[entry.day_number] === true ? (
                                                                                 <textarea
                                                                                     className="premium-input"
-                                                                                    rows={3}
+                                                                                    rows={5}
                                                                                     value={(dayDrafts[entry.day_number]?.script_idea ?? '').toString()}
                                                                                     onChange={(e) => updateDayDraft(entry.day_number, { script_idea: e.target.value })}
                                                                                     placeholder="Write script idea for this day..."
@@ -1641,10 +1807,10 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                         >
                                                                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
                                                                                 <div style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '0.08em' }}>
-                                                                                    AUDIO SETTINGS
+                                                                                    INTERACTION & REMINDERS
                                                                                 </div>
                                                                                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                                                                    Upload + listen rules
+                                                                                    Audio, logic, and reminders
                                                                                 </div>
                                                                             </div>
                                                                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -1776,6 +1942,112 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                                     />
                                                                                 </button>
                                                                             </div>
+                                                                            <div
+                                                                                style={{
+                                                                                    marginTop: 10,
+                                                                                    display: 'flex',
+                                                                                    alignItems: 'center',
+                                                                                    justifyContent: 'space-between',
+                                                                                    gap: 12,
+                                                                                    background: 'rgba(255,255,255,0.02)',
+                                                                                    border: '1px solid var(--glass-border)',
+                                                                                    borderRadius: 10,
+                                                                                    padding: '10px 12px',
+                                                                                }}
+                                                                            >
+                                                                                <div style={{ minWidth: 0 }}>
+                                                                                    <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
+                                                                                        Daily Notification Reminder
+                                                                                    </div>
+                                                                                    <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
+                                                                                        Remind user daily if task not completed
+                                                                                    </div>
+                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => updateDayDraft(entry.day_number, { notification_enabled: !dayDrafts[entry.day_number]?.notification_enabled })}
+                                                                                    aria-label="Toggle notification reminder"
+                                                                                    style={{
+                                                                                        width: 54,
+                                                                                        height: 30,
+                                                                                        borderRadius: 999,
+                                                                                        border: dayDrafts[entry.day_number]?.notification_enabled
+                                                                                            ? '1px solid rgba(139,92,246,0.55)'
+                                                                                            : '1px solid var(--glass-border)',
+                                                                                        background: dayDrafts[entry.day_number]?.notification_enabled
+                                                                                            ? 'linear-gradient(135deg, rgba(139,92,246,0.35), rgba(167,139,250,0.28))'
+                                                                                            : 'rgba(255,255,255,0.05)',
+                                                                                        position: 'relative',
+                                                                                        cursor: 'pointer',
+                                                                                        transition: 'all 0.2s ease',
+                                                                                        flexShrink: 0,
+                                                                                    }}
+                                                                                >
+                                                                                    <span
+                                                                                        style={{
+                                                                                            position: 'absolute',
+                                                                                            top: 3,
+                                                                                            left: dayDrafts[entry.day_number]?.notification_enabled ? 27 : 3,
+                                                                                            width: 22,
+                                                                                            height: 22,
+                                                                                            borderRadius: '50%',
+                                                                                            background: dayDrafts[entry.day_number]?.notification_enabled ? '#8b5cf6' : 'rgba(255,255,255,0.75)',
+                                                                                            boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
+                                                                                            transition: 'all 0.2s ease',
+                                                                                        }}
+                                                                                    />
+                                                                                </button>
+                                                                            </div>
+                                                                            {dayDrafts[entry.day_number]?.notification_enabled && (
+                                                                                <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
+                                                                                    <div style={{ opacity: dayDrafts[entry.day_number]?.morning_reminder_enabled ? 1 : 0.5, transition: 'opacity 0.2s' }}>
+                                                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                                                            <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, letterSpacing: '0.05em' }}>
+                                                                                                <span>🌅</span> MORNING
+                                                                                            </label>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => updateDayDraft(entry.day_number, { morning_reminder_enabled: !dayDrafts[entry.day_number]?.morning_reminder_enabled })}
+                                                                                                className={`btn-toggle-mini ${dayDrafts[entry.day_number]?.morning_reminder_enabled ? 'active' : ''}`}
+                                                                                                style={{ padding: '2px 8px', fontSize: '9px' }}
+                                                                                            >
+                                                                                                {dayDrafts[entry.day_number]?.morning_reminder_enabled ? 'ON' : 'OFF'}
+                                                                                            </button>
+                                                                                        </div>
+                                                                                        <input
+                                                                                            type="time"
+                                                                                            className="premium-input clock-input"
+                                                                                            style={{ width: '100%', height: 42, fontSize: '16px', fontWeight: 700, textAlign: 'center', color: '#fff', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
+                                                                                            value={formatTimeForInput(dayDrafts[entry.day_number]?.morning_reminder_time || '09:00')}
+                                                                                            disabled={!dayDrafts[entry.day_number]?.morning_reminder_enabled}
+                                                                                            onChange={(e) => updateDayDraft(entry.day_number, { morning_reminder_time: e.target.value })}
+                                                                                        />
+                                                                                    </div>
+                                                                                    <div style={{ opacity: dayDrafts[entry.day_number]?.evening_reminder_enabled ? 1 : 0.5, transition: 'opacity 0.2s' }}>
+                                                                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                                                            <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, letterSpacing: '0.05em' }}>
+                                                                                                <span>🌆</span> EVENING
+                                                                                            </label>
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => updateDayDraft(entry.day_number, { evening_reminder_enabled: !dayDrafts[entry.day_number]?.evening_reminder_enabled })}
+                                                                                                className={`btn-toggle-mini ${dayDrafts[entry.day_number]?.evening_reminder_enabled ? 'active' : ''}`}
+                                                                                                style={{ padding: '2px 8px', fontSize: '9px' }}
+                                                                                            >
+                                                                                                {dayDrafts[entry.day_number]?.evening_reminder_enabled ? 'ON' : 'OFF'}
+                                                                                            </button>
+                                                                                        </div>
+                                                                                        <input
+                                                                                            type="time"
+                                                                                            className="premium-input clock-input"
+                                                                                            style={{ width: '100%', height: 42, fontSize: '16px', fontWeight: 700, textAlign: 'center', color: '#fff', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
+                                                                                            value={formatTimeForInput(dayDrafts[entry.day_number]?.evening_reminder_time || '18:00')}
+                                                                                            disabled={!dayDrafts[entry.day_number]?.evening_reminder_enabled}
+                                                                                            onChange={(e) => updateDayDraft(entry.day_number, { evening_reminder_time: e.target.value })}
+                                                                                        />
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
                                                                             {(dayDrafts[entry.day_number]?.audio_url ?? '').trim() && (
                                                                                 <div style={{ marginTop: 12 }}>
                                                                                     <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 6 }}>PREVIEW</div>
@@ -1799,7 +2071,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                             {feedbackExpandedByDay[entry.day_number] === true ? (
                                                                                 <textarea
                                                                                     className="premium-input"
-                                                                                    rows={2}
+                                                                                    rows={4}
                                                                                     value={(dayDrafts[entry.day_number]?.feedback ?? '').toString()}
                                                                                     onChange={(e) => updateDayDraft(entry.day_number, { feedback: e.target.value })}
                                                                                     placeholder="Optional note for this day…"

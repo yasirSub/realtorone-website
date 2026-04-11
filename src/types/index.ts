@@ -38,6 +38,19 @@ export interface NotificationBroadcast {
     updated_at?: string;
 }
 
+export interface NotificationSetting {
+    id: number;
+    key: string;
+    name: string;
+    description: string | null;
+    is_enabled: boolean;
+    default_title: string | null;
+    default_body: string | null;
+    trigger_settings: Record<string, any> | null;
+    created_at: string;
+    updated_at: string;
+}
+
 // ... (existing interfaces)
 
 export interface ChatSession {
@@ -141,6 +154,7 @@ export interface User {
     instagram?: string;
     linkedin?: string;
     total_commission?: number;
+    timezone?: string;
     performance_history?: PerformanceMetric[];
 }
 

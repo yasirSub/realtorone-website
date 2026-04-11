@@ -285,14 +285,14 @@ export const apiClient = {
         });
         return response.json();
     },
-    getActivityTypeDailyLogs: async (id: number, fromDay = 1, toDay = 60): Promise<{ success: boolean; data: Array<{ day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null; required_listen_percent: number | null; require_user_response: boolean | null }> }> => {
+    getActivityTypeDailyLogs: async (id: number, fromDay = 1, toDay = 60): Promise<{ success: boolean; data: Array<{ day_number: number; task_description: string | null; script_idea: string | null; feedback: string | null; audio_url: string | null; required_listen_percent: number | null; require_user_response: boolean | null; notification_enabled: boolean | null; morning_reminder_enabled: boolean | null; evening_reminder_enabled: boolean | null; morning_reminder_time: string | null; evening_reminder_time: string | null }> }> => {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs?from_day=${fromDay}&to_day=${toDay}`, {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         return response.json();
     },
-    upsertActivityTypeDailyLog: async (id: number, day: number, data: { task_description?: string; script_idea?: string; feedback?: string; audio_url?: string | null; required_listen_percent?: number; require_user_response?: boolean }): Promise<{ success: boolean; data: any }> => {
+    upsertActivityTypeDailyLog: async (id: number, day: number, data: { task_description?: string; script_idea?: string; feedback?: string; audio_url?: string | null; required_listen_percent?: number; require_user_response?: boolean; notification_enabled?: boolean; morning_reminder_enabled?: boolean; evening_reminder_enabled?: boolean; morning_reminder_time?: string | null; evening_reminder_time?: string | null }): Promise<{ success: boolean; data: any }> => {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/${day}`, {
             method: 'PUT',
@@ -321,7 +321,7 @@ export const apiClient = {
             };
         }
     },
-    bulkUpsertActivityTypeDailyLogs: async (id: number, entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string; required_listen_percent?: number; require_user_response?: boolean }>): Promise<{ success: boolean; count: number }> => {
+    bulkUpsertActivityTypeDailyLogs: async (id: number, entries: Array<{ day_number: number; task_description?: string; script_idea?: string; feedback?: string; audio_url?: string; required_listen_percent?: number; require_user_response?: boolean; notification_enabled?: boolean; morning_reminder_enabled?: boolean; evening_reminder_enabled?: boolean; morning_reminder_time?: string; evening_reminder_time?: string }>): Promise<{ success: boolean; count: number }> => {
         const token = localStorage.getItem('adminToken');
         const response = await fetch(`${API_BASE_URL}/admin/activity-types/${id}/daily-logs/bulk`, {
             method: 'POST',
@@ -629,6 +629,60 @@ export const apiClient = {
         const response = await fetch(`${API_BASE_URL}/admin/notifications/${id}/send-now`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.json();
+    },
+
+    getDailyReminders: async (): Promise<{ success: boolean; data: any[] }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/daily-logs/all-reminders`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.json();
+    },
+
+    getWorkflowTriggers: async (): Promise<{ success: boolean; data: any[] }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/notifications/workflow-triggers`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.json();
+    },
+
+    updateWorkflowTrigger: async (id: number, payload: any): Promise<{ success: boolean }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/notifications/workflow-triggers/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        return response.json();
+    },
+
+    getNotificationSettings: async (): Promise<any[]> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/notification-settings`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        return response.json();
+    },
+
+    createNotificationSetting: async (payload: any): Promise<any> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/notification-settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
+        });
+        return response.json();
+    },
+
+    updateNotificationSetting: async (id: number, payload: any): Promise<any> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/notification-settings/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(payload)
         });
         return response.json();
     },

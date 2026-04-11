@@ -222,12 +222,12 @@
 }
 
 .main-viewport {
-    margin-left: calc(var(--sidebar-width) + 30px);
-    transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 0;
 }
 
 .sidebar-collapsed .main-viewport {
-    margin-left: calc(var(--sidebar-collapsed-width) + 30px);
+    /* No margin shift needed for flex layout */
 }
 
 .filter-btn:hover {
@@ -340,15 +340,10 @@
     border: 1px solid var(--glass-border);
     display: flex;
     flex-direction: column;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 1000;
-    position: fixed;
-    top: 15px;
-    bottom: 15px;
-    left: 15px;
-    border-radius: 16px;
-    box-shadow: 10px 0 40px rgba(0, 0, 0, 0.3); /* Softer base shadow */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 2);
+    box-shadow: 10px 0 40px rgba(0, 0, 0, 0.3);
     overflow: hidden;
+    height: 100vh;
 }
 
 [data-theme='light'] .sidebar {
@@ -809,4 +804,31 @@
 .nav-item:hover .icon {
     transform: scale(1.1);
     color: var(--primary);
+}
+
+/* Toggle Mini Switch */
+.btn-toggle-mini {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: var(--text-muted);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-weight: 800;
+}
+
+.btn-toggle-mini:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.btn-toggle-mini.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.3);
+}
+
+/* Time Input Refinement */.clock-input::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
 }
