@@ -761,6 +761,29 @@
 .notifications-input, .notifications-textarea, .notifications-select {
     background: rgba(11, 15, 25, 0.6);
     border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    caret-color: var(--text-main);
+}
+
+.notifications-input::placeholder,
+.notifications-textarea::placeholder {
+    color: var(--text-muted);
+    opacity: 1;
+}
+
+.notifications-select option {
+    background: #0b0f19;
+    color: var(--text-main);
+}
+
+.notifications-input[type="datetime-local"]::-webkit-datetime-edit,
+.notifications-input[type="datetime-local"]::-webkit-datetime-edit-text,
+.notifications-input[type="datetime-local"]::-webkit-datetime-edit-month-field,
+.notifications-input[type="datetime-local"]::-webkit-datetime-edit-day-field,
+.notifications-input[type="datetime-local"]::-webkit-datetime-edit-year-field,
+.notifications-input[type="datetime-local"]::-webkit-datetime-edit-hour-field,
+.notifications-input[type="datetime-local"]::-webkit-datetime-edit-minute-field {
+    color: var(--text-main);
 }
 
 .notifications-input:focus, .notifications-textarea:focus, .notifications-select:focus {
