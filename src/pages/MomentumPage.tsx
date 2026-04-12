@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ActivityType, DailyLogEntry } from '../types';
+import * as XLSX from 'xlsx';
 import { apiClient } from '../api/client';
 import '../components/courses/CurriculumEditor.css';
 
@@ -184,6 +185,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
     const singleAudioInputRef = React.useRef<HTMLInputElement>(null);
     const pendingUploadDayRef = React.useRef<number | null>(null);
     const dayDraftsRef = React.useRef(dayDrafts);
+    const bulkImportFileRef = React.useRef<HTMLInputElement>(null);
     React.useEffect(() => {
         dayDraftsRef.current = dayDrafts;
     }, [dayDrafts]);
@@ -394,7 +396,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     a.name.localeCompare(b.name)
                 )
                 .forEach((item) => {
-                    const key = item.section_title || (category === 'subconscious' ? 'Mindset & Inner Strength' : 'Conscious');
+                    const key = item.section_title || (category === 'subconscious' ? 'Subconscious' : 'Conscious');
                     if (!grouped.has(key)) grouped.set(key, []);
                     grouped.get(key)!.push(item);
                 });
@@ -615,6 +617,123 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
         }
     };
 
+    const exportTemplate = () => {
+        if (!selectedActivity) return;
+        
+        // Headers mapping
+        const headers = [
+            'Day',
+            'Day Title',
+            'Task Title',
+            'Task Description',
+            'Question Title',
+            'Question/Prompt',
+            'Feedback',
+            'Audio URL',
+            'Required Listen %',
+            'Require User Response (Yes/No)',
+            'Morning Notify (Yes/No)',
+            'Evening Notify (Yes/No)',
+            'Morning Time (HH:MM)',
+            'Evening Time (HH:MM)'
+        ];
+
+        let data = [];
+        if (savedDayLogs.length > 0) {
+            data = savedDayLogs.map(log => [
+                log.day_number,
+                log.day_title || `DAY ${log.day_number}`,
+                log.task_title || 'TASK DESCRIPTION',
+                log.task_description || '',
+                log.script_title || 'QUESTION / PROMPT (OPTIONAL)',
+                log.script_idea || '',
+                log.feedback || '',
+                log.audio_url || '',
+                log.required_listen_percent || 0,
+                log.require_user_response ? 'Yes' : 'No',
+                log.morning_reminder_enabled ? 'Yes' : 'No',
+                log.evening_reminder_enabled ? 'Yes' : 'No',
+                log.morning_reminder_time || '09:00',
+                log.evening_reminder_time || '18:00'
+            ]);
+        } else {
+            // Add one empty row as example
+            data = [[1, 'DAY 1', 'TASK DESCRIPTION', '', 'QUESTION / PROMPT (OPTIONAL)', '', '', '', 0, 'No', 'Yes', 'Yes', '09:00', '18:00']];
+        }
+
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Momentum Logs");
+        XLSX.writeFile(wb, `${selectedActivity.name}_Template.xlsx`);
+    };
+
+    const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !selectedActivity) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target?.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const rows: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                
+                if (rows.length < 2) {
+                    alert('Excel sheet is empty or only contains headers.');
+                    return;
+                }
+
+                const entries: any[] = [];
+                // Skip header row
+                for (let i = 1; i < rows.length; i++) {
+                    const r = rows[i];
+                    if (!r[0]) continue; // Skip rows without day number
+                    
+                    const dayNum = parseInt(r[0]);
+                    if (isNaN(dayNum)) continue;
+
+                    entries.push({
+                        day_number: dayNum,
+                        day_title: r[1] || `DAY ${dayNum}`,
+                        task_title: r[2] || 'TASK DESCRIPTION',
+                        task_description: r[3] || '',
+                        script_title: r[4] || 'QUESTION / PROMPT (OPTIONAL)',
+                        script_idea: r[5] || '',
+                        feedback: r[6] || '',
+                        audio_url: r[7] || '',
+                        required_listen_percent: Math.max(0, Math.min(100, parseInt(r[8]) || 0)),
+                        require_user_response: /^(yes|y|true|1)$/i.test((r[9] || '').toString()),
+                        morning_reminder_enabled: /^(yes|y|true|1)$/i.test((r[10] || 'true').toString()),
+                        evening_reminder_enabled: /^(yes|y|true|1)$/i.test((r[11] || 'true').toString()),
+                        morning_reminder_time: r[12] || '09:00',
+                        evening_reminder_time: r[13] || '18:00',
+                        is_mcq: false,
+                        notification_enabled: true
+                    });
+                }
+
+                if (entries.length === 0) {
+                    alert('No valid data found in Excel.');
+                    return;
+                }
+
+                const res = await apiClient.bulkUpsertActivityTypeDailyLogs(selectedActivity.id, entries);
+                if (res.success) {
+                    await refreshSavedDayLogs();
+                    setOpenBulkImport(false);
+                    alert(`Successfully imported ${res.count} logs from Excel.`);
+                }
+            } catch (err) {
+                console.error('Excel Import Error:', err);
+                alert('Failed to parse Excel file. Please ensure it matches the template.');
+            }
+        };
+        reader.readAsBinaryString(file);
+        // Clear input so same file can be selected again
+        if (bulkImportFileRef.current) bulkImportFileRef.current.value = '';
+    };
     const importBulkDayLogs = async () => {
         if (!selectedActivity) return;
         if (!bulkDayLogText.trim()) return;
@@ -1195,26 +1314,30 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                         (what user sees in popup before YES/NO)
                                                     </span>
                                                 </div>
-                                                <div style={{ display: 'flex', gap: 8 }}>
-                                                    <button
-                                                        className="btn-premium-primary"
-                                                        onClick={() => {
-                                                            setOpenBulkImport(false);
-                                                            addNextDay();
-                                                        }}
-                                                    >
-                                                        + Add Day
-                                                    </button>
-                                                    <button
-                                                        className="btn-premium-primary"
-                                                        onClick={() => {
-                                                            setIsAddingDay(false);
-                                                            setOpenBulkImport(true);
-                                                        }}
-                                                    >
-                                                        Bulk Add
-                                                    </button>
-                                                </div>
+                                                 <div style={{ display: 'flex', gap: 10 }}>
+                                                     <button
+                                                         className="btn-premium-primary"
+                                                         onClick={() => {
+                                                             setOpenBulkImport(false);
+                                                             addNextDay();
+                                                         }}
+                                                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', fontSize: '0.85rem' }}
+                                                     >
+                                                         <span style={{ fontSize: '1.1rem' }}>+</span> 
+                                                         <span>Add Individual Day</span>
+                                                     </button>
+                                                     <button
+                                                         className="btn-premium-ghost"
+                                                         onClick={() => {
+                                                             setIsAddingDay(false);
+                                                             setOpenBulkImport(true);
+                                                         }}
+                                                         style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)' }}
+                                                     >
+                                                         <span>📋</span>
+                                                         <span>Bulk Add</span>
+                                                     </button>
+                                                 </div>
                                             </div>
 
                                             {(isAddingDay || openBulkImport) && (
@@ -1234,184 +1357,200 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                 style={{
                                                                     position: 'sticky',
                                                                     top: 0,
-                                                                    zIndex: 5,
-                                                                    margin: '-12px -12px 12px -12px',
-                                                                    padding: '12px 12px 10px',
+                                                                    zIndex: 10,
+                                                                    margin: '-12px -12px 16px -12px',
+                                                                    padding: '16px 20px',
                                                                     display: 'flex',
                                                                     justifyContent: 'space-between',
                                                                     alignItems: 'center',
-                                                                    gap: 12,
+                                                                    gap: 16,
                                                                     flexWrap: 'wrap',
-                                                                    background: 'linear-gradient(180deg, rgba(15,23,42,0.97) 70%, rgba(15,23,42,0.88) 100%)',
-                                                                    borderBottom: '1px solid rgba(102,126,234,0.4)',
-                                                                    boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
+                                                                    background: 'rgba(15, 23, 42, 0.85)',
+                                                                    backdropFilter: 'blur(12px)',
+                                                                    WebkitBackdropFilter: 'blur(12px)',
+                                                                    borderBottom: '1px solid rgba(102, 126, 234, 0.25)',
+                                                                    boxShadow: '0 4px 20px rgba(0,0,0,0.2)',
+                                                                    borderTopLeftRadius: 12,
+                                                                    borderTopRightRadius: 12,
                                                                 }}
                                                             >
-                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: '1 1 160px', minWidth: 0 }}>
-                                                                    <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '1px', color: 'var(--text-muted)', flexShrink: 0 }}>
-                                                                        DAY NUMBER
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: '300px' }}>
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                                                        <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--accent)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                                                                            Day Number
+                                                                        </label>
+                                                                        <input
+                                                                            className="premium-input text-center"
+                                                                            type="number"
+                                                                            value={newDayNumber}
+                                                                            onChange={(e) => setNewDayNumber(Math.max(1, Number(e.target.value || 1)))}
+                                                                            style={{ width: 80, height: 40, fontSize: '1.1rem', fontWeight: 800, background: 'rgba(255,255,255,0.05)' }}
+                                                                        />
                                                                     </div>
-                                                                    <input
-                                                                        className="premium-input"
-                                                                        type="number"
-                                                                        value={newDayNumber}
-                                                                        onChange={(e) => setNewDayNumber(Math.max(1, Number(e.target.value || 1)))}
-                                                                        style={{ width: 100, height: 36, flexShrink: 0 }}
-                                                                    />
-                                                                    <input
-                                                                        className="premium-input"
-                                                                        value={dayDrafts[newDayNumber]?.day_title ?? ''}
-                                                                        onChange={(e) => updateDayDraft(newDayNumber, { day_title: e.target.value })}
-                                                                        placeholder="Custom Day Title (e.g. Identity Re-Awakening)"
-                                                                        style={{ flex: 1, height: 36, fontWeight: 900, fontSize: '13px' }}
-                                                                    />
+                                                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
+                                                                        <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+                                                                            Custom Day Title
+                                                                        </label>
+                                                                        <input
+                                                                            className="premium-input"
+                                                                            value={dayDrafts[newDayNumber]?.day_title ?? ''}
+                                                                            onChange={(e) => updateDayDraft(newDayNumber, { day_title: e.target.value })}
+                                                                            placeholder="e.g. Identity Re-Awakening"
+                                                                            style={{ height: 40, fontWeight: 700, fontSize: '14px', background: 'rgba(255,255,255,0.05)' }}
+                                                                        />
+                                                                    </div>
                                                                 </div>
-                                                                <div style={{ display: 'flex', gap: 10, flexShrink: 0, alignItems: 'center' }}>
+                                                                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="btn-premium-ghost"
+                                                                        onClick={() => setIsAddingDay(false)}
+                                                                        disabled={savingDay === newDayNumber}
+                                                                        style={{ padding: '0 20px', height: 40, fontSize: '0.85rem' }}
+                                                                    >
+                                                                        Cancel
+                                                                    </button>
                                                                     <button
                                                                         type="button"
                                                                         className="btn-premium-primary"
                                                                         onClick={saveNewDay}
                                                                         disabled={savingDay === newDayNumber}
                                                                         style={{
-                                                                            padding: '12px 22px',
-                                                                            fontSize: '0.82rem',
-                                                                            boxShadow: '0 0 0 1px rgba(255,255,255,0.12), 0 10px 28px var(--primary-shadow)',
+                                                                            padding: '0 28px',
+                                                                            height: 40,
+                                                                            fontSize: '0.85rem',
+                                                                            fontWeight: 700,
+                                                                            boxShadow: '0 0 20px var(--primary-shadow)',
                                                                         }}
                                                                     >
-                                                                        {savingDay === newDayNumber ? 'Saving…' : 'Save day'}
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn-premium-ghost"
-                                                                        onClick={() => setIsAddingDay(false)}
-                                                                        disabled={savingDay === newDayNumber}
-                                                                        style={{ padding: '12px 18px', fontSize: '0.82rem' }}
-                                                                    >
-                                                                        Cancel
+                                                                        {savingDay === newDayNumber ? 'Saving…' : 'Save Day'}
                                                                     </button>
                                                                 </div>
                                                             </div>
 
-                                                            <div>
-                                                                <button
-                                                                    type="button"
-                                                                    className="momentum-collapsible-trigger"
-                                                                    onClick={() => toggleTaskDescExpanded(newDayNumber)}
-                                                                    style={momentumCollapsibleHeaderStyle}
-                                                                >
-                                                                    <span style={{ color: 'var(--text-main)' }}>
-                                                                        {taskDescExpandedByDay[newDayNumber] === true ? '▾' : '▸'}
-                                                                    </span>
-                                                                    <input
-                                                                        className="premium-input-minimal"
-                                                                        value={dayDrafts[newDayNumber]?.task_title || 'TASK DESCRIPTION'}
-                                                                        onChange={(e) => updateDayDraft(newDayNumber, { task_title: e.target.value })}
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        placeholder="TASK DESCRIPTION"
-                                                                        style={{ background: 'none', border: 'none', padding: 0, fontWeight: 'inherit', color: 'inherit', width: 'auto', flex: 1, letterSpacing: 'inherit' }}
-                                                                    />
-                                                                </button>
-                                                                {taskDescExpandedByDay[newDayNumber] === true ? (
+                                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+                                                                <div>
+                                                                    <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                        <span>📝</span> TASK DESCRIPTION
+                                                                    </label>
                                                                     <textarea
                                                                         className="premium-input"
-                                                                        rows={3}
+                                                                        rows={5}
                                                                         value={(dayDrafts[newDayNumber]?.task_description ?? '').toString()}
                                                                         onChange={(e) => updateDayDraft(newDayNumber, { task_description: e.target.value })}
-                                                                        placeholder="Write task for this day..."
-                                                                        style={{ marginTop: 8, resize: 'vertical' }}
+                                                                        placeholder="Describe the main task for this day..."
+                                                                        style={{ resize: 'vertical', fontSize: '14px', lineHeight: '1.5' }}
                                                                     />
-                                                                ) : (
-                                                                    <div
-                                                                        style={momentumCollapsiblePreviewStyle}
-                                                                        title={(dayDrafts[newDayNumber]?.task_description ?? '').toString()}
-                                                                    >
-                                                                        {(dayDrafts[newDayNumber]?.task_description ?? '').toString().trim() || '—'}
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                                                </div>
 
-                                                            <div>
-                                                                <button
-                                                                    type="button"
-                                                                    className="momentum-collapsible-trigger"
-                                                                    onClick={() => toggleScriptIdeaExpanded(newDayNumber)}
-                                                                    style={momentumCollapsibleHeaderStyle}
-                                                                >
-                                                                    <span style={{ color: 'var(--text-main)' }}>
-                                                                        {taskDescExpandedByDay[newDayNumber] === true ? '▾' : '▸'}
-                                                                    </span>
-                                                                    <input
-                                                                        className="premium-input-minimal"
-                                                                        value={dayDrafts[newDayNumber]?.script_title || 'QUESTION / PROMPT (OPTIONAL)'}
-                                                                        onChange={(e) => updateDayDraft(newDayNumber, { script_title: e.target.value })}
-                                                                        onClick={(e) => e.stopPropagation()}
-                                                                        placeholder="QUESTION / PROMPT (OPTIONAL)"
-                                                                        style={{ background: 'none', border: 'none', padding: 0, fontWeight: 'inherit', color: 'inherit', width: 'auto', flex: 1, letterSpacing: 'inherit' }}
-                                                                    />
-                                                                </button>
-                                                                {scriptIdeaExpandedByDay[newDayNumber] === true ? (
+                                                                <div>
+                                                                    <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                        <span>💡</span> QUESTION / PROMPT (OPTIONAL)
+                                                                    </label>
                                                                     <textarea
                                                                         className="premium-input"
-                                                                        rows={3}
+                                                                        rows={5}
                                                                         value={(dayDrafts[newDayNumber]?.script_idea ?? '').toString()}
                                                                         onChange={(e) => updateDayDraft(newDayNumber, { script_idea: e.target.value })}
-                                                                        placeholder="Write script idea for this day..."
-                                                                        style={{ marginTop: 8, resize: 'vertical' }}
+                                                                        placeholder="Optional question or video script idea..."
+                                                                        style={{ resize: 'vertical', fontSize: '14px', lineHeight: '1.5' }}
                                                                     />
-                                                                ) : (
-                                                                    <div
-                                                                        style={momentumCollapsiblePreviewStyle}
-                                                                        title={(dayDrafts[newDayNumber]?.script_idea ?? '').toString()}
-                                                                    >
-                                                                        {(dayDrafts[newDayNumber]?.script_idea ?? '').toString().trim() || '—'}
-                                                                    </div>
-                                                                )}
+                                                                </div>
                                                             </div>
 
                                                             {/* MCQ Section Start */}
-                                                            <div style={{ background: 'rgba(102,126,234,0.05)', borderRadius: 12, padding: 12, border: '1px solid rgba(102,126,234,0.15)' }}>
-                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            id={`is_mcq_new`}
-                                                                            checked={dayDrafts[newDayNumber]?.is_mcq || false}
-                                                                            onChange={(e) => updateDayDraft(newDayNumber, { is_mcq: e.target.checked })}
-                                                                        />
-                                                                        <label htmlFor={`is_mcq_new`} style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-main)', cursor: 'pointer' }}>
-                                                                            ENABLE MCQ FOR THIS DAY
-                                                                        </label>
+                                                            <div 
+                                                                style={{ 
+                                                                    background: dayDrafts[newDayNumber]?.is_mcq ? 'rgba(102,126,234,0.08)' : 'rgba(255,255,255,0.02)', 
+                                                                    borderRadius: 16, 
+                                                                    padding: 16, 
+                                                                    border: dayDrafts[newDayNumber]?.is_mcq ? '1px solid rgba(102,126,234,0.3)' : '1px solid rgba(255,255,255,0.08)',
+                                                                    transition: 'all 0.3s ease'
+                                                                }}
+                                                            >
+                                                                <div 
+                                                                    style={{ 
+                                                                        display: 'flex', 
+                                                                        alignItems: 'center', 
+                                                                        justifyContent: 'space-between',
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                    onClick={() => updateDayDraft(newDayNumber, { is_mcq: !dayDrafts[newDayNumber]?.is_mcq })}
+                                                                >
+                                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                                        <div style={{ 
+                                                                            width: 32, 
+                                                                            height: 32, 
+                                                                            borderRadius: 8, 
+                                                                            background: dayDrafts[newDayNumber]?.is_mcq ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'center',
+                                                                            fontSize: '14px'
+                                                                        }}>
+                                                                            🙋‍♂️
+                                                                        </div>
+                                                                        <div>
+                                                                            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--text-main)' }}>Enable MCQ for this day</div>
+                                                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Include a multiple-choice question to test user knowledge</div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div style={{
+                                                                        width: 44,
+                                                                        height: 24,
+                                                                        borderRadius: 12,
+                                                                        background: dayDrafts[newDayNumber]?.is_mcq ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                                                                        position: 'relative',
+                                                                        transition: 'background 0.2s ease'
+                                                                    }}>
+                                                                        <div style={{
+                                                                            position: 'absolute',
+                                                                            top: 3,
+                                                                            left: dayDrafts[newDayNumber]?.is_mcq ? 23 : 3,
+                                                                            width: 18,
+                                                                            height: 18,
+                                                                            borderRadius: '50%',
+                                                                            background: '#fff',
+                                                                            transition: 'left 0.2s ease',
+                                                                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                                                                        }} />
                                                                     </div>
                                                                 </div>
 
                                                                 {dayDrafts[newDayNumber]?.is_mcq && (
-                                                                    <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
-                                                                        <textarea
-                                                                            className="premium-input"
-                                                                            rows={2}
-                                                                            placeholder="Enter MCQ Question..."
-                                                                            value={dayDrafts[newDayNumber]?.mcq_question || ''}
-                                                                            onChange={(e) => updateDayDraft(newDayNumber, { mcq_question: e.target.value })}
-                                                                        />
-                                                                        <div style={{ display: 'grid', gap: 6 }}>
-                                                                            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 800 }}>OPTIONS (SELECT CIRCLE FOR CORRECT ANSWER)</span>
+                                                                    <div style={{ display: 'grid', gap: 14, marginTop: 16, paddingTop: 16, borderTop: '1px solid rgba(102,126,234,0.15)' }}>
+                                                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                                            <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>QUESTION</label>
+                                                                            <textarea
+                                                                                className="premium-input"
+                                                                                rows={2}
+                                                                                placeholder="Enter the MCQ question..."
+                                                                                value={dayDrafts[newDayNumber]?.mcq_question || ''}
+                                                                                onChange={(e) => updateDayDraft(newDayNumber, { mcq_question: e.target.value })}
+                                                                                style={{ fontSize: '14px' }}
+                                                                            />
+                                                                        </div>
+                                                                        <div style={{ display: 'grid', gap: 8 }}>
+                                                                            <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.05em' }}>OPTIONS (SELECT CIRCLE FOR CORRECT ANSWER)</label>
                                                                             {(dayDrafts[newDayNumber]?.mcq_options || []).map((opt, idx) => (
-                                                                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                                                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                                                                     <input
                                                                                         type="radio"
                                                                                         name={`mcq_correct_new`}
                                                                                         checked={dayDrafts[newDayNumber]?.mcq_correct_option === idx}
                                                                                         onChange={() => updateDayDraft(newDayNumber, { mcq_correct_option: idx })}
+                                                                                        style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--primary)' }}
                                                                                     />
                                                                                     <input
                                                                                         className="premium-input"
-                                                                                        style={{ flex: 1, height: 32, fontSize: '13px' }}
+                                                                                        style={{ flex: 1, height: 38, fontSize: '14px', background: 'rgba(255,255,255,0.03)' }}
                                                                                         value={opt}
                                                                                         onChange={(e) => {
                                                                                             const next = [...(dayDrafts[newDayNumber]?.mcq_options || [])];
                                                                                             next[idx] = e.target.value;
                                                                                             updateDayDraft(newDayNumber, { mcq_options: next });
                                                                                         }}
+                                                                                        placeholder={`Option ${idx + 1}`}
                                                                                     />
                                                                                     <button
                                                                                         className="btn-sidebar-delete"
@@ -1422,6 +1561,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                                             else if (nextCorrect != null && nextCorrect > idx) nextCorrect--;
                                                                                             updateDayDraft(newDayNumber, { mcq_options: next, mcq_correct_option: nextCorrect });
                                                                                         }}
+                                                                                        style={{ width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                                                     >
                                                                                         ×
                                                                                     </button>
@@ -1429,7 +1569,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                             ))}
                                                                             <button
                                                                                 className="btn-premium-ghost"
-                                                                                style={{ padding: '4px 8px', fontSize: '11px', alignSelf: 'flex-start' }}
+                                                                                style={{ padding: '8px 16px', fontSize: '12px', alignSelf: 'flex-start', marginTop: 4, background: 'rgba(255,255,255,0.05)' }}
                                                                                 onClick={() => {
                                                                                     const next = [...(dayDrafts[newDayNumber]?.mcq_options || []), ''];
                                                                                     updateDayDraft(newDayNumber, { mcq_options: next });
@@ -1442,212 +1582,205 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                 )}
                                                             </div>
                                                             {/* MCQ Section End */}
+                                                            {/* MCQ Section End */}
 
                                                             <div
                                                                 style={{
-                                                                    background: 'rgba(15,23,42,0.35)',
-                                                                    border: '1px solid rgba(148,163,184,0.22)',
-                                                                    borderRadius: 12,
-                                                                    padding: '12px',
+                                                                    background: 'rgba(30, 41, 59, 0.4)',
+                                                                    border: '1px solid rgba(148,163,184,0.15)',
+                                                                    borderRadius: 16,
+                                                                    padding: '20px',
                                                                 }}
                                                             >
-                                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 10 }}>
-                                                                    <div style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-main)', letterSpacing: '0.08em' }}>
-                                                                        INTERACTION & REMINDERS
+                                                                <div style={{ marginBottom: 20 }}>
+                                                                    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: 12, marginBottom: 10 }}>
+                                                                        <div>
+                                                                            <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 6, display: 'block' }}>
+                                                                                <span>📤</span> AUDIO ASSET (OPTIONAL)
+                                                                            </label>
+                                                                            <div style={{ display: 'flex', gap: 8 }}>
+                                                                                <input
+                                                                                    className="premium-input"
+                                                                                    type="url"
+                                                                                    value={(dayDrafts[newDayNumber]?.audio_url ?? '').toString()}
+                                                                                    onChange={(e) => updateDayDraft(newDayNumber, { audio_url: e.target.value })}
+                                                                                    placeholder="Paste URL or upload file..."
+                                                                                    style={{ flex: 1, height: 42, fontSize: '13px' }}
+                                                                                />
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="btn-premium-primary"
+                                                                                    disabled={audioUploadingDay === newDayNumber}
+                                                                                    style={{
+                                                                                        height: 42,
+                                                                                        padding: '0 16px',
+                                                                                        display: 'flex', 
+                                                                                        alignItems: 'center', 
+                                                                                        gap: 6,
+                                                                                        fontSize: '13px'
+                                                                                    }}
+                                                                                    onClick={() => triggerAudioUpload(newDayNumber)}
+                                                                                >
+                                                                                    {audioUploadingDay === newDayNumber ? '💿' : '📤'}
+                                                                                    <span>{audioUploadingDay === newDayNumber ? 'UPLOADING…' : 'UPLOAD'}</span>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+                                                                            {(dayDrafts[newDayNumber]?.audio_url ?? '').trim() !== '' && (
+                                                                                <button
+                                                                                    type="button"
+                                                                                    className="btn-premium-ghost"
+                                                                                    disabled={audioUploadingDay === newDayNumber}
+                                                                                    title="Remove audio"
+                                                                                    style={{
+                                                                                        height: 42,
+                                                                                        padding: '0 12px',
+                                                                                        fontSize: '11px',
+                                                                                        fontWeight: 800,
+                                                                                        color: 'var(--error)',
+                                                                                        borderColor: 'rgba(238, 93, 80, 0.2)'
+                                                                                    }}
+                                                                                    onClick={() => updateDayDraft(newDayNumber, { audio_url: '' })}
+                                                                                >
+                                                                                    REMOVE
+                                                                                </button>
+                                                                            )}
+                                                                        </div>
                                                                     </div>
-                                                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                                                        Audio, logic, and reminders
-                                                                    </div>
-                                                                </div>
-                                                                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-                                                                    <input
-                                                                        className="premium-input"
-                                                                        type="url"
-                                                                        value={(dayDrafts[newDayNumber]?.audio_url ?? '').toString()}
-                                                                        onChange={(e) => updateDayDraft(newDayNumber, { audio_url: e.target.value })}
-                                                                        placeholder="Paste URL or upload file below"
-                                                                        style={{ flex: 1, minWidth: 200 }}
-                                                                    />
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn-premium-primary"
-                                                                        disabled={audioUploadingDay === newDayNumber}
-                                                                        style={{
-                                                                            margin: 0,
-                                                                            padding: '10px 16px',
-                                                                            opacity: audioUploadingDay === newDayNumber ? 0.7 : 1,
-                                                                        }}
-                                                                        onClick={() => triggerAudioUpload(newDayNumber)}
-                                                                    >
-                                                                        {audioUploadingDay === newDayNumber
-                                                                            ? audioUploadPercent >= 3
-                                                                                ? `UPLOADING ${audioUploadPercent}%`
-                                                                                : 'UPLOADING…'
-                                                                            : 'UPLOAD AUDIO'}
-                                                                    </button>
+
                                                                     {(dayDrafts[newDayNumber]?.audio_url ?? '').trim() !== '' && (
-                                                                        <button
-                                                                            type="button"
-                                                                            className="btn-premium-ghost"
-                                                                            disabled={audioUploadingDay === newDayNumber}
-                                                                            title="Clear audio URL from this day (click Save to persist)"
-                                                                            style={{
-                                                                                margin: 0,
-                                                                                padding: '10px 14px',
-                                                                                fontSize: '0.72rem',
-                                                                                fontWeight: 800,
-                                                                                letterSpacing: '0.04em',
-                                                                                opacity: audioUploadingDay === newDayNumber ? 0.5 : 1,
-                                                                            }}
-                                                                            onClick={() => updateDayDraft(newDayNumber, { audio_url: '' })}
-                                                                        >
-                                                                            REMOVE AUDIO
-                                                                        </button>
-                                                                    )}
-                                                                    {audioUploadingDay === newDayNumber && (
-                                                                        <div style={{ width: 120, height: 4, background: 'var(--bg-tertiary)', borderRadius: 2, overflow: 'hidden' }}>
-                                                                            <div style={{ width: `${audioUploadPercent}%`, height: '100%', background: 'var(--accent)', transition: 'width 0.2s' }} />
+                                                                        <div style={{ 
+                                                                            display: 'grid', 
+                                                                            gridTemplateColumns: 'minmax(200px, 1fr) 300px', 
+                                                                            gap: 16, 
+                                                                            background: 'rgba(0,0,0,0.25)', 
+                                                                            padding: '12px', 
+                                                                            borderRadius: 10, 
+                                                                            border: '1px solid rgba(255,255,255,0.06)',
+                                                                            alignItems: 'center'
+                                                                        }}>
+                                                                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                                                                                <label style={{ fontSize: '9px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
+                                                                                    REQUIRED LISTEN: <span style={{ color: 'var(--accent)' }}>{Number(dayDrafts[newDayNumber]?.required_listen_percent ?? 0)}%</span>
+                                                                                </label>
+                                                                                <input
+                                                                                    type="range"
+                                                                                    min={0}
+                                                                                    max={100}
+                                                                                    step={1}
+                                                                                    value={Number(dayDrafts[newDayNumber]?.required_listen_percent ?? 0)}
+                                                                                    onChange={(e) => {
+                                                                                        const next = Math.max(0, Math.min(100, Number(e.target.value || 0)));
+                                                                                        updateDayDraft(newDayNumber, { required_listen_percent: next });
+                                                                                    }}
+                                                                                    style={{ width: '100%', accentColor: 'var(--accent)', cursor: 'pointer', height: 12 }}
+                                                                                />
+                                                                            </div>
+                                                                            <div style={{ borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: 16 }}>
+                                                                                <PremiumAudioPlayer src={resolveAudioPlaybackUrl(dayDrafts[newDayNumber]?.audio_url ?? '')} />
+                                                                            </div>
                                                                         </div>
                                                                     )}
                                                                 </div>
-                                                                {(dayDrafts[newDayNumber]?.audio_url ?? '').trim() !== '' && (
-                                                                    <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
-                                                                        <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px' }}>
-                                                                            REQUIRED LISTEN %: {Number(dayDrafts[newDayNumber]?.required_listen_percent ?? 0)}%
-                                                                        </div>
-                                                                        <input
-                                                                            type="range"
-                                                                            min={0}
-                                                                            max={100}
-                                                                            step={1}
-                                                                            value={Number(dayDrafts[newDayNumber]?.required_listen_percent ?? 0)}
-                                                                            onChange={(e) => {
-                                                                                const next = Math.max(0, Math.min(100, Number(e.target.value || 0)));
-                                                                                updateDayDraft(newDayNumber, { required_listen_percent: next });
-                                                                            }}
-                                                                            style={{ width: '100%', accentColor: 'var(--accent)' }}
-                                                                        />
-                                                                        <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                                                                            0 = no minimum
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-                                                                <div
-                                                                    style={{
-                                                                        marginTop: 10,
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'space-between',
-                                                                        gap: 12,
-                                                                        background: 'rgba(255,255,255,0.02)',
-                                                                        border: '1px solid var(--glass-border)',
-                                                                        borderRadius: 10,
-                                                                        padding: '10px 12px',
-                                                                    }}
-                                                                >
-                                                                    <div style={{ minWidth: 0 }}>
-                                                                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
-                                                                            Require user response
-                                                                        </div>
-                                                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
-                                                                            User must type response before submit
-                                                                        </div>
-                                                                    </div>
-                                                                    <button
-                                                                        type="button"
+
+                                                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                                                                    <div
                                                                         onClick={() => updateDayDraft(newDayNumber, { require_user_response: !dayDrafts[newDayNumber]?.require_user_response })}
-                                                                        aria-label="Toggle require user response"
                                                                         style={{
-                                                                            width: 54,
-                                                                            height: 30,
-                                                                            borderRadius: 999,
-                                                                            border: dayDrafts[newDayNumber]?.require_user_response
-                                                                                ? '1px solid rgba(16,185,129,0.55)'
-                                                                                : '1px solid var(--glass-border)',
-                                                                            background: dayDrafts[newDayNumber]?.require_user_response
-                                                                                ? 'linear-gradient(135deg, rgba(16,185,129,0.35), rgba(52,211,153,0.28))'
-                                                                                : 'rgba(255,255,255,0.05)',
-                                                                            position: 'relative',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'space-between',
+                                                                            gap: 12,
+                                                                            background: dayDrafts[newDayNumber]?.require_user_response ? 'rgba(16,185,129,0.06)' : 'rgba(255,255,255,0.02)',
+                                                                            border: dayDrafts[newDayNumber]?.require_user_response ? '1px solid rgba(16,185,129,0.3)' : '1px solid var(--glass-border)',
+                                                                            borderRadius: 12,
+                                                                            padding: '12px 16px',
                                                                             cursor: 'pointer',
-                                                                            transition: 'all 0.2s ease',
-                                                                            flexShrink: 0,
+                                                                            transition: 'all 0.2s ease'
                                                                         }}
                                                                     >
-                                                                        <span
-                                                                            style={{
-                                                                                position: 'absolute',
-                                                                                top: 3,
-                                                                                left: dayDrafts[newDayNumber]?.require_user_response ? 27 : 3,
-                                                                                width: 22,
-                                                                                height: 22,
-                                                                                borderRadius: '50%',
-                                                                                background: dayDrafts[newDayNumber]?.require_user_response ? '#10b981' : 'rgba(255,255,255,0.75)',
-                                                                                boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                                                                                transition: 'all 0.2s ease',
-                                                                            }}
-                                                                        />
-                                                                    </button>
-                                                                </div>
-                                                                <div
-                                                                    style={{
-                                                                        marginTop: 10,
-                                                                        display: 'flex',
-                                                                        alignItems: 'center',
-                                                                        justifyContent: 'space-between',
-                                                                        gap: 12,
-                                                                        background: 'rgba(255,255,255,0.02)',
-                                                                        border: '1px solid var(--glass-border)',
-                                                                        borderRadius: 10,
-                                                                        padding: '10px 12px',
-                                                                    }}
-                                                                >
-                                                                    <div style={{ minWidth: 0 }}>
-                                                                        <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>
-                                                                            Daily Notification Reminder
+                                                                        <div>
+                                                                            <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>Require user response</div>
+                                                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>User must type response</div>
                                                                         </div>
-                                                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
-                                                                            Remind user daily if task not completed
+                                                                        <div style={{
+                                                                            width: 36,
+                                                                            height: 20,
+                                                                            borderRadius: 10,
+                                                                            background: dayDrafts[newDayNumber]?.require_user_response ? '#10b981' : 'rgba(255,255,255,0.1)',
+                                                                            position: 'relative',
+                                                                            transition: 'background 0.2s ease'
+                                                                        }}>
+                                                                            <div style={{
+                                                                                position: 'absolute',
+                                                                                top: 2,
+                                                                                left: dayDrafts[newDayNumber]?.require_user_response ? 18 : 2,
+                                                                                width: 16,
+                                                                                height: 16,
+                                                                                borderRadius: '50%',
+                                                                                background: '#fff',
+                                                                                transition: 'left 0.2s ease'
+                                                                            }} />
                                                                         </div>
                                                                     </div>
-                                                                    <button
-                                                                        type="button"
+
+                                                                    <div
                                                                         onClick={() => updateDayDraft(newDayNumber, { notification_enabled: !dayDrafts[newDayNumber]?.notification_enabled })}
-                                                                        aria-label="Toggle notification reminder"
                                                                         style={{
-                                                                            width: 54,
-                                                                            height: 30,
-                                                                            borderRadius: 999,
-                                                                            border: dayDrafts[newDayNumber]?.notification_enabled
-                                                                                ? '1px solid rgba(139,92,246,0.55)'
-                                                                                : '1px solid var(--glass-border)',
-                                                                            background: dayDrafts[newDayNumber]?.notification_enabled
-                                                                                ? 'linear-gradient(135deg, rgba(139,92,246,0.35), rgba(167,139,250,0.28))'
-                                                                                : 'rgba(255,255,255,0.05)',
-                                                                            position: 'relative',
+                                                                            display: 'flex',
+                                                                            alignItems: 'center',
+                                                                            justifyContent: 'space-between',
+                                                                            gap: 12,
+                                                                            background: dayDrafts[newDayNumber]?.notification_enabled ? 'rgba(139,92,246,0.06)' : 'rgba(255,255,255,0.02)',
+                                                                            border: dayDrafts[newDayNumber]?.notification_enabled ? '1px solid rgba(139,92,246,0.3)' : '1px solid var(--glass-border)',
+                                                                            borderRadius: 12,
+                                                                            padding: '12px 16px',
                                                                             cursor: 'pointer',
                                                                             transition: 'all 0.2s ease',
-                                                                            flexShrink: 0,
+                                                                            opacity: dayDrafts[newDayNumber]?.notification_enabled ? 1 : 0.8
                                                                         }}
                                                                     >
-                                                                        <span
-                                                                            style={{
+                                                                        <div>
+                                                                            <div style={{ fontSize: '12px', fontWeight: 800, color: 'var(--text-main)' }}>Daily Notifications</div>
+                                                                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>Remind user daily</div>
+                                                                        </div>
+                                                                        <div style={{
+                                                                            width: 36,
+                                                                            height: 20,
+                                                                            borderRadius: 10,
+                                                                            background: dayDrafts[newDayNumber]?.notification_enabled ? '#8b5cf6' : 'rgba(255,255,255,0.1)',
+                                                                            position: 'relative',
+                                                                            transition: 'background 0.2s ease'
+                                                                        }}>
+                                                                            <div style={{
                                                                                 position: 'absolute',
-                                                                                top: 3,
-                                                                                left: dayDrafts[newDayNumber]?.notification_enabled ? 27 : 3,
-                                                                                width: 22,
-                                                                                height: 22,
+                                                                                top: 2,
+                                                                                left: dayDrafts[newDayNumber]?.notification_enabled ? 18 : 2,
+                                                                                width: 16,
+                                                                                height: 16,
                                                                                 borderRadius: '50%',
-                                                                                background: dayDrafts[newDayNumber]?.notification_enabled ? '#8b5cf6' : 'rgba(255,255,255,0.75)',
-                                                                                boxShadow: '0 2px 8px rgba(0,0,0,0.25)',
-                                                                                transition: 'all 0.2s ease',
-                                                                            }}
-                                                                        />
-                                                                    </button>
+                                                                                background: '#fff',
+                                                                                transition: 'left 0.2s ease'
+                                                                            }} />
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
+
                                                                 {dayDrafts[newDayNumber]?.notification_enabled && (
-                                                                    <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 15, background: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12, border: '1px solid rgba(255,255,255,0.06)' }}>
-                                                                        <div style={{ opacity: dayDrafts[newDayNumber]?.morning_reminder_enabled ? 1 : 0.5, transition: 'opacity 0.2s' }}>
-                                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                                    <div style={{ 
+                                                                        marginTop: 0, 
+                                                                        display: 'grid', 
+                                                                        gridTemplateColumns: '1fr 1fr', 
+                                                                        gap: 16, 
+                                                                        background: 'rgba(255,255,255,0.03)', 
+                                                                        padding: '14px', 
+                                                                        borderRadius: 12, 
+                                                                        border: '1px solid rgba(255,255,255,0.05)',
+                                                                        animation: 'fadeIn 0.3s ease'
+                                                                    }}>
+                                                                        <div>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                                                                 <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, letterSpacing: '0.05em' }}>
                                                                                     <span>🌅</span> MORNING
                                                                                 </label>
@@ -1663,14 +1796,14 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                             <input
                                                                                 type="time"
                                                                                 className="premium-input clock-input"
-                                                                                style={{ width: '100%', height: 42, fontSize: '16px', fontWeight: 700, textAlign: 'center', color: '#fff', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
+                                                                                style={{ width: '100%', height: 42, fontSize: '16px', fontWeight: 700, textAlign: 'center', color: '#fff', backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
                                                                                 value={dayDrafts[newDayNumber]?.morning_reminder_time || '09:00'}
                                                                                 disabled={!dayDrafts[newDayNumber]?.morning_reminder_enabled}
                                                                                 onChange={(e) => updateDayDraft(newDayNumber, { morning_reminder_time: e.target.value })}
                                                                             />
                                                                         </div>
-                                                                        <div style={{ opacity: dayDrafts[newDayNumber]?.evening_reminder_enabled ? 1 : 0.5, transition: 'opacity 0.2s' }}>
-                                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                                                                        <div>
+                                                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                                                                                 <label style={{ fontSize: '10px', fontWeight: 800, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, letterSpacing: '0.05em' }}>
                                                                                     <span>🌆</span> EVENING
                                                                                 </label>
@@ -1686,7 +1819,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                             <input
                                                                                 type="time"
                                                                                 className="premium-input clock-input"
-                                                                                style={{ width: '100%', height: 42, fontSize: '16px', fontWeight: 700, textAlign: 'center', color: '#fff', backgroundColor: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
+                                                                                style={{ width: '100%', height: 42, fontSize: '16px', fontWeight: 700, textAlign: 'center', color: '#fff', backgroundColor: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
                                                                                 value={dayDrafts[newDayNumber]?.evening_reminder_time || '18:00'}
                                                                                 disabled={!dayDrafts[newDayNumber]?.evening_reminder_enabled}
                                                                                 onChange={(e) => updateDayDraft(newDayNumber, { evening_reminder_time: e.target.value })}
@@ -1694,44 +1827,22 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                         </div>
                                                                     </div>
                                                                 )}
-                                                                {(dayDrafts[newDayNumber]?.audio_url ?? '').trim() && (
-                                                                    <div style={{ marginTop: 12 }}>
-                                                                        <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '1px', marginBottom: 6 }}>PREVIEW</div>
-                                                                        <PremiumAudioPlayer src={resolveAudioPlaybackUrl(dayDrafts[newDayNumber]?.audio_url ?? '')} />
-                                                                    </div>
-                                                                )}
                                                             </div>
 
-                                                            <div>
-                                                                <button
-                                                                    type="button"
-                                                                    className="momentum-collapsible-trigger"
-                                                                    onClick={() => toggleFeedbackExpanded(newDayNumber)}
-                                                                    style={momentumCollapsibleHeaderStyle}
-                                                                >
-                                                                    <span style={{ color: 'var(--text-main)' }}>
-                                                                        {feedbackExpandedByDay[newDayNumber] === true ? '▾' : '▸'}
-                                                                    </span>
-                                                                    FEEDBACK (OPTIONAL)
-                                                                </button>
-                                                                {feedbackExpandedByDay[newDayNumber] === true ? (
-                                                                    <textarea
-                                                                        className="premium-input"
-                                                                        rows={2}
-                                                                        value={(dayDrafts[newDayNumber]?.feedback ?? '').toString()}
-                                                                        onChange={(e) => updateDayDraft(newDayNumber, { feedback: e.target.value })}
-                                                                        placeholder="Optional note for this day…"
-                                                                        style={{ marginTop: 8, resize: 'vertical' }}
-                                                                    />
-                                                                ) : (
-                                                                    <div
-                                                                        style={momentumCollapsiblePreviewStyle}
-                                                                        title={(dayDrafts[newDayNumber]?.feedback ?? '').toString()}
-                                                                    >
-                                                                        {(dayDrafts[newDayNumber]?.feedback ?? '').toString().trim() || '—'}
-                                                                    </div>
-                                                                )}
+                                                            <div style={{ marginTop: 10 }}>
+                                                                <label style={{ fontSize: '11px', fontWeight: 800, color: 'var(--text-muted)', letterSpacing: '0.05em', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                                                    <span>📢</span> FEEDBACK (OPTIONAL)
+                                                                </label>
+                                                                <textarea
+                                                                    className="premium-input"
+                                                                    rows={3}
+                                                                    value={(dayDrafts[newDayNumber]?.feedback ?? '').toString()}
+                                                                    onChange={(e) => updateDayDraft(newDayNumber, { feedback: e.target.value })}
+                                                                    placeholder="Optional note or extra instructions for the user..."
+                                                                    style={{ resize: 'vertical', fontSize: '14px' }}
+                                                                />
                                                             </div>
+                                                            <div style={{ height: 20 }}></div>
                                                             <div style={{ height: 16 }}></div>
 
                                                             <div
@@ -1774,8 +1885,32 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                     ) : (
                                                         <>
                                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                                                                <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '1px', color: 'var(--text-muted)' }}>
-                                                                    BULK IMPORT (TAB-SEPARATED)
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                                    <div style={{ fontSize: '12px', fontWeight: 900, letterSpacing: '1px', color: 'var(--text-muted)' }}>
+                                                                        BULK OPERATIONS
+                                                                    </div>
+                                                                    <div style={{ width: 1, height: 16, background: 'var(--glass-border)' }} />
+                                                                    <button
+                                                                        className="btn-premium-primary"
+                                                                        style={{ padding: '8px 16px', fontSize: '0.75rem', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+                                                                        onClick={() => bulkImportFileRef.current?.click()}
+                                                                    >
+                                                                        <span>📥</span> IMPORT EXCEL
+                                                                    </button>
+                                                                    <button
+                                                                        className="btn-premium-ghost"
+                                                                        style={{ padding: '8px 16px', fontSize: '0.75rem', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+                                                                        onClick={exportTemplate}
+                                                                    >
+                                                                        <span>📤</span> EXPORT TEMPLATE
+                                                                    </button>
+                                                                    <input
+                                                                        type="file"
+                                                                        ref={bulkImportFileRef}
+                                                                        style={{ display: 'none' }}
+                                                                        accept=".xlsx, .xls, .csv"
+                                                                        onChange={handleExcelImport}
+                                                                    />
                                                                 </div>
                                                                 <button
                                                                     className="btn-premium-ghost"
@@ -1785,21 +1920,35 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                                     Cancel
                                                                 </button>
                                                             </div>
-                                                            <textarea
-                                                                className="premium-input"
-                                                                rows={6}
-                                                                value={bulkDayLogText}
-                                                                onChange={(e) => setBulkDayLogText(e.target.value)}
-                                                                placeholder={"Examples:\n1\tTask description\tVideo/Reel script idea\tFeedback(optional)\tAudio URL(optional)\n2\tTask description\tVideo/Reel script idea\t\thttps://..."}
-                                                                style={{ resize: 'vertical' }}
-                                                            />
-                                                            <div style={{ marginTop: 10, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-                                                                <button
-                                                                    className="btn-premium-primary"
-                                                                    onClick={importBulkDayLogs}
-                                                                >
-                                                                    Import Bulk Day Logs
-                                                                </button>
+
+                                                            <div style={{ 
+                                                                marginTop: 15, 
+                                                                padding: '16px', 
+                                                                background: 'rgba(0,0,0,0.2)', 
+                                                                borderRadius: 14, 
+                                                                border: '1px solid var(--glass-border)',
+                                                                animation: 'fadeIn 0.4s ease'
+                                                            }}>
+                                                                <div style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', marginBottom: 10, letterSpacing: '0.5px' }}>
+                                                                    OR PASTE TAB-SEPARATED TEXT (LEGACY METHOD)
+                                                                </div>
+                                                                <textarea
+                                                                    className="premium-input"
+                                                                    rows={4}
+                                                                    value={bulkDayLogText}
+                                                                    onChange={(e) => setBulkDayLogText(e.target.value)}
+                                                                    placeholder={"Example: 1\tDay Title\tTask Desc\tScript Idea\t..."}
+                                                                    style={{ resize: 'vertical', fontSize: '13px' }}
+                                                                />
+                                                                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'flex-end' }}>
+                                                                    <button
+                                                                        className="btn-premium-primary"
+                                                                        onClick={importBulkDayLogs}
+                                                                        style={{ padding: '8px 20px', fontSize: '0.78rem' }}
+                                                                    >
+                                                                        Import Pasted Text
+                                                                    </button>
+                                                                </div>
                                                             </div>
                                                         </>
                                                     )}

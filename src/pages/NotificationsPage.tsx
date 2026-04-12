@@ -202,15 +202,21 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
     return (
         <div className="page-notifications">
             <header className="notifications-hero">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                        <h1>Push Center</h1>
-                        <p style={{ maxWidth: 600 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                            <h1>Push Center</h1>
+                            <div className="notifications-badge status-completed" style={{ fontSize: '0.6rem', padding: '4px 8px' }}>
+                                <span className="status-pulse" style={{ width: 6, height: 6 }}></span>
+                                System Online
+                            </div>
+                        </div>
+                        <p>
                             Manage all outbound messages, automated reminders, and workflow-triggered notifications
                             from this central mission control.
                         </p>
                     </div>
-                    <div className="notifications-tabs">
+                    <div className="notifications-tabs-wrap">
                         <button
                             className={activeTab === 'automated' ? 'active' : ''}
                             onClick={() => setActiveTab('automated')}
@@ -234,7 +240,15 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
             </header>
 
             {message && (
-                <div className={`notifications-alert${messageIsError ? ' is-error' : ''}`} role="status">
+                <div className={`notifications-alert${messageIsError ? ' is-error' : ''}`} role="status" style={{
+                    padding: '16px 24px',
+                    borderRadius: '16px',
+                    marginBottom: '24px',
+                    background: messageIsError ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                    border: `1px solid ${messageIsError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                    color: messageIsError ? '#f87171' : '#10b981',
+                    fontWeight: 700
+                }}>
                     {message}
                 </div>
             )}
@@ -245,7 +259,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                     <p>Syncing notification rules...</p>
                 </div>
             ) : (
-                <main style={{ marginTop: 24 }}>
+                <main style={{ marginTop: 32 }}>
                     {/* --- AUTOMATED SECTION --- */}
                     {activeTab === 'automated' && (
                         <div className="notifications-automation-grid">
@@ -253,13 +267,15 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                 <div className="card-header">
                                     <div className="icon">🗓️</div>
                                     <div>
-                                        <h3>Momentum Daily Reminders</h3>
-                                        <p>Triggered when users miss their daily tasks or audio requirements.</p>
+                                        <h3>Momentum Reminders</h3>
+                                        <p>Missed daily tasks & missing audio cues.</p>
                                     </div>
                                 </div>
                                 <div className="card-body">
                                     {dailyReminders.length === 0 ? (
-                                        <p className="empty-msg">No active Momentum reminders configured.</p>
+                                        <div style={{ textAlign: 'center', padding: '40px 0', opacity: 0.5 }}>
+                                            <p className="empty-msg">No active Momentum reminders.</p>
+                                        </div>
                                     ) : (
                                         <div className="automation-list">
                                             {dailyReminders.map((r, i) => (
@@ -270,12 +286,12 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                                     </div>
                                                     <div className="item-config">
                                                         <span className="time">{r.reminder_time}</span>
-                                                        <span className="status-dot online" title="Active trigger" />
+                                                        <span className="status-pulse" title="Active trigger" />
                                                     </div>
                                                 </div>
                                             ))}
-                                            <p className="hint-footer">
-                                                Edit these details directly in the <b>Momentum</b> page.
+                                            <p style={{ fontSize: '0.8rem', opacity: 0.5, marginTop: 12, textAlign: 'center' }}>
+                                                Manage these in the Momentum Activity settings.
                                             </p>
                                         </div>
                                     )}
@@ -287,7 +303,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                     <div className="icon">🤝</div>
                                     <div>
                                         <h3>Deal Room Workflows</h3>
-                                        <p>Triggered by client flow actions and milestone updates.</p>
+                                        <p>Milestone & client flow triggers.</p>
                                     </div>
                                 </div>
                                 <div className="card-body">
@@ -302,6 +318,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                                             onChange={(e) =>
                                                                 handleUpdateWorkflow(w.id, { is_enabled: e.target.checked })
                                                             }
+                                                            style={{ width: 22, height: 22, accentColor: 'var(--primary)', cursor: 'pointer' }}
                                                         />
                                                         <strong>{w.display_name}</strong>
                                                     </label>
@@ -309,8 +326,9 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                                 </div>
                                                 <div className="workflow-fields">
                                                     <input
-                                                        className="mini-input"
+                                                        className="notifications-input"
                                                         value={w.title_template}
+                                                        style={{ padding: '10px 16px', fontSize: '0.9rem', marginBottom: 8 }}
                                                         onChange={(e) =>
                                                             setWorkflowTriggers((prev) =>
                                                                 prev.map((x) =>
@@ -324,7 +342,8 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                                         placeholder="Title template..."
                                                     />
                                                     <textarea
-                                                        className="mini-textarea"
+                                                        className="notifications-textarea"
+                                                        style={{ padding: '10px 16px', fontSize: '0.9rem', minHeight: 80 }}
                                                         value={w.body_template}
                                                         onChange={(e) =>
                                                             setWorkflowTriggers((prev) =>
@@ -355,8 +374,10 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                     <div className="notifications-section-head">
                                         <span className="notifications-section-num">1</span>
                                         <div>
-                                            <h2>Message</h2>
-                                            <p className="hint">Custom push notification for the system shade.</p>
+                                            <h2>Message Content</h2>
+                                            <p className="hint" style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                                                Craft a compelling notification for your users.
+                                            </p>
                                         </div>
                                     </div>
                                     <input
@@ -364,15 +385,15 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                         className="notifications-input"
                                         value={title}
                                         onChange={(e) => setTitle(e.target.value)}
-                                        placeholder="Title (e.g. Special Webinar Alert)"
-                                        style={{ marginBottom: 12 }}
+                                        placeholder="Broadcast Title (e.g. Workshop Starting Now!)"
+                                        style={{ marginBottom: 16 }}
                                     />
                                     <textarea
                                         required
                                         className="notifications-textarea"
                                         value={body}
                                         onChange={(e) => setBody(e.target.value)}
-                                        placeholder="Main message body..."
+                                        placeholder="Write your message here..."
                                     />
                                 </section>
 
@@ -380,32 +401,149 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                     <div className="notifications-section-head">
                                         <span className="notifications-section-num">2</span>
                                         <div>
-                                            <h2>Audience & Schedule</h2>
+                                            <h2>Targeting & Schedule</h2>
                                         </div>
                                     </div>
                                     <div className="notifications-grid-2">
-                                        <select
-                                            className="notifications-select"
-                                            value={audience}
-                                            onChange={(e) => setAudience(e.target.value as any)}
-                                        >
-                                            <option value="all">All Users</option>
-                                            <option value="tier">By Tier</option>
-                                            <option value="users">Select Users</option>
-                                        </select>
-                                        <input
-                                            type="datetime-local"
-                                            className="notifications-input"
-                                            value={scheduledLocal}
-                                            onChange={(e) => setScheduledLocal(e.target.value)}
-                                        />
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: 8, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Audience</label>
+                                            <select
+                                                className="notifications-select"
+                                                value={audience}
+                                                onChange={(e) => {
+                                                    console.log('Audience changed to:', e.target.value);
+                                                    setAudience(e.target.value as any);
+                                                }}
+                                            >
+                                                <option value="all">All Registered Users</option>
+                                                <option value="tier">Member Tier</option>
+                                                <option value="users">Specific User List</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: 8, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Release Time</label>
+                                            <input
+                                                type="datetime-local"
+                                                className="notifications-input"
+                                                value={scheduledLocal}
+                                                onChange={(e) => setScheduledLocal(e.target.value)}
+                                            />
+                                        </div>
                                     </div>
+
+                                    {/* --- TIER SELECTION --- */}
+                                    {audience === 'tier' && (
+                                        <div className="targeting-options-panel" style={{ marginTop: 24, padding: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 24, border: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, marginBottom: 16, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Select Target Tier</label>
+                                            <div style={{ display: 'flex', gap: 12 }}>
+                                                {tierOptions.map((t) => (
+                                                    <button
+                                                        key={t}
+                                                        type="button"
+                                                        onClick={() => setTier(t)}
+                                                        className={`tier-btn ${tier === t ? 'active' : ''}`}
+                                                        style={{
+                                                            flex: 1,
+                                                            padding: '14px',
+                                                            borderRadius: '16px',
+                                                            border: '1px solid',
+                                                            borderColor: tier === t ? 'var(--primary)' : 'rgba(255,255,255,0.1)',
+                                                            background: tier === t ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255,255,255,0.02)',
+                                                            color: tier === t ? '#fff' : 'var(--text-muted)',
+                                                            fontWeight: 800,
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                                                        }}
+                                                    >
+                                                        {t}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* --- SPECIFIC USER PICKER --- */}
+                                    {audience === 'users' && (
+                                        <div className="targeting-options-panel" style={{ marginTop: 24, padding: 24, background: 'rgba(255,255,255,0.03)', borderRadius: 24, border: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                                                <div>
+                                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Select Users</label>
+                                                    <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700 }}>{selectedUserIds.length} users selected</span>
+                                                </div>
+                                                <input
+                                                    className="notifications-input"
+                                                    style={{ width: 280, padding: '10px 18px', fontSize: '0.85rem' }}
+                                                    placeholder="Search practitioners..."
+                                                    value={userPicker}
+                                                    onChange={(e) => setUserPicker(e.target.value)}
+                                                />
+                                            </div>
+
+                                            {filteredPicker.length === 0 ? (
+                                                <div style={{ padding: '40px 20px', textAlign: 'center', background: 'rgba(0,0,0,0.1)', borderRadius: 16 }}>
+                                                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No practitioners found. Check your search query or sync.</p>
+                                                </div>
+                                            ) : (
+                                                <div style={{ maxHeight: 280, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: 4 }}>
+                                                    {filteredPicker.map((u) => (
+                                                        <label
+                                                            key={u.id}
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 12,
+                                                                padding: '12px 16px',
+                                                                background: selectedUserIds.includes(u.id) ? 'rgba(99, 102, 241, 0.15)' : 'rgba(255,255,255,0.02)',
+                                                                borderRadius: 16,
+                                                                border: '1px solid',
+                                                                borderColor: selectedUserIds.includes(u.id) ? 'var(--primary)' : 'rgba(255,255,255,0.05)',
+                                                                cursor: 'pointer',
+                                                                transition: 'all 0.2s'
+                                                            }}
+                                                        >
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedUserIds.includes(u.id)}
+                                                                onChange={() => toggleUser(u.id)}
+                                                                style={{ width: 20, height: 20, accentColor: 'var(--primary)', cursor: 'pointer' }}
+                                                            />
+                                                            <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                                                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#fff' }}>{u.name || 'Anonymous Practitioner'}</span>
+                                                                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{u.email}</span>
+                                                            </div>
+                                                        </label>
+                                                    ))}
+                                                </div>
+                                            )}
+                                            
+                                            {selectedUserIds.length > 0 && (
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setSelectedUserIds([])}
+                                                    style={{ marginTop: 16, fontSize: '0.7rem', color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                                                >
+                                                    Clear Selection
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
                                 </section>
-                            </div>
-                            <div className="notifications-submit-row">
-                                <button type="submit" disabled={saving} className="btn-premium-primary">
-                                    {saving ? 'Creating...' : 'Launch Broadcast'}
-                                </button>
+
+                                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
+                                    <button type="submit" disabled={saving} className="btn-premium-primary">
+                                        {saving ? (
+                                            <>
+                                                <span className="loader" style={{ width: 20, height: 20, borderTopColor: '#fff', margin: 0 }}></span>
+                                                Queuing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span>🚀</span>
+                                                Launch Broadcast
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
                             </div>
                         </form>
                     )}
@@ -421,31 +559,47 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                                             <th>Audience</th>
                                             <th>Status</th>
                                             <th>Schedule</th>
-                                            <th>Actions</th>
+                                            <th style={{ textAlign: 'right' }}>Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {list.map((b) => (
-                                            <tr key={b.id}>
-                                                <td>
-                                                    <div style={{ fontWeight: 700 }}>{b.title}</div>
-                                                    <div className="table-body-preview">{b.body}</div>
-                                                </td>
-                                                <td>{audienceLabel(b)}</td>
-                                                <td>
-                                                    <span className={statusBadgeClass(b.status)}>{b.status}</span>
-                                                </td>
-                                                <td>{b.next_run_at ? new Date(b.next_run_at).toLocaleString() : '—'}</td>
-                                                <td>
-                                                    <div className="notifications-actions">
-                                                        {b.status === 'scheduled' && (
-                                                            <button className="btn-table-action" onClick={() => cancelRow(b.id)}>Cancel</button>
-                                                        )}
-                                                        <button className="btn-table-action" onClick={() => sendNowRow(b.id)}>Send Now</button>
-                                                    </div>
+                                        {list.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} style={{ textAlign: 'center', padding: '60px 0', opacity: 0.5 }}>
+                                                    No broadcast history found.
                                                 </td>
                                             </tr>
-                                        ))}
+                                        ) : (
+                                            list.map((b) => (
+                                                <tr key={b.id}>
+                                                    <td>
+                                                        <div style={{ fontWeight: 800, color: '#fff' }}>{b.title}</div>
+                                                        <div className="table-body-preview" style={{ maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                            {b.body}
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span style={{ fontWeight: 600 }}>{audienceLabel(b)}</span>
+                                                    </td>
+                                                    <td>
+                                                        <span className={statusBadgeClass(b.status)}>{b.status}</span>
+                                                    </td>
+                                                    <td>
+                                                        <div style={{ fontSize: '0.85rem' }}>
+                                                            {b.next_run_at ? new Date(b.next_run_at).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Immediate'}
+                                                        </div>
+                                                    </td>
+                                                    <td style={{ textAlign: 'right' }}>
+                                                        <div className="notifications-actions" style={{ justifyContent: 'flex-end' }}>
+                                                            {b.status === 'scheduled' && (
+                                                                <button className="btn-table-action" style={{ color: '#f87171' }} onClick={() => cancelRow(b.id)}>Cancel</button>
+                                                            )}
+                                                            <button className="btn-table-action" onClick={() => sendNowRow(b.id)}>Send Now</button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -455,6 +609,7 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
             )}
         </div>
     );
+
 };
 
 export default NotificationsPage;
