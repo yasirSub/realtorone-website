@@ -21,8 +21,9 @@ jobs:
       - name: Deploy latest code on VPS
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.VPS_HOST || '187.77.184.129' }}
-          username: ${{ secrets.VPS_USER || 'root' }}
+          host: 187.77.184.129
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
           password: ${{ secrets.VPS_PASSWORD }}
           script_stop: true
           script: |
@@ -44,5 +45,12 @@ jobs:
             docker rm -f realtorone-website || true
             docker compose down --remove-orphans || true
             docker compose up -d --build --remove-orphans website
-            docker image prune -af
             docker ps --filter name=realtorone-website
+
+            if ! docker ps --format '{{.Names}}' | grep -q '^realtorone-website$'; then
+              echo "realtorone-website failed to start. Recent logs:"
+              docker compose logs --tail=120 website || true
+              exit 1
+            fi
+
+            docker image prune -af || true
