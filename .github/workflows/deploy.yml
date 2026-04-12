@@ -43,13 +43,13 @@ jobs:
             systemctl disable nginx || true
 
             docker rm -f realtorone-website || true
-            docker compose down --remove-orphans || true
-            docker compose up -d --build --remove-orphans website
+            docker compose -f compose.yaml down --remove-orphans || true
+            docker compose -f compose.yaml up -d --build --remove-orphans website
             docker ps --filter name=realtorone-website
 
             if ! docker ps --format '{{.Names}}' | grep -q '^realtorone-website$'; then
               echo "realtorone-website failed to start. Recent logs:"
-              docker compose logs --tail=120 website || true
+              docker compose -f compose.yaml logs --tail=120 website || true
               exit 1
             fi
 
