@@ -1,4 +1,4 @@
-export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'deal-room' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges' | 'notifications' | 'ai-agent' | 'ai-settings' | 'signup-questions' | 'admin-notifications';
+export type Tab = 'dashboard' | 'users' | 'settings' | 'momentum' | 'user-profile' | 'deal-room' | 'subscriptions' | 'courses' | 'leaderboard' | 'badges' | 'notifications' | 'ai-agent' | 'ai-settings' | 'signup-questions' | 'admin-notifications' | 'webinars';
 
 export interface DiagnosisQuestionOption {
     text: string;
@@ -265,6 +265,19 @@ export interface LeaderboardEntry {
     is_me?: boolean;
 }
 
+export interface Webinar {
+    id: number;
+    title: string;
+    description: string | null;
+    zoom_link: string | null;
+    image_url: string | null;
+    scheduled_at: string | null;
+    is_active: boolean;
+    is_promotional: boolean;
+    target_tier: string | null;
+    created_at?: string;
+    updated_at?: string;
+}
 
 export interface DailyLogEntry {
     day_number: number;

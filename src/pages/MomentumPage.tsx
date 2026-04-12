@@ -370,8 +370,8 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
     };
 
     const categories = [
-        { key: 'subconscious' as const, label: 'SUBCONSCIOUS', empty: 'No subconscious activities' },
-        { key: 'conscious' as const, label: 'CONSCIOUS', empty: 'No conscious activities' },
+        { key: 'subconscious' as const, label: 'BELIEF', empty: 'No belief activities' },
+        { key: 'conscious' as const, label: 'FOCUS', empty: 'No focus activities' },
     ];
 
     const normalizedSearch = React.useMemo(() => (searchTerm ?? '').trim().toLowerCase(), [searchTerm]);
@@ -396,7 +396,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                     a.name.localeCompare(b.name)
                 )
                 .forEach((item) => {
-                    const key = item.section_title || (category === 'subconscious' ? 'Subconscious' : 'Conscious');
+                    const key = item.section_title || (category === 'subconscious' ? 'Belief' : 'Focus');
                     if (!grouped.has(key)) grouped.set(key, []);
                     grouped.get(key)!.push(item);
                 });
@@ -1103,7 +1103,7 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                 <div className="curriculum-sidebar">
                     <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', padding: '15px' }}>
                         <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-                            {categories.map((cat) => (
+                            {categories.filter(cat => cat.key === 'subconscious').map((cat) => (
                                 <button
                                     key={cat.key}
                                     className={`filter-btn ${activeCategory === cat.key ? 'active' : ''}`}
@@ -1116,10 +1116,9 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                         </div>
                     </div>
                     <div className="sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', padding: '0 15px 12px 15px' }}>
-                        <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-muted)' }}>DAYS</span>
+                        <span style={{ fontSize: '11px', fontWeight: 900, color: 'var(--text-muted)' }}>MODULE</span>
                         <button onClick={addDay} className="add-lesson-mini-btn" title="Add Day">+</button>
                     </div>
-
                     <div className="sidebar-content">
                         {!sections.length ? (
                             <div style={{ color: 'var(--text-muted)' }}>
@@ -2041,60 +2040,126 @@ const MomentumPage: React.FC<MomentumPageProps> = ({ activityTypes, setActivityT
                                                             <div
                                                                 key={entry.day_number}
                                                                 style={{
-                                                                    background: selectedDayNumber === entry.day_number ? 'rgba(102,126,234,0.18)' : 'rgba(255,255,255,0.04)',
-                                                                    border: selectedDayNumber === entry.day_number ? '2.5px solid rgba(102,126,234,0.7)' : '1px solid var(--glass-border)',
-                                                                    borderRadius: 20,
+                                                                    background: selectedDayNumber === entry.day_number
+                                                                        ? 'linear-gradient(135deg, rgba(102,126,234,0.12) 0%, rgba(15,23,42,0.6) 100%)'
+                                                                        : 'rgba(255,255,255,0.03)',
+                                                                    border: selectedDayNumber === entry.day_number
+                                                                        ? '1.5px solid rgba(102,126,234,0.55)'
+                                                                        : '1px solid rgba(148,163,184,0.1)',
+                                                                    borderRadius: 18,
                                                                     textAlign: 'left',
-                                                                    padding: '30px 35px',
+                                                                    overflow: 'hidden',
                                                                     color: 'var(--text-main)',
-                                                                    marginBottom: 20,
-                                                                    boxShadow: selectedDayNumber === entry.day_number ? '0 10px 40px -10px rgba(102,126,234,0.3)' : '0 4px 20px -5px rgba(0,0,0,0.2)',
+                                                                    marginBottom: 16,
+                                                                    boxShadow: selectedDayNumber === entry.day_number
+                                                                        ? '0 8px 32px -8px rgba(102,126,234,0.35)'
+                                                                        : '0 2px 12px -4px rgba(0,0,0,0.3)',
                                                                     transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                                                 }}
                                                             >
-                                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
-                                                                    <button
-                                                                        onClick={async () => {
-                                                                            setSelectedDayNumber(entry.day_number);
-                                                                            setExpandedSavedDay((prev) => (prev === entry.day_number ? null : entry.day_number));
-                                                                            await ensureDayDraftLoaded(entry.day_number);
-                                                                        }}
-                                                                        style={{
-                                                                            background: 'transparent',
-                                                                            border: 'none',
-                                                                            color: 'var(--text-main)',
-                                                                            cursor: 'pointer',
-                                                                            padding: 0,
-                                                                            display: 'flex',
-                                                                            alignItems: 'center',
-                                                                            gap: 8,
-                                                                            fontWeight: 900,
-                                                                        }}
-                                                                        title="Expand / collapse"
-                                                                    >
-                                                                        <span style={{ color: 'var(--text-muted)', fontWeight: 900 }}>
-                                                                            {expandedSavedDay === entry.day_number ? '▾' : '▸'}
-                                                                        </span>
-                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                                                            <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Day {entry.day_number} •</span>
-                                                                             <input
-                                                                                 className="premium-input-minimal"
-                                                                                 value={dayDrafts[entry.day_number]?.day_title ?? entry.day_title ?? ''}
-                                                                                 onChange={(e) => updateDayDraft(entry.day_number, { day_title: e.target.value })}
-                                                                                 onClick={(e) => e.stopPropagation()}
-                                                                                 placeholder="Routine Content / Title"
-                                                                                 style={{ background: 'none', border: 'none', padding: 0, fontWeight: 900, fontSize: '15px', color: 'var(--text-main)', width: 'auto', minWidth: 200 }}
-                                                                             />
-                                                                        </div>
-                                                                    </button>
+                                                                {/* ━━━━━━━━ Card Header ━━━━━━━━ */}
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        setSelectedDayNumber(entry.day_number);
+                                                                        setExpandedSavedDay((prev) => (prev === entry.day_number ? null : entry.day_number));
+                                                                        await ensureDayDraftLoaded(entry.day_number);
+                                                                    }}
+                                                                    style={{
+                                                                        width: '100%',
+                                                                        background: 'transparent',
+                                                                        border: 'none',
+                                                                        cursor: 'pointer',
+                                                                        padding: '20px 24px 18px',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: 14,
+                                                                        textAlign: 'left',
+                                                                    }}
+                                                                    title="Expand / collapse"
+                                                                >
+                                                                    {/* Day Number Badge */}
+                                                                    <div style={{
+                                                                        width: 46,
+                                                                        height: 46,
+                                                                        borderRadius: 13,
+                                                                        flexShrink: 0,
+                                                                        background: selectedDayNumber === entry.day_number
+                                                                            ? 'linear-gradient(135deg, #667eea, #764ba2)'
+                                                                            : 'rgba(255,255,255,0.06)',
+                                                                        display: 'flex',
+                                                                        flexDirection: 'column',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        transition: 'all 0.3s ease',
+                                                                        boxShadow: selectedDayNumber === entry.day_number ? '0 4px 14px rgba(102,126,234,0.5)' : 'none',
+                                                                    }}>
+                                                                        <span style={{ fontSize: '9px', fontWeight: 900, color: selectedDayNumber === entry.day_number ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)', letterSpacing: '0.06em' }}>DAY</span>
+                                                                        <span style={{ fontSize: '17px', fontWeight: 900, color: selectedDayNumber === entry.day_number ? '#fff' : 'var(--text-main)', lineHeight: 1 }}>{entry.day_number}</span>
+                                                                    </div>
 
-                                                                    <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
-                                                                        {((entry.task_description || '').trim() || (entry.script_idea || '').trim()) ? 'Saved' : 'Empty'}
-                                                                    </span>
-                                                                </div>
+                                                                    {/* Title + meta */}
+                                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+                                                                            <span style={{
+                                                                                fontSize: '15px',
+                                                                                fontWeight: 900,
+                                                                                color: 'var(--text-main)',
+                                                                                whiteSpace: 'nowrap',
+                                                                                overflow: 'hidden',
+                                                                                textOverflow: 'ellipsis',
+                                                                                maxWidth: '420px',
+                                                                            }}>
+                                                                                {(dayDrafts[entry.day_number]?.day_title ?? entry.day_title ?? '').trim() || <span style={{color:'var(--text-muted)'}}>Untitled Day</span>}
+                                                                            </span>
+                                                                            <span style={{
+                                                                                fontSize: '10px',
+                                                                                fontWeight: 800,
+                                                                                padding: '2px 8px',
+                                                                                borderRadius: 99,
+                                                                                background: ((entry.task_description || '').trim() || (entry.script_idea || '').trim())
+                                                                                    ? 'rgba(16,185,129,0.15)' : 'rgba(255,255,255,0.05)',
+                                                                                color: ((entry.task_description || '').trim() || (entry.script_idea || '').trim())
+                                                                                    ? '#10b981' : 'var(--text-muted)',
+                                                                                border: ((entry.task_description || '').trim() || (entry.script_idea || '').trim())
+                                                                                    ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(255,255,255,0.08)',
+                                                                                letterSpacing: '0.05em',
+                                                                            }}>
+                                                                                {((entry.task_description || '').trim() || (entry.script_idea || '').trim()) ? '✓ Saved' : 'Empty'}
+                                                                            </span>
+                                                                        </div>
+                                                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 10 }}>
+                                                                            {(entry.task_description || '').trim() ? (
+                                                                                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 340 }}>
+                                                                                    📝 {(entry.task_description || '').trim().slice(0, 80)}{(entry.task_description || '').length > 80 ? '…' : ''}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span style={{ fontStyle: 'italic', opacity: 0.5 }}>No task content yet</span>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {/* Expand chevron */}
+                                                                    <div style={{
+                                                                        width: 32,
+                                                                        height: 32,
+                                                                        borderRadius: 10,
+                                                                        background: 'rgba(255,255,255,0.04)',
+                                                                        border: '1px solid rgba(255,255,255,0.08)',
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        justifyContent: 'center',
+                                                                        flexShrink: 0,
+                                                                        fontSize: '13px',
+                                                                        color: 'var(--text-muted)',
+                                                                        transition: 'transform 0.25s ease',
+                                                                        transform: expandedSavedDay === entry.day_number ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                                    }}>
+                                                                        ▾
+                                                                    </div>
+                                                                </button>
 
                                                                 {expandedSavedDay === entry.day_number && (
-                                                                    <div style={{ marginTop: 10, display: 'grid', gap: 12 }}>
+                                                                    <div style={{ borderTop: '1px solid rgba(148,163,184,0.1)', padding: '20px 24px', display: 'grid', gap: 18 }}>
                                                                         <div>
                                                                             <button
                                                                                 type="button"

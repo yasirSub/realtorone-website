@@ -200,67 +200,87 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
     };
 
     return (
-        <div className="page-notifications">
-            <header className="notifications-hero">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                            <h1>Push Center</h1>
-                            <div className="notifications-badge status-completed" style={{ fontSize: '0.6rem', padding: '4px 8px' }}>
-                                <span className="status-pulse" style={{ width: 6, height: 6 }}></span>
-                                System Online
-                            </div>
+        <div className="notifications-layout">
+            <aside className="notifications-sidebar">
+                <div className="sidebar-header">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                        <h1 style={{ fontSize: '1.4rem', margin: 0 }}>Push Center</h1>
+                        <div className="notifications-badge status-completed" style={{ fontSize: '0.55rem', padding: '3px 6px' }}>
+                            <span className="status-pulse" style={{ width: 5, height: 5 }}></span>
+                            ON
                         </div>
+                    </div>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>System Control</p>
+                </div>
+                
+                <nav className="sidebar-nav">
+                    <button
+                        className={`sidebar-link ${activeTab === 'automated' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('automated')}
+                    >
+                        <span className="icon">🛡️</span>
+                        <span>Automated Sentinel</span>
+                    </button>
+                    <button
+                        className={`sidebar-link ${activeTab === 'broadcast' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('broadcast')}
+                    >
+                        <span className="icon">📢</span>
+                        <span>Broadcast Center</span>
+                    </button>
+                    <button
+                        className={`sidebar-link ${activeTab === 'history' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('history')}
+                    >
+                        <span className="icon">📜</span>
+                        <span>History & Logs</span>
+                    </button>
+                </nav>
+                
+                <div className="sidebar-footer">
+                    <div className="system-indicator">
+                        <div className="indicator-dot"></div>
+                        <span>Push Node Active</span>
+                    </div>
+                </div>
+            </aside>
+
+            <main className="notifications-main">
+                <header className="notifications-hero">
+                    <div>
+                        <h1>{activeTab === 'automated' ? 'Automation Sentinel' : activeTab === 'broadcast' ? 'Broadcast Center' : 'Notification History'}</h1>
                         <p>
-                            Manage all outbound messages, automated reminders, and workflow-triggered notifications
-                            from this central mission control.
+                            {activeTab === 'automated' 
+                                ? 'Manage automated Momentum reminders and Deal Room workflow triggers.'
+                                : activeTab === 'broadcast'
+                                ? 'Send manual push notifications to targeted user segments or all users.'
+                                : 'Review the history of all manual broadcasts and track their delivery status.'}
                         </p>
                     </div>
-                    <div className="notifications-tabs-wrap">
-                        <button
-                            className={activeTab === 'automated' ? 'active' : ''}
-                            onClick={() => setActiveTab('automated')}
-                        >
-                            Automated Sentinel
-                        </button>
-                        <button
-                            className={activeTab === 'broadcast' ? 'active' : ''}
-                            onClick={() => setActiveTab('broadcast')}
-                        >
-                            Broadcast Center
-                        </button>
-                        <button
-                            className={activeTab === 'history' ? 'active' : ''}
-                            onClick={() => setActiveTab('history')}
-                        >
-                            History & Logs
-                        </button>
+                </header>
+
+                {message && (
+                    <div className={`notifications-alert${messageIsError ? ' is-error' : ''}`} role="status" style={{
+                        padding: '16px 24px',
+                        borderRadius: '16px',
+                        marginBottom: '24px',
+                        background: messageIsError ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                        border: `1px solid ${messageIsError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
+                        color: messageIsError ? '#f87171' : '#10b981',
+                        fontWeight: 700
+                    }}>
+                        {message}
                     </div>
-                </div>
-            </header>
+                )}
 
-            {message && (
-                <div className={`notifications-alert${messageIsError ? ' is-error' : ''}`} role="status" style={{
-                    padding: '16px 24px',
-                    borderRadius: '16px',
-                    marginBottom: '24px',
-                    background: messageIsError ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                    border: `1px solid ${messageIsError ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)'}`,
-                    color: messageIsError ? '#f87171' : '#10b981',
-                    fontWeight: 700
-                }}>
-                    {message}
-                </div>
-            )}
-
-            {loading ? (
-                <div className="notifications-loader-wrap">
-                    <div className="loader" />
-                    <p>Syncing notification rules...</p>
-                </div>
-            ) : (
-                <main style={{ marginTop: 32 }}>
-                    {/* --- AUTOMATED SECTION --- */}
+                {loading ? (
+                    <div className="notifications-loader-wrap">
+                        <div className="loader" />
+                        <p>Syncing notification rules...</p>
+                    </div>
+                ) : (
+                    <div className="notifications-content">
+                        {/* --- AUTOMATED SECTION --- */}
                     {activeTab === 'automated' && (
                         <div className="notifications-automation-grid">
                             <section className="automation-card">
@@ -605,8 +625,9 @@ const NotificationsPage: React.FC<NotificationsPageProps> = ({ users }) => {
                             </div>
                         </div>
                     )}
-                </main>
-            )}
+                    </div>
+                )}
+            </main>
         </div>
     );
 

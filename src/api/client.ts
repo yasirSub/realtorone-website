@@ -1,4 +1,4 @@
-import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge, NotificationBroadcast, ChatSession, ChatMessage, AdminAiUserSummary, AiHumanTicket, DiagnosisQuestion, DiagnosisQuestionOption, DailyLogEntry } from '../types';
+import type { HealthStatus, User, ActivityType, SubscriptionPackage, Coupon, UserSubscription, Course, LeaderboardEntry, LeaderboardCategory, Badge, NotificationBroadcast, ChatSession, ChatMessage, AdminAiUserSummary, AiHumanTicket, DiagnosisQuestion, DiagnosisQuestionOption, DailyLogEntry, Webinar } from '../types';
 
 /** Default `/api` uses Vite dev proxy → http://127.0.0.1:8000 (see vite.config.ts). Override with VITE_API_BASE_URL for production or a remote API. */
 const API_BASE_URL = String(import.meta.env.VITE_API_BASE_URL ?? '/api').replace(/\/$/, '');
@@ -1392,6 +1392,55 @@ export const apiClient = {
             body: JSON.stringify(payload),
         });
         return await parseJsonSafely(response, 'Failed to save legal document');
+    },
+
+    // Webinar Hub (Admin)
+    getAdminWebinars: async (): Promise<{ success: boolean; data: Webinar[] }> => {
+        return authorizedFetch('/admin/webinars', {}, 'Failed to load webinars');
+    },
+
+    createWebinar: async (payload: Partial<Webinar>): Promise<{ success: boolean; data: Webinar }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/webinars`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(payload),
+        });
+        return await parseJsonSafely(response, 'Failed to create webinar');
+    },
+
+    updateWebinar: async (id: number, payload: Partial<Webinar>): Promise<{ success: boolean; data: Webinar }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/webinars/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify(payload),
+        });
+        return await parseJsonSafely(response, 'Failed to update webinar');
+    },
+
+    deleteWebinar: async (id: number): Promise<{ success: boolean }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/webinars/${id}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        return await parseJsonSafely(response, 'Failed to delete webinar');
+    },
+
+    notifyWebinar: async (id: number): Promise<{ success: boolean; message: string; broadcast_id: number }> => {
+        const token = localStorage.getItem('adminToken');
+        const response = await fetch(`${API_BASE_URL}/admin/webinars/${id}/notify`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        return await parseJsonSafely(response, 'Failed to trigger webinar notification');
     },
 };
 

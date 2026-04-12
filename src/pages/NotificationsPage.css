@@ -1,5 +1,7 @@
-.page-notifications {
-    padding-bottom: 4rem;
+.notifications-layout {
+    display: flex;
+    min-height: calc(100vh - 100px);
+    background: radial-gradient(circle at top right, rgba(99, 102, 241, 0.05) 0%, transparent 40%);
     animation: pageIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -8,11 +10,122 @@
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- HERO SECTION --- */
+/* --- SIDEBAR --- */
+.notifications-sidebar {
+    width: 280px;
+    background: rgba(15, 23, 42, 0.3);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 30px 20px;
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 80px;
+    height: calc(100vh - 80px);
+}
+
+.sidebar-header {
+    margin-bottom: 40px;
+    padding: 0 10px;
+}
+
+.sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+}
+
+.sidebar-link {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 18px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 16px;
+    color: var(--text-muted);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: left;
+}
+
+.sidebar-link .icon {
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    opacity: 0.7;
+    transition: transform 0.3s;
+}
+
+.sidebar-link:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: #fff;
+}
+
+.sidebar-link:hover .icon {
+    transform: scale(1.1);
+    opacity: 1;
+}
+
+.sidebar-link.active {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.05) 100%);
+    border-color: rgba(99, 102, 241, 0.2);
+    color: #fff;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-link.active .icon {
+    opacity: 1;
+    filter: drop-shadow(0 0 5px rgba(99, 102, 241, 0.5));
+}
+
+.sidebar-footer {
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.system-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.indicator-dot {
+    width: 6px;
+    height: 6px;
+    background: #10b981;
+    border-radius: 50%;
+    box-shadow: 0 0 8px #10b981;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.5); opacity: 0.5; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* --- MAIN CONTENT --- */
+.notifications-main {
+    flex: 1;
+    padding: 40px 60px;
+    max-width: 1400px;
+}
+
 .notifications-hero {
     position: relative;
     padding-bottom: 2.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 3rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -29,20 +142,20 @@
 }
 
 .notifications-hero h1 {
-    font-size: 2.8rem;
+    font-size: 3rem;
     font-weight: 900;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
     background: linear-gradient(135deg, #fff 0%, #cbd5e1 50%, #94a3b8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    letter-spacing: -1px;
+    letter-spacing: -1.5px;
 }
 
 .notifications-hero p {
-    font-size: 1.1rem;
+    font-size: 1.15rem;
     color: var(--text-muted);
-    line-height: 1.7;
-    max-width: 650px;
+    line-height: 1.6;
+    max-width: 800px;
 }
 
 /* --- TAB NAVIGATION --- */

@@ -1109,11 +1109,11 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                                     </div>
                                 </div>
                                 <div style={{ display: 'flex', gap: '15px', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }} title="Conscious / business track">
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#7e22ce' }}></div> CONSCIOUS
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }} title="Focus / business track">
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#7e22ce' }}></div> FOCUS
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }} title="Identity / mindset track">
-                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#d946ef' }}></div> IDENTITY
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', fontWeight: 950 }} title="Belief / mindset track">
+                                        <div style={{ width: '10px', height: '10px', borderRadius: '3px', background: '#d946ef' }}></div> BELIEF
                                     </div>
                                     <span style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', opacity: 0.85 }}>Y: 0–{chartYMax}%</span>
                                 </div>
@@ -1357,7 +1357,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                             Clients &amp; revenue outcomes
                         </h3>
                         <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 18px 0', lineHeight: 1.45, fontWeight: 600 }}>
-                            Same notes as the mobile Deal Room. Expand <strong style={{ color: 'var(--text-main)' }}>HOT LEADS</strong> for stage + flow flags, or open the <strong style={{ color: 'var(--text-main)' }}>full Deal Room</strong> for every client &amp; commission. Below, the Activity Log shows daily <strong style={{ color: 'var(--text-main)' }}>Conscious</strong> / <strong style={{ color: 'var(--text-main)' }}>Identity</strong> task completion.
+                            Same notes as the mobile Deal Room. Expand <strong style={{ color: 'var(--text-main)' }}>HOT LEADS</strong> for stage + flow flags, or open the <strong style={{ color: 'var(--text-main)' }}>full Deal Room</strong> for every client &amp; commission. Below, the Activity Log shows daily <strong style={{ color: 'var(--text-main)' }}>Focus</strong> / <strong style={{ color: 'var(--text-main)' }}>Belief</strong> task completion.
                         </p>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '16px' }}>
                             {[
@@ -1811,7 +1811,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                                                                     <span style={{ fontSize: '0.7rem', fontWeight: 950, color: a.is_completed ? 'var(--primary)' : 'var(--text-muted)', flexShrink: 0 }}>{a.is_completed ? `+${a.points}` : `(${a.points})`}</span>
                                                                 </div>
                                                             ))}
-                                                            {dayActivities.filter(a => a.category === 'task' || a.category === 'conscious').length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>No operational data recorded</span>}
+                                                            {dayActivities.filter(a => a.category === 'task' || a.category === 'conscious').length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>No focus actions recorded</span>}
                                                         </div>
                                                     </div>
                                                     <div>
@@ -1904,7 +1904,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                                                                     <span style={{ fontSize: '0.7rem', fontWeight: 950, color: a.is_completed ? 'var(--accent)' : 'var(--text-muted)', flexShrink: 0 }}>{a.is_completed ? `+${a.points}` : `(${a.points})`}</span>
                                                                 </div>
                                                             ))}
-                                                            {dayActivities.filter(a => a.category === 'subconscious').length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>No identity conditioning protocols detected</span>}
+                                                            {dayActivities.filter(a => a.category === 'subconscious').length === 0 && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center', padding: '10px' }}>No belief protocols detected</span>}
                                                         </div>
                                                     </div>
                                                 </div>

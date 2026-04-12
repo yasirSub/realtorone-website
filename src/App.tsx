@@ -22,6 +22,7 @@ import AdminAiInboxPage from './pages/AdminAiInboxPage'
 import AdminAiSettingsPage from './pages/AdminAiSettingsPage'
 import SignupQuestionsPage from './pages/SignupQuestionsPage'
 import AdminNotificationsPage from './pages/AdminNotificationsPage'
+import WebinarsPage from './pages/WebinarsPage'
 
 // Modals
 import ConfirmModal from './components/modals/ConfirmModal'
@@ -45,7 +46,7 @@ function App() {
   // Initialize from URL or default (pathname only; query handled after users load)
   const getInitialTab = (): Tab => {
     const seg = window.location.pathname.replace(/^\/+/, '').split('/').filter(Boolean)[0] ?? 'dashboard';
-    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'deal-room', 'subscriptions', 'courses', 'leaderboard', 'badges', 'notifications', 'ai-agent', 'ai-settings', 'signup-questions', 'admin-notifications'];
+    const validTabs: Tab[] = ['dashboard', 'users', 'settings', 'momentum', 'user-profile', 'deal-room', 'subscriptions', 'courses', 'leaderboard', 'badges', 'notifications', 'ai-agent', 'ai-settings', 'signup-questions', 'admin-notifications', 'webinars'];
     return validTabs.includes(seg as Tab) ? (seg as Tab) : 'dashboard';
   };
   const [activeTab, setActiveTab] = useState<Tab>(getInitialTab())
@@ -414,6 +415,7 @@ function App() {
           {activeTab === 'ai-settings' && <AdminAiSettingsPage />}
           {activeTab === 'signup-questions' && <SignupQuestionsPage />}
           {activeTab === 'admin-notifications' && <AdminNotificationsPage />}
+          {activeTab === 'webinars' && <WebinarsPage />}
           {(activeTab === 'user-profile' || activeTab === 'deal-room') && !selectedUser && (
             <div className="app-page-loader">
               <div className="loader" style={{ width: 48, height: 48, borderWidth: 4 }} />
