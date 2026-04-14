@@ -110,6 +110,37 @@ const LoginPage: React.FC<LoginPageProps> = ({
                         Infiltrate Control Plane
                     </button>
 
+                    <div style={{ textAlign: 'center' }}>
+                        <a 
+                            href="#" 
+                            onClick={(e) => {
+                                e.preventDefault();
+                                const email = prompt('Enter your admin email to receive a reset code:');
+                                if (email) {
+                                    fetch('/api/password/forgot', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ email })
+                                    }).then(r => r.json()).then(data => {
+                                        alert(data.message);
+                                    }).catch(err => {
+                                        alert('Error: ' + err.message);
+                                    });
+                                }
+                            }}
+                            style={{ 
+                                color: 'var(--text-muted)', 
+                                fontSize: '0.75rem', 
+                                fontWeight: 700, 
+                                textDecoration: 'none',
+                                textTransform: 'uppercase',
+                                letterSpacing: '1px'
+                            }}
+                        >
+                            Forgotten Passcode?
+                        </a>
+                    </div>
+
                 </form>
 
                 <p style={{
