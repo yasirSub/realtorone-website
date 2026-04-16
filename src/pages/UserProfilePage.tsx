@@ -3,6 +3,7 @@ import { apiClient } from '../api/client';
 import type { User } from '../types';
 import { MomentumChart } from '../components/MomentumChart';
 import HotLeadFlowModal from '../components/HotLeadFlowModal';
+import PromptModal from '../components/PromptModal';
 import {
     parseHotLeadNotesMeta,
     formatPipelineStage,
@@ -65,59 +66,81 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
     const dealRoomExcelInputRef = useRef<HTMLInputElement>(null);
     const dealRoomExcelMenuRef = useRef<HTMLDivElement>(null);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [promptModal, setPromptModal] = useState<{
+        title: string;
+        message: string;
+        type: 'input' | 'confirm';
+        defaultValue?: string;
+        placeholder?: string;
+        onConfirm: (val: string) => void;
+    } | null>(null);
 
-    const handleChangePassword = async () => {
-        const newPass = window.prompt(`Enter new password for ${user.name} (min 8 chars):`);
-        if (!newPass) return;
-        if (newPass.length < 8) {
-            window.alert('Password must be at least 8 characters.');
-            return;
-        }
-        if (!window.confirm(`Are you sure you want to change the password for ${user.name}?`)) return;
-
-        setIsChangingPassword(true);
-        try {
-            const res = await apiClient.changeUserPassword(user.id, newPass);
-            if (res.success) {
-                window.alert('Password updated successfully.');
-            } else {
-                window.alert(res.message || 'Failed to update password.');
+    const handleChangePassword = () => {
+        setPromptModal({
+            title: 'Change User Password',
+            message: `Enter new password for ${user.name}:`,
+            type: 'input',
+            placeholder: 'Min 8 characters...',
+            onConfirm: async (newPass) => {
+                if (!newPass || newPass.length < 8) {
+                    window.alert('Password must be at least 8 characters.');
+                    return;
+                }
+                setPromptModal(null);
+                setIsChangingPassword(true);
+                try {
+                    const res = await apiClient.changeUserPassword(user.id, newPass);
+                    if (res.success) {
+                        window.alert('Password updated successfully.');
+                    } else {
+                        window.alert(res.message || 'Failed to update password.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    window.alert('Error updating password.');
+                } finally {
+                    setIsChangingPassword(false);
+                }
             }
-        } catch (err) {
-            console.error(err);
-            window.alert('Error updating password.');
-        } finally {
-            setIsChangingPassword(false);
-        }
+        });
     };
 
-    const handleGeneratePassword = async () => {
+    const handleGeneratePassword = () => {
         const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
         let pass = "";
         for (let i = 0; i < 12; i++) {
             pass += chars.charAt(Math.floor(Math.random() * chars.length));
         }
 
-        if (window.confirm(`Generate and set new password: ${pass}?\n\nClicking OK will update the password. You should copy it to your clipboard now.`)) {
-            // Attempt auto-copy to clipboard
-            try {
-                await navigator.clipboard.writeText(pass);
-                window.alert(`Password ${pass} copied to clipboard!`);
-            } catch (err) {
-                console.warn('Failed to auto-copy to clipboard', err);
-            }
-
-            setIsChangingPassword(true);
-            try {
-                const res = await apiClient.changeUserPassword(user.id, pass);
-                if (res.success) {
-                    window.alert(`Password updated and copied to clipboard: ${pass}\n\nPlease share this with the user.`);
-                } else {
-                    window.alert(res.message || 'Failed to update password.');
+        setPromptModal({
+            title: 'Generate New Password',
+            message: `Generate and set new password: ${pass}?\n\nIt will be auto-copied to your clipboard.`,
+            type: 'confirm',
+            onConfirm: async () => {
+                setPromptModal(null);
+                try {
+                    await navigator.clipboard.writeText(pass);
+                } catch (err) {
+                    console.warn('Clipboard error', err);
                 }
-            } catch (err) {
-                console.error(err);
-                window.alert('Error updating password.');
+
+                setIsChangingPassword(true);
+                try {
+                    const res = await apiClient.changeUserPassword(user.id, pass);
+                    if (res.success) {
+                        window.alert(`Password updated and copied to clipboard: ${pass}`);
+                    } else {
+                        window.alert(res.message || 'Failed to update password.');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    window.alert('Error updating password.');
+                } finally {
+                    setIsChangingPassword(false);
+                }
+            }
+        });
+    };
             } finally {
                 setIsChangingPassword(false);
             }
@@ -525,6 +548,18 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
     };
 
     const hotLeadTimelineModal = <HotLeadFlowModal lead={hotLeadFlowModal} onClose={() => setHotLeadFlowModal(null)} />;
+
+    const customPromptModal = promptModal ? (
+        <PromptModal
+            title={promptModal.title}
+            message={promptModal.message}
+            type={promptModal.type}
+            defaultValue={promptModal.defaultValue}
+            placeholder={promptModal.placeholder}
+            onConfirm={promptModal.onConfirm}
+            onCancel={() => setPromptModal(null)}
+        />
+    ) : null;
 
     return (
         <>
@@ -2043,6 +2078,7 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
             </div>
         </div>
         {hotLeadTimelineModal}
+        {customPromptModal}
         </>
     );
 };
