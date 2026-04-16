@@ -11,7 +11,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
     const [course, setCourse] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [activeLesson, setActiveLesson] = useState<any>(null);
-    const [uploading, setUploading] = useState(false);
+    const [uploadingType, setUploadingType] = useState<string | null>(null); // Track specific upload type
     const [uploadProgress, setUploadProgress] = useState(0);
     const [backupExpanded, setBackupExpanded] = useState(false);
     const [backupDownloading, setBackupDownloading] = useState(false);
@@ -122,11 +122,18 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, lessonId: number, type: string) => {
         const file = e.target.files?.[0];
         if (!file) return;
-        setUploading(true); setUploadProgress(0);
+        setUploadingType(type); setUploadProgress(0);
         try {
             const res = await apiClient.uploadFileWithProgress(file, type, p => setUploadProgress(p));
             if (res.success) {
-                const existing = activeLesson?.materials?.find((m: any) => m.type === type);
+                // BUG FIX: Search for existing material ONLY within the specific lesson being edited.
+                // Previously it might have used a stale activeLesson or let type-only search collide.
+                const targetingLesson = course?.modules
+                    ?.flatMap((m: any) => m.lessons)
+                    ?.find((l: any) => l.id === lessonId);
+                
+                const existing = targetingLesson?.materials?.find((m: any) => (m.type || '').toString().toLowerCase() === type.toLowerCase());
+                
                 const data = { title: res.name, type, url: res.url, count: 1 };
                 if (existing) await apiClient.updateMaterial(existing.id, data);
                 else await apiClient.createMaterial(lessonId, data);
@@ -137,7 +144,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
         } catch (error: any) {
             console.error('File upload error:', error);
             showError('Global Error Detected', error.message || 'The connection to the media gateway was interrupted. Please check your network and ensure the backend is running with enhanced PHP limits.');
-        } finally { setUploading(false); }
+        } finally { setUploadingType(null); }
     };
 
     const updateLesson = async (id: number, updates: any) => {
@@ -582,7 +589,9 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                 const f = e.target.files?.[0]; if (!f) return;
                                                 const res = await apiClient.uploadFile(f, 'Image');
                                                 if (res.success) {
-                                                    await apiClient.updateMaterial(videoMaterial.id, { thumbnail_url: res.url }); loadCourseDetails();
+                                                    // Ensure we update the material ID belonging to THIS lesson
+                                                    await apiClient.updateMaterial(videoMaterial.id, { thumbnail_url: res.url }); 
+                                                    await loadCourseDetails();
                                                 }
                                             }} />
                                             <label htmlFor="thumb-replace" style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.6)', opacity: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: '11px', fontWeight: 900, transition: '0.2s', backdropFilter: 'blur(8px)' }} onMouseEnter={e => e.currentTarget.style.opacity = '1'} onMouseLeave={e => e.currentTarget.style.opacity = '0'}>
@@ -599,7 +608,9 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                     <h4 style={{ margin: '0 0 10px', color: 'var(--text-main)', fontSize: '15px', fontWeight: 800 }}>No main video detected</h4>
                                     <p style={{ color: 'var(--text-secondary)', fontSize: '13px', maxWidth: '300px', margin: '0 auto 25px' }}>Attach a video resource to start building this lesson.</p>
                                     <input type="file" accept="video/*" id="video-init" hidden onChange={e => handleFileUpload(e, activeLesson.id, 'Video')} />
-                                    <label htmlFor="video-init" className="btn-premium-primary" style={{ cursor: 'pointer', display: 'inline-block' }}>{uploading ? `UPLOADING ${uploadProgress}%` : 'SELECT VIDEO FILE'}</label>
+                                    <label htmlFor="video-init" className="btn-premium-primary" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                                        {uploadingType === 'Video' ? `UPLOADING ${uploadProgress}%` : 'SELECT VIDEO FILE'}
+                                    </label>
                                 </div>
                             )}
 
@@ -675,24 +686,32 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                             {previewPdfId === pdf.id ? 'ACTIVE PREVIEW' : 'VIEW PREVIEW'}
                                                         </button>
 
-                                                        <input type="file" id={`pdf-rep-${pdf.id}`} hidden accept="application/pdf" onChange={e => {
+                                                        <input type="file" id={`pdf-rep-${pdf.id}`} hidden accept="application/pdf" onChange={async e => {
                                                             const file = e.target.files?.[0]; if (!file) return;
-                                                            setUploading(true);
-                                                            apiClient.uploadFileWithProgress(file, 'PDF', p => setUploadProgress(p)).then(res => {
-                                                                if (res.success) apiClient.updateMaterial(pdf.id, { title: res.name, url: res.url }).then(() => loadCourseDetails());
-                                                            }).finally(() => setUploading(false));
+                                                            setUploadingType('PDF');
+                                                            try {
+                                                                const res = await apiClient.uploadFileWithProgress(file, 'PDF', p => setUploadProgress(p));
+                                                                if (res.success) {
+                                                                    await apiClient.updateMaterial(pdf.id, { title: res.name, url: res.url });
+                                                                    await loadCourseDetails();
+                                                                }
+                                                            } finally { setUploadingType(null); }
                                                         }} />
                                                         <label htmlFor={`pdf-rep-${pdf.id}`} onClick={e => e.stopPropagation()} className="btn-premium-ghost" style={{ flex: 1, textAlign: 'center', padding: '6px', fontSize: '8px', cursor: 'pointer', fontWeight: 900 }}>REPLACE</label>
                                                     </div>
                                                 </div>
                                             ))}
 
-                                            <input type="file" id="pdf-add-list" hidden accept="application/pdf" onChange={e => {
+                                            <input type="file" id="pdf-add-list" hidden accept="application/pdf" onChange={async e => {
                                                 const file = e.target.files?.[0]; if (!file) return;
-                                                setUploading(true);
-                                                apiClient.uploadFileWithProgress(file, 'PDF', p => setUploadProgress(p)).then(res => {
-                                                    if (res.success) apiClient.createMaterial(activeLesson.id, { title: res.name, type: 'PDF', url: res.url, count: 1 }).then(() => loadCourseDetails());
-                                                }).finally(() => setUploading(false));
+                                                setUploadingType('PDF');
+                                                try {
+                                                    const res = await apiClient.uploadFileWithProgress(file, 'PDF', p => setUploadProgress(p));
+                                                    if (res.success) {
+                                                        await apiClient.createMaterial(activeLesson.id, { title: res.name, type: 'PDF', url: res.url, count: 1 });
+                                                        await loadCourseDetails();
+                                                    }
+                                                } finally { setUploadingType(null); }
                                             }} />
                                             <label htmlFor="pdf-add-list" className="btn-premium-ghost" style={{ marginTop: '5px', padding: '15px', borderRadius: '20px', border: '1px dashed var(--glass-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', transition: '0.2s' }} onMouseEnter={e => { e.currentTarget.style.color = 'var(--tier-color)'; e.currentTarget.style.borderColor = 'var(--tier-color)'; }} onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'var(--glass-border)'; }}>
                                                 <span>➕</span> ATTACH ANOTHER DOCUMENT
@@ -739,14 +758,20 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                         <div style={{ fontSize: '40px', marginBottom: '15px', opacity: 0.4 }}>📄</div>
                                         <h4 style={{ margin: '0 0 10px', color: 'var(--text-main)', fontSize: '15px', fontWeight: 800 }}>No documents detected</h4>
                                         <p style={{ color: 'var(--text-secondary)', fontSize: '13px', maxWidth: '300px', margin: '0 auto 25px' }}>Attach a supplementary PDF document to this lesson.</p>
-                                        <input type="file" id="pdf-init" hidden accept="application/pdf" onChange={e => {
+                                        <input type="file" id="pdf-init" hidden accept="application/pdf" onChange={async e => {
                                             const file = e.target.files?.[0]; if (!file) return;
-                                            setUploading(true);
-                                            apiClient.uploadFileWithProgress(file, 'PDF', p => setUploadProgress(p)).then(res => {
-                                                if (res.success) apiClient.createMaterial(activeLesson.id, { title: res.name, type: 'PDF', url: res.url, count: 1 }).then(() => loadCourseDetails());
-                                            }).finally(() => setUploading(false));
+                                            setUploadingType('PDF');
+                                            try {
+                                                const res = await apiClient.uploadFileWithProgress(file, 'PDF', p => setUploadProgress(p));
+                                                if (res.success) {
+                                                    await apiClient.createMaterial(activeLesson.id, { title: res.name, type: 'PDF', url: res.url, count: 1 });
+                                                    await loadCourseDetails();
+                                                }
+                                            } finally { setUploadingType(null); }
                                         }} />
-                                        <label htmlFor="pdf-init" className="btn-premium-primary" style={{ cursor: 'pointer', display: 'inline-block' }}>{uploading ? `UPLOADING ${uploadProgress}%` : 'SELECT DOCUMENT FILE'}</label>
+                                        <label htmlFor="pdf-init" className="btn-premium-primary" style={{ cursor: 'pointer', display: 'inline-block' }}>
+                                            {uploadingType === 'PDF' ? `UPLOADING ${uploadProgress}%` : 'SELECT DOCUMENT FILE'}
+                                        </label>
                                     </div>
                                 )}
                             </div>
