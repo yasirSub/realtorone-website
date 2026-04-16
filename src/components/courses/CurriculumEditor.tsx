@@ -550,11 +550,27 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                     <div className="editor-card" style={{ padding: '0', background: 'rgba(var(--text-main-rgb), 0.02)', borderRadius: '24px', border: '1px solid var(--glass-border)', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', overflow: 'hidden', height: 'clamp(150px, 22vh, 210px)', display: 'flex', flexDirection: 'column' }}>
                                         <div className="card-header" style={{ border: 'none', background: 'transparent', padding: '15px 20px 8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                             <h3 style={{ fontSize: '10px', fontWeight: 900, color: 'var(--text-muted)', letterSpacing: '2.5px' }}>VIDEO CONTENT</h3>
-                                            <button className="btn-sidebar-delete" onClick={() => {
-                                                showConfirm('Delete Video', 'Remove this video file from the lesson?', () => {
-                                                    apiClient.deleteMaterial(videoMaterial.id).then(() => { loadCourseDetails(); closeConfirm(); });
-                                                });
-                                            }}>×</button>
+                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                <button 
+                                                    className="btn-premium-ghost" 
+                                                    style={{ padding: '4px 8px', fontSize: '10px', borderRadius: '6px', opacity: 0.6 }}
+                                                    onClick={() => {
+                                                        const url = resolveAssetUrl(videoMaterial.url);
+                                                        if (url) {
+                                                            navigator.clipboard.writeText(url);
+                                                            alert('Link copied to clipboard!');
+                                                        }
+                                                    }}
+                                                    title="Copy Video Link"
+                                                >
+                                                    🔗
+                                                </button>
+                                                <button className="btn-sidebar-delete" onClick={() => {
+                                                    showConfirm('Delete Video', 'Remove this video file from the lesson?', () => {
+                                                        apiClient.deleteMaterial(videoMaterial.id).then(() => { loadCourseDetails(); closeConfirm(); });
+                                                    });
+                                                }}>×</button>
+                                            </div>
                                         </div>
                                         <div style={{ position: 'relative', flex: 1, background: 'linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%)', borderRadius: '0 0 24px 24px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
                                             <video src={resolveAssetUrl(videoMaterial.url)} preload="metadata" controls poster={resolveAssetUrl(videoMaterial.thumbnail_url)} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
