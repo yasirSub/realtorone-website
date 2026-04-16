@@ -64,6 +64,57 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
     const [savingTimezone, setSavingTimezone] = useState(false);
     const dealRoomExcelInputRef = useRef<HTMLInputElement>(null);
     const dealRoomExcelMenuRef = useRef<HTMLDivElement>(null);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+    const handleChangePassword = async () => {
+        const newPass = window.prompt(`Enter new password for ${user.name} (min 8 chars):`);
+        if (!newPass) return;
+        if (newPass.length < 8) {
+            window.alert('Password must be at least 8 characters.');
+            return;
+        }
+        if (!window.confirm(`Are you sure you want to change the password for ${user.name}?`)) return;
+
+        setIsChangingPassword(true);
+        try {
+            const res = await apiClient.changeUserPassword(user.id, newPass);
+            if (res.success) {
+                window.alert('Password updated successfully.');
+            } else {
+                window.alert(res.message || 'Failed to update password.');
+            }
+        } catch (err) {
+            console.error(err);
+            window.alert('Error updating password.');
+        } finally {
+            setIsChangingPassword(false);
+        }
+    };
+
+    const handleGeneratePassword = async () => {
+        const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()";
+        let pass = "";
+        for (let i = 0; i < 12; i++) {
+            pass += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+
+        if (window.confirm(`Generate and set new password: ${pass}?\n\nPlease copy this password before confirming.`)) {
+            setIsChangingPassword(true);
+            try {
+                const res = await apiClient.changeUserPassword(user.id, pass);
+                if (res.success) {
+                    window.alert(`Password updated to: ${pass}\n\nPlease share this with the user.`);
+                } else {
+                    window.alert(res.message || 'Failed to update password.');
+                }
+            } catch (err) {
+                console.error(err);
+                window.alert('Error updating password.');
+            } finally {
+                setIsChangingPassword(false);
+            }
+        }
+    };
 
     useEffect(() => {
         if (!dealRoomExcelMenuOpen) return;
@@ -748,6 +799,70 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                         ) : (
                             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', opacity: 0.75 }}>No AI usage data.</div>
                         )}
+                    </div>
+
+                    <div className="glass-panel" style={{
+                        padding: '22px 24px',
+                        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.08), transparent)',
+                        border: '1px solid rgba(245, 158, 11, 0.22)',
+                    }}>
+                        <h4 style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            fontSize: '0.7rem',
+                            fontWeight: 950,
+                            marginBottom: '16px',
+                            textTransform: 'uppercase',
+                            letterSpacing: '2px',
+                            color: '#f59e0b'
+                        }}>
+                            <div style={{
+                                width: '4px',
+                                height: '12px',
+                                background: '#f59e0b',
+                                borderRadius: '10px',
+                                boxShadow: '0 0 10px rgba(245, 158, 11, 0.55)'
+                            }}></div>
+                            Security Management
+                        </h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <button 
+                                className="btn-command primary" 
+                                onClick={handleChangePassword}
+                                disabled={isChangingPassword}
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '10px', 
+                                    fontSize: '0.7rem',
+                                    background: 'var(--bg-app)',
+                                    border: '1px solid var(--glass-border)',
+                                    color: 'var(--text-main)',
+                                    opacity: isChangingPassword ? 0.5 : 1
+                                }}
+                            >
+                                {isChangingPassword ? 'PROCESSING...' : 'CHANGE PASSWORD'}
+                            </button>
+                            <button 
+                                className="btn-command" 
+                                onClick={handleGeneratePassword}
+                                disabled={isChangingPassword}
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '10px', 
+                                    fontSize: '0.7rem',
+                                    background: 'var(--primary)',
+                                    border: 'none',
+                                    color: 'white',
+                                    opacity: isChangingPassword ? 0.5 : 1
+                                }}
+                            >
+                                GENERATE PASSWORD
+                            </button>
+                            <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'center', fontWeight: 700 }}>
+                                * Security note: Admin cannot view current plain-text passwords.
+                            </div>
+                        </div>
                     </div>
                 </div>
 

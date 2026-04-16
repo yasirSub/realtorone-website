@@ -1334,6 +1334,14 @@ export const apiClient = {
         return response.json();
     },
 
+    changeUserPassword: async (userId: number, password: string): Promise<{ success: boolean; message: string }> => {
+        return authorizedFetch(`/admin/users/${userId}/change-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password })
+        }, 'Failed to change user password');
+    },
+
     /** Admin only: import Deal Room .xlsx into the practitioner’s hot leads (same format as mobile). */
     adminImportDealRoomExcel: async (
         userId: number,
