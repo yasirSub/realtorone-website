@@ -556,9 +556,15 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
                                                     style={{ padding: '4px 8px', fontSize: '10px', borderRadius: '6px', opacity: 0.6 }}
                                                     onClick={() => {
                                                         const url = resolveAssetUrl(videoMaterial.url);
+                                                        console.log('Copying URL:', url);
                                                         if (url) {
-                                                            navigator.clipboard.writeText(url);
-                                                            alert('Link copied to clipboard!');
+                                                            const fullUrl = url.startsWith('http') ? url : window.location.origin + url;
+                                                            navigator.clipboard.writeText(fullUrl).then(() => {
+                                                                alert('Full Video Link copied to clipboard:\n' + fullUrl);
+                                                            }).catch(err => {
+                                                                console.error('Copy failed:', err);
+                                                                alert('Failed to copy: ' + fullUrl);
+                                                            });
                                                         }
                                                     }}
                                                     title="Copy Video Link"
