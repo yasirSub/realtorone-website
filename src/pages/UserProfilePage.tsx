@@ -98,12 +98,20 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
             pass += chars.charAt(Math.floor(Math.random() * chars.length));
         }
 
-        if (window.confirm(`Generate and set new password: ${pass}?\n\nPlease copy this password before confirming.`)) {
+        if (window.confirm(`Generate and set new password: ${pass}?\n\nClicking OK will update the password. You should copy it to your clipboard now.`)) {
+            // Attempt auto-copy to clipboard
+            try {
+                await navigator.clipboard.writeText(pass);
+                window.alert(`Password ${pass} copied to clipboard!`);
+            } catch (err) {
+                console.warn('Failed to auto-copy to clipboard', err);
+            }
+
             setIsChangingPassword(true);
             try {
                 const res = await apiClient.changeUserPassword(user.id, pass);
                 if (res.success) {
-                    window.alert(`Password updated to: ${pass}\n\nPlease share this with the user.`);
+                    window.alert(`Password updated and copied to clipboard: ${pass}\n\nPlease share this with the user.`);
                 } else {
                     window.alert(res.message || 'Failed to update password.');
                 }
