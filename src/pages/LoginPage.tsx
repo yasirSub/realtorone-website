@@ -28,7 +28,7 @@ const LoginPage: React.FC<LoginPageProps> = ({
                 title="Fill Admin Credentials"
                 onClick={() => {
                     setEmail('admin@realtorone.com');
-                    setPassword('password123');
+                    setPassword('ChangeThisPassword123!@#');
                 }}
             >
                 🪲
