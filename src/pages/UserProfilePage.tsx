@@ -141,11 +141,6 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
             }
         });
     };
-            } finally {
-                setIsChangingPassword(false);
-            }
-        }
-    };
 
     useEffect(() => {
         if (!dealRoomExcelMenuOpen) return;
