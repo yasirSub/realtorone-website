@@ -72,6 +72,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
         type: 'input' | 'confirm';
         defaultValue?: string;
         placeholder?: string;
+        confirmText?: string;
+        cancelText?: string;
         onConfirm: (val: string) => void;
     } | null>(null);
 
@@ -565,6 +567,8 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
             type={promptModal.type}
             defaultValue={promptModal.defaultValue}
             placeholder={promptModal.placeholder}
+            confirmText={promptModal.confirmText}
+            cancelText={promptModal.cancelText}
             onConfirm={promptModal.onConfirm}
             onCancel={() => setPromptModal(null)}
         />
