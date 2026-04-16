@@ -128,7 +128,21 @@ const UserProfilePage: React.FC<UserProfilePageProps> = ({ user, onBack, setActi
                 try {
                     const res = await apiClient.changeUserPassword(user.id, pass);
                     if (res.success) {
-                        window.alert(`Password updated and copied to clipboard: ${pass}`);
+                        setPromptModal({
+                            title: 'Success',
+                            message: `Password updated and copied to clipboard: ${pass}`,
+                            type: 'confirm',
+                            confirmText: 'Copy to Clipboard',
+                            onConfirm: async () => {
+                                try {
+                                    await navigator.clipboard.writeText(pass);
+                                    window.alert('Copied!');
+                                } catch (err) {
+                                    console.error('Copy failed', err);
+                                }
+                                setPromptModal(null);
+                            }
+                        });
                     } else {
                         window.alert(res.message || 'Failed to update password.');
                     }
