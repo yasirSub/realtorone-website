@@ -148,6 +148,7 @@ export interface User {
     momentum_badge?: string;
     badge_color?: string;
     license_number?: string;
+    registration_source?: 'google' | 'apple' | 'phone' | 'email' | string;
     premium_expires_at?: string;
     last_activity_date?: string;
     city?: string;

@@ -40,6 +40,7 @@ const UsersPage: React.FC<UsersPageProps> = ({
                         <tr>
                             <th style={{ width: '60px' }}>Ind</th>
                             <th>Practitioner</th>
+                            <th>Source</th>
                             <th>Identity Email</th>
                             <th>Level Status</th>
                             <th>Score</th>
@@ -77,6 +78,22 @@ const UsersPage: React.FC<UsersPageProps> = ({
                                                     }} title={user.deletion_requested_at}>Data removal requested</span>
                                                 ) : null}
                                             </div>
+                                        </div>
+                                    </td>
+                                    <td data-label="Source">
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                            {user.registration_source === 'google' && (
+                                                <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#EA4335', border: '1px solid #EA4335', padding: '2px 5px', borderRadius: '4px', textTransform: 'uppercase' }}>Google</span>
+                                            )}
+                                            {user.registration_source === 'apple' && (
+                                                <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#000', border: '1px solid #000', padding: '2px 5px', borderRadius: '4px', textTransform: 'uppercase' }}>Apple</span>
+                                            )}
+                                            {user.registration_source === 'phone' && (
+                                                <span style={{ fontSize: '0.65rem', fontWeight: 900, color: '#34A853', border: '1px solid #34A853', padding: '2px 5px', borderRadius: '4px', textTransform: 'uppercase' }}>Phone</span>
+                                            )}
+                                            {(user.registration_source === 'email' || !user.registration_source) && (
+                                                <span style={{ fontSize: '0.65rem', fontWeight: 900, color: 'var(--primary)', border: '1px solid var(--primary)', padding: '2px 5px', borderRadius: '4px', textTransform: 'uppercase' }}>Email</span>
+                                            )}
                                         </div>
                                     </td>
                                     <td data-label="Email">
