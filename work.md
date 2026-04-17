@@ -957,3 +957,12 @@ Backend (`187.77.184.129`):
   - **AI Communication Engine**: Authored `AIClientController.php` endpoints to generate AI contextual message drafts based on live hot-lead CRM metadata.
   - **Media Resilience Layer**: Repaired the persistent media Docker mounts (`storage/app/public/`) and removed source volume conflicts, ensuring `public/storage` assets (such as profile photos) natively survive deployment reboots.
   - **FCM Telemetry**: Upgraded Firebase Cloud Messaging service limits and surfaced push delivery failures/logging directly into administration for monitoring.
+
+### Day 98: Apr 17 - Mobile Video Playback & Lifecycle Hardening
+Application (Mobile):
+  - **Video Lifecycle Fix**: Resolved critical `ChewieController used after being disposed` exception by re-ordering controller disposal and wrapping cleanup in a `postFrameCallback`.
+  - **Authenticated Streaming**: Fixed an issue where videos failed to play on Android despite working on the web. Updated `_resolveMaterialUrl` to prioritize the authenticated `/api/stream/` route for all `course-assets/` and ensured `Authorization` headers are sent only to the internal API to avoid conflicts with static file servers (Nginx).
+  - **State Stability**: Added defensive `mounted` checks to all `setState` calls in the curriculum and video player pages to prevent crashes during asynchronous operations.
+Backend:
+  - **Streaming Robustness**: Enhanced the `/api/stream/{filename}` endpoint to explicitly force the `video/mp4` mime-type for MP4 files, ensuring compatibility with the stricter mobile ExoPlayer core.
+  - **Range Request Logging**: Improved server-side telemetry for video streaming to track byte-range requests and statuses (206 Partial Content), facilitating easier debugging of playback issues.
