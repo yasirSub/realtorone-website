@@ -387,7 +387,7 @@ export const apiClient = {
     createCourse: async (data: Partial<Course>): Promise<{ success: boolean; data: Course }> => {
         const response = await fetch(`${API_BASE_URL}/admin/courses`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
             body: JSON.stringify(data)
         });
         return response.json();
@@ -395,26 +395,29 @@ export const apiClient = {
     updateCourse: async (id: number, data: Partial<Course>): Promise<{ success: boolean; data: Course }> => {
         const response = await fetch(`${API_BASE_URL}/admin/courses/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
             body: JSON.stringify(data)
         });
         return response.json();
     },
     deleteCourse: async (id: number): Promise<{ success: boolean }> => {
         const response = await fetch(`${API_BASE_URL}/admin/courses/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: buildAuthHeaders()
         });
         return response.json();
     },
     getCourseDetails: async (id: number): Promise<{ success: boolean; data: any }> => {
-        const response = await fetch(`${API_BASE_URL}/admin/courses/${id}`);
+        const response = await fetch(`${API_BASE_URL}/admin/courses/${id}`, {
+            headers: buildAuthHeaders()
+        });
         return response.json();
     },
     // Modules
     createModule: async (courseId: number, data: any): Promise<{ success: boolean; data: any }> => {
         const response = await fetch(`${API_BASE_URL}/admin/courses/${courseId}/modules`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
             body: JSON.stringify(data)
         });
         return response.json();
@@ -422,14 +425,15 @@ export const apiClient = {
     updateModule: async (id: number, data: any): Promise<{ success: boolean; data: any }> => {
         const response = await fetch(`${API_BASE_URL}/admin/modules/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
             body: JSON.stringify(data)
         });
         return response.json();
     },
     deleteModule: async (id: number): Promise<{ success: boolean }> => {
         const response = await fetch(`${API_BASE_URL}/admin/modules/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: buildAuthHeaders()
         });
         return response.json();
     },
@@ -437,7 +441,7 @@ export const apiClient = {
     createLesson: async (moduleId: number, data: any): Promise<{ success: boolean; data: any }> => {
         const response = await fetch(`${API_BASE_URL}/admin/modules/${moduleId}/lessons`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
             body: JSON.stringify(data)
         });
         return response.json();
@@ -445,14 +449,15 @@ export const apiClient = {
     updateLesson: async (id: number, data: any): Promise<{ success: boolean; data: any }> => {
         const response = await fetch(`${API_BASE_URL}/admin/lessons/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
             body: JSON.stringify(data)
         });
         return response.json();
     },
     deleteLesson: async (id: number): Promise<{ success: boolean }> => {
         const response = await fetch(`${API_BASE_URL}/admin/lessons/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: buildAuthHeaders()
         });
         return response.json();
     },
@@ -460,7 +465,7 @@ export const apiClient = {
     createMaterial: async (lessonId: number, data: any): Promise<{ success: boolean; data: any }> => {
         const response = await fetch(`${API_BASE_URL}/admin/lessons/${lessonId}/materials`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
             body: JSON.stringify(data)
         });
         return response.json();
@@ -468,14 +473,15 @@ export const apiClient = {
     updateMaterial: async (id: number, data: any): Promise<{ success: boolean; data: any }> => {
         const response = await fetch(`${API_BASE_URL}/admin/materials/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', ...buildAuthHeaders() },
             body: JSON.stringify(data)
         });
         return response.json();
     },
     deleteMaterial: async (id: number): Promise<{ success: boolean }> => {
         const response = await fetch(`${API_BASE_URL}/admin/materials/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: buildAuthHeaders()
         });
         return response.json();
     },

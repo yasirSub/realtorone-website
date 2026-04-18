@@ -7,6 +7,7 @@ interface CurriculumEditorProps {
     onBack: () => void;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack }) => {
     const [course, setCourse] = useState<any>(null);
     const [loading, setLoading] = useState(true);
@@ -31,10 +32,10 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
     const [errorDialog, setErrorDialog] = useState<{ isOpen: boolean; title: string; message: string }>({ isOpen: false, title: '', message: '' });
 
     const showConfirm = (title: string, message: string, onConfirm: () => void) => setConfirmDialog({ isOpen: true, title, message, onConfirm });
-    const closeConfirm = () => setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+    const closeConfirm = () => setConfirmDialog((prev: any) => ({ ...prev, isOpen: false }));
 
     const showError = (title: string, message: string) => setErrorDialog({ isOpen: true, title, message });
-    const closeError = () => setErrorDialog(prev => ({ ...prev, isOpen: false }));
+    const closeError = () => setErrorDialog((prev: any) => ({ ...prev, isOpen: false }));
 
     const [inputModal, setInputModal] = useState<{
         isOpen: boolean; title: string; placeholder: string; onConfirm: (val: string) => void;
@@ -42,16 +43,26 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
 
     const resolveAssetUrl = (rawUrl?: string | null) => {
         if (!rawUrl) return undefined;
-        if (/^https?:\/\//i.test(rawUrl)) return rawUrl;
+
+        const appendToken = (url: string) => {
+            const token = localStorage.getItem('adminToken');
+            if (!token || !url.includes('/api/stream/')) return url;
+            const separator = url.includes('?') ? '&' : '?';
+            return `${url}${separator}token=${encodeURIComponent(token)}`;
+        };
+
+        if (/^https?:\/\//i.test(rawUrl)) {
+            return appendToken(rawUrl);
+        }
 
         const normalized = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
         const configuredBase = import.meta.env.VITE_API_BASE_URL || '/api';
 
         if (configuredBase.startsWith('http://') || configuredBase.startsWith('https://')) {
-            return new URL(normalized, `${configuredBase.replace(/\/$/, '')}/`).toString();
+            return appendToken(new URL(normalized, `${configuredBase.replace(/\/$/, '')}/`).toString());
         }
 
-        return normalized;
+        return appendToken(normalized);
     };
 
     useEffect(() => { loadCourseDetails(); }, [courseId]);
@@ -87,14 +98,14 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
         } catch (error) { console.error(error); } finally { setLoading(false); }
     };
 
-    const toggleModule = (id: number) => setExpandedModules(prev => ({ ...prev, [id]: !prev[id] }));
+    const toggleModule = (id: number) => setExpandedModules((prev: Record<number, boolean>) => ({ ...prev, [id]: !prev[id] }));
 
     const handleAddModule = () => {
         setInputModal({
             isOpen: true, title: 'New Module', placeholder: 'Module title...',
             onConfirm: async (title) => {
                 await apiClient.createModule(courseId, { title, sequence: (course?.modules?.length || 0) + 1 });
-                loadCourseDetails(); setInputModal(prev => ({ ...prev, isOpen: false }));
+                loadCourseDetails(); setInputModal((prev: any) => ({ ...prev, isOpen: false }));
             }
         });
     };
@@ -105,7 +116,7 @@ const CurriculumEditor: React.FC<CurriculumEditorProps> = ({ courseId, onBack })
             onConfirm: async (title) => {
                 const mod = course.modules.find((m: any) => m.id === moduleId);
                 await apiClient.createLesson(moduleId, { title, sequence: (mod?.lessons?.length || 0) + 1 });
-                loadCourseDetails(); setInputModal(prev => ({ ...prev, isOpen: false }));
+                loadCourseDetails(); setInputModal((prev: any) => ({ ...prev, isOpen: false }));
             }
         });
     };

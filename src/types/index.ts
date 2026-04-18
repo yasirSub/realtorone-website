@@ -202,6 +202,9 @@ export interface SubscriptionPackage {
     description: string;
     features: string[];
     is_active: boolean;
+    bundle_discount_3_month?: number;
+    bundle_discount_6_month?: number;
+    bundle_discount_12_month?: number;
 }
 
 export interface Coupon {

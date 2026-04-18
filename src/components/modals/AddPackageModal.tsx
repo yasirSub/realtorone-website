@@ -17,7 +17,10 @@ const AddPackageModal: React.FC<AddPackageModalProps> = ({
         tier_level: 1,
         price_monthly: 0,
         description: '',
-        features: [] as string[]
+        features: [] as string[],
+        bundle_discount_3_month: 10,
+        bundle_discount_6_month: 20,
+        bundle_discount_12_month: 30
     });
     const [featureInput, setFeatureInput] = useState('');
 
@@ -42,8 +45,52 @@ const AddPackageModal: React.FC<AddPackageModalProps> = ({
                         </div>
 
                         <div>
-                            <label className="form-label">MONTHLY SUBSCRIPTION ($)</label>
+                            <label className="form-label">BASE MONTHLY PRICE (AED)</label>
                             <input type="number" value={newPackage.price_monthly} onChange={e => setNewPackage({ ...newPackage, price_monthly: Number(e.target.value) })} className="form-input" />
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>This base price is used to calculate bundle prices for 3, 6, and 12 month billing cycles.</div>
+                        </div>
+
+                        <div>
+                            <label className="form-label">BUNDLE DISCOUNTS (%)</label>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>3 MONTH</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={newPackage.bundle_discount_3_month}
+                                        onChange={e => setNewPackage({ ...newPackage, bundle_discount_3_month: Number(e.target.value) })}
+                                        className="form-input"
+                                        placeholder="10"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>6 MONTH</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={newPackage.bundle_discount_6_month}
+                                        onChange={e => setNewPackage({ ...newPackage, bundle_discount_6_month: Number(e.target.value) })}
+                                        className="form-input"
+                                        placeholder="20"
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>12 MONTH</label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="100"
+                                        value={newPackage.bundle_discount_12_month}
+                                        onChange={e => setNewPackage({ ...newPackage, bundle_discount_12_month: Number(e.target.value) })}
+                                        className="form-input"
+                                        placeholder="30"
+                                    />
+                                </div>
+                            </div>
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '8px' }}>Discount percentages applied to the base monthly price for bundled billing cycles.</div>
                         </div>
 
                         <div>
@@ -98,7 +145,16 @@ const AddPackageModal: React.FC<AddPackageModalProps> = ({
                                 if (res.success) {
                                     setPackages((prev: any[]) => [...prev, res.data]);
                                     onClose();
-                                    setNewPackage({ name: '', tier_level: 1, price_monthly: 0, description: '', features: [] });
+                                    setNewPackage({
+                                        name: '',
+                                        tier_level: 1,
+                                        price_monthly: 0,
+                                        description: '',
+                                        features: [],
+                                        bundle_discount_3_month: 10,
+                                        bundle_discount_6_month: 20,
+                                        bundle_discount_12_month: 30
+                                    });
                                 }
                             });
                         }}>Deploy Package to Production</button>

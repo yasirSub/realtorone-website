@@ -72,6 +72,23 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
         value: string;
     }>({ show: false, pkgId: 0, pkgName: '', value: '' });
 
+    const getBillingCycles = (pkg: SubscriptionPackage) => [
+        { months: 12, title: '12 Months (Yearly)', discount: pkg.bundle_discount_12_month ?? 30, badge: 'BEST VALUE' },
+        { months: 6, title: '6 Months', discount: pkg.bundle_discount_6_month ?? 20, badge: 'MOST POPULAR' },
+        { months: 3, title: '3 Months', discount: pkg.bundle_discount_3_month ?? 10 },
+        { months: 1, title: 'Monthly', discount: 0 }
+    ];
+
+    const formatCyclePrice = (base: number, discount: number, months: number) => {
+        const multiplier = 1 - discount / 100;
+        const total = base * months * multiplier;
+        const monthlyShown = base * multiplier;
+        return {
+            monthlyShown: Number(monthlyShown.toFixed(0)),
+            total: Number(total.toFixed(0))
+        };
+    };
+
     const activeTabStyle = {
         background: 'rgba(79, 70, 229, 0.1)',
         color: 'var(--primary)',
@@ -148,7 +165,7 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
 
             {/* Content Zone */}
             {subTab === 'packages' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '30px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: '30px' }}>
                     <div 
                         className="glass-panel" 
                         style={{ 
@@ -191,9 +208,61 @@ const SubscriptionsPage: React.FC<SubscriptionsPageProps> = ({
 
                                 <h3 className="text-outfit" style={{ fontSize: '1.8rem', fontWeight: 800, margin: '0 0 10px 0', color: tierColor }}>{displayName}</h3>
                                 
-                                <div style={{ marginBottom: '30px' }}>
-                                    <span style={{ fontSize: '2.4rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-1px' }}>AED {pkg.price_monthly}</span>
-                                    <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginLeft: '8px' }}>/ cycle</span>
+                                <div style={{ marginBottom: '20px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', flexWrap: 'wrap' }}>
+                                        <span style={{ fontSize: '2.2rem', fontWeight: 800, color: 'var(--text-main)', letterSpacing: '-1px' }}>AED {pkg.price_monthly}</span>
+                                        <span style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>/ month base</span>
+                                    </div>
+                                    <div style={{ marginTop: '10px', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Base monthly price used to calculate bundled billing cycles and discounts.</div>
+                                </div>
+
+                                <div style={{ marginBottom: '24px', borderRadius: '18px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr', gap: '12px', padding: '14px 16px', background: 'rgba(255,255,255,0.08)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>BILLING CYCLE</div>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>DISCOUNT</div>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.08em', color: 'var(--text-muted)' }}>SHOWN / MO</div>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: 900, letterSpacing: '0.08em', color: 'var(--text-muted)', textAlign: 'right' }}>TOTAL</div>
+                                    </div>
+                                    {getBillingCycles(pkg).map((cycle, idx) => {
+                                        const { monthlyShown, total } = formatCyclePrice(pkg.price_monthly, cycle.discount, cycle.months);
+                                        const discountField = cycle.months === 12 ? 'bundle_discount_12_month' : cycle.months === 6 ? 'bundle_discount_6_month' : cycle.months === 3 ? 'bundle_discount_3_month' : null;
+                                        
+                                        return (
+                                            <div key={cycle.months} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1fr', gap: '12px', padding: '14px 16px', background: idx % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.01)' }}>
+                                                <div style={{ fontSize: '0.82rem', color: 'var(--text-main)', fontWeight: 700 }}>{cycle.title}</div>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        max="100"
+                                                        value={cycle.discount}
+                                                        onChange={(e) => {
+                                                            const newDiscount = parseInt(e.target.value) || 0;
+                                                            const updatedPkg = { ...pkg };
+                                                            if (discountField) {
+                                                                updatedPkg[discountField] = newDiscount;
+                                                            }
+                                                            setPackages((prev: any[]) => prev.map(p => p.id === updatedPkg.id ? updatedPkg : p));
+                                                        }}
+                                                        style={{
+                                                            width: '50px',
+                                                            padding: '4px 8px',
+                                                            border: '1px solid rgba(255,255,255,0.2)',
+                                                            borderRadius: '4px',
+                                                            background: 'rgba(255,255,255,0.05)',
+                                                            color: 'var(--text-main)',
+                                                            fontSize: '0.75rem',
+                                                            fontWeight: 600,
+                                                            textAlign: 'center'
+                                                        }}
+                                                    />
+                                                    <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', fontWeight: 600 }}>%</span>
+                                                </div>
+                                                <div style={{ fontSize: '0.82rem', color: 'var(--text-main)', fontWeight: 800 }}>AED {monthlyShown}/mo</div>
+                                                <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', fontWeight: 800, textAlign: 'right' }}>AED {total}</div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
 
                                 <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '30px', lineHeight: '1.6' }}>{pkg.description}</p>
