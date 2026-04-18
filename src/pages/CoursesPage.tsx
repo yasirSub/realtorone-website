@@ -40,6 +40,31 @@ const TIERS = [
     },
 ];
 
+const resolveProtectedAssetUrl = (url?: string) => {
+    if (!url) return '';
+
+    const appendTokenForStream = (nextUrl: string) => {
+        const token = localStorage.getItem('adminToken');
+        if (!token || !nextUrl.includes('/api/stream/')) return nextUrl;
+        const separator = nextUrl.includes('?') ? '&' : '?';
+        return `${nextUrl}${separator}token=${encodeURIComponent(token)}`;
+    };
+
+    if (/^https?:\/\//i.test(url)) {
+        return appendTokenForStream(url);
+    }
+
+    const normalized = url.startsWith('/') ? url : `/${url}`;
+    const configuredBase = apiClient.getBaseUrl();
+
+    if (configuredBase.startsWith('http://') || configuredBase.startsWith('https://')) {
+        return appendTokenForStream(new URL(normalized, `${configuredBase.replace(/\/$/, '')}/`).toString());
+    }
+
+    const base = configuredBase.replace('/api', '');
+    return appendTokenForStream(`${base}${normalized}`);
+};
+
 export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses, ebooks, setEbooks }) => {
     const [saving, setSaving] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -224,10 +249,7 @@ export const CoursesPage: React.FC<CoursesPageProps> = ({ courses, setCourses, e
         TIERS.find(t => t.key.toLowerCase() === tier.toLowerCase())?.color ?? '#38BDF8';
 
     const resolveAssetUrl = (url?: string) => {
-        if (!url) return '';
-        if (url.startsWith('http')) return url;
-        const base = apiClient.getBaseUrl().replace('/api', '');
-        return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+        return resolveProtectedAssetUrl(url);
     };
 
     if (selectedCourseForCurriculum) {
@@ -1006,10 +1028,7 @@ interface EbookCardProps {
 const EbookCard: React.FC<EbookCardProps & { onPreview: (url: string) => void }> = ({ ebook, tierColor, onEdit, onDelete, onPreview }) => {
     const [hovered, setHovered] = useState(false);
     const resolveAssetUrl = (url?: string) => {
-        if (!url) return '';
-        if (url.startsWith('http')) return url;
-        const base = apiClient.getBaseUrl().replace('/api', '');
-        return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+        return resolveProtectedAssetUrl(url);
     };
 
     const handleView = () => {
@@ -1189,10 +1208,7 @@ const CourseCard: React.FC<CourseCardProps> = ({ course, tierColor, onEdit, onDe
     const [hovered, setHovered] = useState(false);
 
     const resolveAssetUrl = (url?: string) => {
-        if (!url) return '';
-        if (url.startsWith('http')) return url;
-        const base = apiClient.getBaseUrl().replace('/api', '');
-        return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+        return resolveProtectedAssetUrl(url);
     };
 
     return (
