@@ -105,7 +105,16 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ stats }) => {
                         <div className="text-outfit" style={{ fontSize: '1.2rem', fontWeight: 700 }}>{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase()}</div>
                     </div>
                     <div style={{ width: '1px', height: '40px', background: 'var(--glass-border)' }}></div>
-                    <button className="btn-command primary">GENERATE STRATEGIC REPORT</button>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <button 
+                            className="btn-command" 
+                            style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }}
+                            onClick={() => window.location.href = '/contact'}
+                        >
+                            SUPPORT CENTER
+                        </button>
+                        <button className="btn-command primary">GENERATE STRATEGIC REPORT</button>
+                    </div>
                 </div>
             </div>
 
