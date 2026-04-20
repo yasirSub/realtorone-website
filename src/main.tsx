@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage'
 import TermsOfServicePage from './pages/TermsOfServicePage'
+import ContactPage from './pages/ContactPage'
 import { initFirebaseAnalytics } from './firebase'
 
 void initFirebaseAnalytics()
@@ -16,6 +17,8 @@ createRoot(document.getElementById('root')!).render(
       <PrivacyPolicyPage />
     ) : pathSeg === 'terms' ? (
       <TermsOfServicePage />
+    ) : pathSeg === 'contact' ? (
+      <ContactPage />
     ) : (
       <App />
     )}
