@@ -35,7 +35,7 @@ const ContactPage: React.FC = () => {
                         <div className="info-card">
                             <h3>Phone Support</h3>
                             <p>Direct line for immediate assistance.</p>
-                            <a href="tel:8595137609" className="contact-link">8595 137 609</a>
+                            <a href="tel:+918595137609" className="contact-link">+91 8595 137 609</a>
                         </div>
 
                         <div className="info-card">
