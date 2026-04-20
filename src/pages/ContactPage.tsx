@@ -37,6 +37,16 @@ const ContactPage: React.FC = () => {
                             <p>Direct line for immediate assistance.</p>
                             <a href="tel:8595137609" className="contact-link">8595 137 609</a>
                         </div>
+
+                        <div className="info-card">
+                            <h3>Office Address</h3>
+                            <p>Visit us at our regional headquarters.</p>
+                            <address style={{ fontStyle: 'normal', color: '#cbd5e1', lineHeight: '1.6' }}>
+                                70 A Second Floor, Subhash Rd,<br />
+                                Race Course, Dehradun,<br />
+                                Uttarakhand, India
+                            </address>
+                        </div>
                     </div>
 
                     <div className="contact-form-container">
