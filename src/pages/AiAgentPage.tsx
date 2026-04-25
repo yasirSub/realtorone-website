@@ -7,6 +7,7 @@ type ChatCommand = {
     keyword: string;
     label?: string;
     description?: string;
+    target?: string;
 };
 
 type CoursePreview = {
@@ -14,12 +15,20 @@ type CoursePreview = {
     title?: string;
 };
 
+type ClientPreview = {
+    client_name?: string;
+    source?: string;
+    status?: string;
+    date?: string;
+    value?: string | number;
+};
+
 function getErrorMessage(e: unknown): string {
     if (e instanceof Error) return e.message;
     return typeof e === 'string' ? e : 'Request failed.';
 }
 
-function safeParseStoredAssistantContent(content: string): { text: string; courses?: CoursePreview[]; commands?: ChatCommand[] } {
+function safeParseStoredAssistantContent(content: string): { text: string; courses?: CoursePreview[]; commands?: ChatCommand[]; clients?: ClientPreview[] } {
     if (!content || (content[0] ?? '') !== '{') return { text: content };
     try {
         const decoded: unknown = JSON.parse(content);
@@ -48,11 +57,27 @@ function safeParseStoredAssistantContent(content: string): { text: string; cours
                     if (!keyword) return null;
                     const label = typeof obj.label === 'string' ? obj.label : undefined;
                     const description = typeof obj.description === 'string' ? obj.description : undefined;
-                    return { keyword, label, description };
+                    const target = typeof obj.target === 'string' ? obj.target : undefined;
+                    return { keyword, label, description, target };
                 }).filter(Boolean) as ChatCommand[]
                 : undefined;
 
-            return { text, courses, commands };
+            const rawClients = record.clients;
+            const clients = Array.isArray(rawClients)
+                ? rawClients.map((client: unknown): ClientPreview | null => {
+                    if (!client || typeof client !== 'object') return null;
+                    const obj = client as Record<string, unknown>;
+                    return {
+                        client_name: typeof obj.client_name === 'string' ? obj.client_name : undefined,
+                        source: typeof obj.source === 'string' ? obj.source : undefined,
+                        status: typeof obj.status === 'string' ? obj.status : undefined,
+                        date: typeof obj.date === 'string' ? obj.date : undefined,
+                        value: typeof obj.value === 'string' || typeof obj.value === 'number' ? obj.value : undefined,
+                    };
+                }).filter(Boolean) as ClientPreview[]
+                : undefined;
+
+            return { text, courses, commands, clients };
         }
         return { text: content };
     } catch {
@@ -209,46 +234,95 @@ const AiAgentPage: React.FC = () => {
 
     const assistantMessageFooter = (m: ChatMessage) => {
         const parsed = safeParseStoredAssistantContent(m.content);
-        if (parsed.commands && parsed.commands.length > 0) {
-            return (
-                <div className="ai-agent-commands">
-                    {parsed.commands.slice(0, 6).map((c, idx) => (
-                        <button
-                            key={idx}
-                            className="ai-agent-chip"
-                            type="button"
-                            onClick={() => void handleSend(c.keyword)}
-                            title={c.description || c.keyword}
-                        >
-                            {c.label || c.keyword}
-                        </button>
-                    ))}
-                </div>
-            );
+        const hasClients = parsed.clients && parsed.clients.length > 0;
+        const hasCommands = parsed.commands && parsed.commands.length > 0;
+        const hasCourses = parsed.courses && parsed.courses.length > 0;
+
+        const resolveTargetPath = (target?: string): string | null => {
+            switch (target) {
+                case 'dashboard':
+                case 'tasks':
+                    return '/dashboard';
+                case 'courses':
+                    return '/courses';
+                case 'badges':
+                    return '/badges';
+                case 'profile':
+                    return '/settings';
+                case 'deal-room':
+                case 'client-list':
+                    return '/users';
+                default:
+                    return null;
+            }
+        };
+
+        if (!hasClients && !hasCommands && !hasCourses) {
+            return null;
         }
 
-        if (parsed.courses && parsed.courses.length > 0) {
-            const first = parsed.courses.slice(0, 5);
-            return (
-                <div className="ai-agent-courses">
-                    <div className="ai-agent-subtle">Courses found: {parsed.courses.length}</div>
-                    <div className="ai-agent-course-list">
-                        {first.map((c, idx) => (
+        return (
+            <>
+                {hasClients && (
+                    <div className="ai-agent-client-list">
+                        <div className="ai-agent-subtle">Clients found: {parsed.clients!.length}</div>
+                        <div className="ai-agent-client-grid">
+                            {parsed.clients!.slice(0, 8).map((client, idx) => (
+                                <div key={`${client.client_name ?? 'client'}-${idx}`} className="ai-agent-client-card">
+                                    <div className="ai-agent-client-name">{client.client_name || 'Unnamed client'}</div>
+                                    <div className="ai-agent-client-meta">
+                                        {client.status || '—'}
+                                        {client.source ? ` · ${client.source}` : ''}
+                                        {client.value !== undefined ? ` · ${client.value}` : ''}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {hasCommands && (
+                    <div className="ai-agent-commands">
+                        {parsed.commands!.slice(0, 6).map((c, idx) => (
                             <button
-                                key={c.id ?? c.title ?? idx}
-                                className="ai-agent-link"
+                                key={idx}
+                                className="ai-agent-chip"
                                 type="button"
-                                onClick={() => void handleSend(`courses ${c.title ?? ''}`)}
+                                onClick={() => {
+                                    const targetPath = resolveTargetPath(c.target);
+                                    if (targetPath) {
+                                        window.location.assign(targetPath);
+                                        return;
+                                    }
+                                    void handleSend(c.keyword);
+                                }}
+                                title={c.description || c.keyword}
                             >
-                                {c.title || 'Untitled course'}
+                                {c.label || c.keyword}
                             </button>
                         ))}
                     </div>
-                </div>
-            );
-        }
+                )}
 
-        return null;
+                {hasCourses && (
+                    <div className="ai-agent-courses">
+                        <div className="ai-agent-subtle">Courses found: {parsed.courses!.length}</div>
+                        <div className="ai-agent-course-list">
+                            {parsed.courses!.slice(0, 5).map((c, idx) => (
+                                <button
+                                    key={c.id ?? c.title ?? idx}
+                                    className="ai-agent-link"
+                                    type="button"
+                                    onClick={() => void handleSend(`courses ${c.title ?? ''}`)}
+                                >
+                                    {c.title || 'Untitled course'}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </>
+        );
     };
 
     return (

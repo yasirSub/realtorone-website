@@ -46,6 +46,15 @@ Website:
 Backend:
     - Modularized AI Chat controller to resolve static analysis and performance bottlenecks.
 
+### Day 100: Apr 25 - AI provider compatibility + CRM-aware chat
+Website:
+  - AI Settings page now exposes a visible top-right Save action and uses a responsive grid so the control panel stays reachable on smaller screens.
+  - AI Behavior / Role guidance was updated so admins can define short, polite, user-side responses with a direct-answer-first tone.
+Backend:
+  - OpenRouter support was hardened in both chat paths with provider-prefixed model normalization, OpenRouter headers, and detailed upstream error reporting.
+  - AI chat prompts now treat user-visible CRM / Deal Room data as trusted context, so the assistant can answer questions about active clients, pipeline stage, and deal activity from app data instead of refusing.
+  - CRM lead detection was widened to include client, lead, CRM, contact, and follow-up queries so structured Deal Room context is injected more often.
+
 ### Day 91: Apr 8 - iOS platform wiring
 Application (Mobile):
   - Added missing `ios/Podfile` (iOS 15), CocoaPods `post_install` macros for `permission_handler` (camera, mic, photos, notifications).
