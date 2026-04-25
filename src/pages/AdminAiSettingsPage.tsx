@@ -209,10 +209,24 @@ const AdminAiSettingsPage: React.FC = () => {
           <div className="text-outfit" style={{ fontSize: '1.1rem', fontWeight: 800 }}>
             {totals.todayTokens.toLocaleString()} <span style={{ fontSize: '0.75rem', opacity: 0.55 }}>TOKENS</span> · {totals.todayCalls.toLocaleString()} <span style={{ fontSize: '0.75rem', opacity: 0.55 }}>CALLS</span>
           </div>
+          <button
+            className="btn-command primary"
+            type="button"
+            onClick={save}
+            disabled={saving}
+            style={{ marginTop: 10, minWidth: 180, height: 42, fontSize: '0.74rem', padding: '0 14px' }}
+          >
+            {saving ? 'SAVING…' : 'SAVE SETTINGS'}
+          </button>
+          {msg ? (
+            <div style={{ marginTop: 8, fontSize: '0.74rem', fontWeight: 750, color: msg.toLowerCase().includes('saved') || msg === 'Saved.' ? 'var(--success)' : 'var(--warning, #f59e0b)' }}>
+              {msg}
+            </div>
+          ) : null}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.05fr) 1.8fr', gap: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: 22 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
           <div className="glass-panel" style={{ padding: 24, borderLeft: '4px solid var(--primary)' }}>
             <div className="card-heading" style={{ marginBottom: 14 }}>Runtime Provider</div>
